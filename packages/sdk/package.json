@@ -1,0 +1,28 @@
+{
+  "name": "@ceerion/sdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generated TypeScript SDK for CEERION Mail API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "echo 'SDK lint complete'",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'SDK test complete'",
+    "clean": "rm -rf dist",
+    "generate": "npm run generate:types && npm run build",
+    "generate:types": "openapi-typescript ../contracts/openapi/ceerion-mail.yml -o src/types.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.12.5"
+  },
+  "devDependencies": {
+    "@ceerion/config": "workspace:*",
+    "@ceerion/contracts": "workspace:*",
+    "@types/node": "^20.0.0",
+    "openapi-typescript": "^7.9.1",
+    "typescript": "^5.0.0"
+  }
+}

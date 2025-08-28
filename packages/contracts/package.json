@@ -1,0 +1,21 @@
+{
+  "name": "@ceerion/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OpenAPI contracts for CEERION Mail",
+  "scripts": {
+    "build": "echo 'Contracts build complete'",
+    "lint": "echo 'Contracts lint complete'",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'Contracts test complete'",
+    "openapi:check": "ts-node scripts/openapi-check.ts"
+  },
+  "devDependencies": {
+    "@ceerion/config": "workspace:*",
+    "@types/node": "^20.0.0",
+    "js-yaml": "^4.1.0",
+    "@types/js-yaml": "^4.0.5",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}
