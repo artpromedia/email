@@ -75,7 +75,7 @@ async function start() {
 
     // Register routes
     await fastify.register(healthRoutes);
-    await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
+    await fastify.register(authRoutes, { prefix: '/auth' });
 
     // Serve OpenAPI JSON
     fastify.get('/openapi.json', async () => {

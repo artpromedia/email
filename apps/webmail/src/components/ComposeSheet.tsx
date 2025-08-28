@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, ReactNode } from 'react'
 import { X, Paperclip, Send, Smile, Bold, Italic, Underline, Link2, Clock, ChevronDown } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 interface ComposeSheetProps {
   isOpen: boolean
   onClose: () => void
-  children?: React.ReactNode
+  children?: ReactNode
 }
 
 interface Contact {

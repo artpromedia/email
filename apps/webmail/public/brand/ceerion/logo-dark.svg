@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" width="200" height="32">
   <title>CEERION Logo Dark</title>
   <desc>CEERION wordmark in dark theme suitable for light backgrounds</desc>
-  <text x="10" y="20" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#1a1a1a">
+  <text x="10" y="20" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#000000">
     CEERION
   </text>
 </svg>
