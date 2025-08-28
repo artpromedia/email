@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/components/theme-provider'
+import { I18nProvider } from '@/contexts/I18nContext'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { AppShell } from '@/components/app-shell'
 import { LoginPage } from '@/pages/login'
@@ -10,6 +11,7 @@ import { MailPage } from '@/pages/mail'
 import { CalendarPage } from '@/pages/calendar'
 import { ChatPage } from '@/pages/chat'
 import { SettingsPage } from '@/pages/settings'
+import { QuarantinePage } from '@/pages/quarantine'
 import '@/styles/theme.css'
 
 const queryClient = new QueryClient({
@@ -50,6 +52,7 @@ function AppRoutes() {
           <Route path="/mail/*" element={<MailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/quarantine" element={<QuarantinePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
@@ -61,20 +64,22 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="ceerion-mail-theme">
-        <AuthProvider>
-          <TooltipProvider>
-            <Router>
-              <AppRoutes />
-              <Toaster
-                position="bottom-right"
-                toastOptions={{
-                  className: 'rounded-2xl',
-                  duration: 4000,
-                }}
-              />
-            </Router>
-          </TooltipProvider>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Router>
+                <AppRoutes />
+                <Toaster
+                  position="bottom-right"
+                  toastOptions={{
+                    className: 'rounded-2xl',
+                    duration: 4000,
+                  }}
+                />
+              </Router>
+            </TooltipProvider>
+          </AuthProvider>
+        </I18nProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )

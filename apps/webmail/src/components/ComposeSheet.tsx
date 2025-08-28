@@ -1,9 +1,12 @@
-import { useState, ReactNode } from 'react'
+import { useState, ReactNode, useEffect } from 'react'
 import { X, Paperclip, Send, Smile, Bold, Italic, Underline, Link2, Clock, ChevronDown } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { useMail } from '../hooks/useMail'
+import { useI18n } from '../contexts/I18nContext'
+import toast from 'react-hot-toast'
 
 interface ComposeSheetProps {
   isOpen: boolean
@@ -37,17 +40,40 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
   const [content, setContent] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [activeSuggestions, setActiveSuggestions] = useState<Contact[]>([])
+  const [isSending, setIsSending] = useState(false)
+  const [priority, setPriority] = useState<'low' | 'normal' | 'high'>('normal')
+  const [scheduledSend, setScheduledSend] = useState<string>('')
+  
+  const { sendMessage, saveDraft } = useMail()
+  const { t } = useI18n()
 
-  const handleToInputChange = (value: string) => {
-    setToInput(value)
-    if (value.length > 0) {
-      const filtered = suggestions.filter(contact => 
-        contact.name.toLowerCase().includes(value.toLowerCase()) ||
-        contact.email.toLowerCase().includes(value.toLowerCase())
-      )
-      setActiveSuggestions(filtered)
-      setShowSuggestions(true)
-    } else {
+  // Auto-save draft every 30 seconds
+  useEffect(() => {
+    if (!isOpen || (!subject && !content)) return
+
+    const interval = setInterval(() => {
+      if (toContacts.length > 0 || subject || content) {
+        handleSaveDraft()
+      }
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [isOpen, toContacts, subject, content])
+
+  const handleSaveDraft = async () => {
+    try {
+      await saveDraft({
+        to: toContacts.map(c => c.email),
+        cc: ccContacts.map(c => c.email),
+        bcc: bccContacts.map(c => c.email),
+        subject,
+        body: content,
+      })
+    } catch (error) {
+      // Silent fail for auto-save
+      console.error('Auto-save failed:', error)
+    }
+  }
       setShowSuggestions(false)
     }
   }

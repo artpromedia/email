@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useI18n } from '@/contexts/I18nContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BrandLogo } from '@/components/brand-logo'
@@ -8,16 +9,18 @@ import { ThemeToggle } from '@/components/theme-toggle'
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const { login } = useAuth()
+  const { t } = useI18n()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
 
-    const success = await login(email, password)
+    const success = await login(email, password, rememberMe)
     
     if (!success) {
       setError('Invalid email or password')
@@ -38,7 +41,7 @@ export function LoginPage() {
 
       <div className="w-full max-w-md space-y-8 p-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight">Sign in to CEERION Mail</h2>
+          <h2 className="text-3xl font-bold tracking-tight">{t('auth.login')} to CEERION Mail</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Enter your credentials to access your account
           </p>
@@ -47,7 +50,7 @@ export function LoginPage() {
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Email address
+              {t('auth.email')}
             </label>
             <Input
               id="email"
@@ -64,7 +67,7 @@ export function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium mb-2">
-              Password
+              {t('auth.password')}
             </label>
             <Input
               id="password"
@@ -77,6 +80,20 @@ export function LoginPage() {
               placeholder="demo"
               className="w-full"
             />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              name="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm">
+              Remember me
+            </label>
           </div>
 
           {error && (

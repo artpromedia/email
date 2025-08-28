@@ -7,19 +7,23 @@ import {
   Settings, 
   User, 
   Menu,
-  X
+  X,
+  Shield
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useI18n } from '@/contexts/I18nContext'
 import { cn } from '@/lib/utils'
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const { t } = useI18n()
 
   const navigation = [
-    { name: 'Mail', href: '/mail', icon: Mail },
+    { name: t('mail.inbox'), href: '/mail', icon: Mail },
+    { name: t('quarantine.title'), href: '/quarantine', icon: Shield },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Chat', href: '/chat', icon: MessageSquare },
     { name: 'Settings', href: '/settings', icon: Settings },

@@ -1,17 +1,22 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createCeerionMailClient } from '@ceerion/sdk'
+import toast from 'react-hot-toast'
 
 interface User {
   id: string
   email: string
   name: string
+  avatar?: string
 }
 
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  client: ReturnType<typeof createCeerionMailClient>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>
   logout: () => void
+  refreshToken: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,15 +24,47 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Create SDK client instance
+  const client = createCeerionMailClient({
+    baseUrl: 'http://localhost:4000',
+    headers: {
+      // Authorization header will be added automatically via interceptor
+    }
+  })
+
+  // Setup token interceptor
+  useEffect(() => {
+    const token = localStorage.getItem('auth-token')
+    if (token) {
+      // Add authorization header to all requests
+      client.client.use({
+        onRequest({ request }) {
+          const token = localStorage.getItem('auth-token')
+          if (token) {
+            request.headers.set('Authorization', `Bearer ${token}`)
+          }
+          return request
+        }
+      })
+    }
+  }, [client])
 
   useEffect(() => {
-    // Check for existing session
+    // Check for existing session and validate token
     const token = localStorage.getItem('auth-token')
     const userData = localStorage.getItem('user-data')
     
     if (token && userData) {
       try {
         setUser(JSON.parse(userData))
+        // Optionally validate token with refresh call
+        refreshToken().catch(() => {
+          // Token invalid, clear storage
+          localStorage.removeItem('auth-token')
+          localStorage.removeItem('user-data')
+          setUser(null)
+        })
       } catch {
         localStorage.removeItem('auth-token')
         localStorage.removeItem('user-data')
@@ -37,9 +74,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
     try {
-      // Demo login - accept demo@ceerion.com / demo
+      setIsLoading(true)
+      
+      // Try SDK login first
+      const { data, error } = await client.auth.login({
+        email,
+        password,
+        rememberMe
+      })
+
+      if (data && !error) {
+        const userData = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+        }
+        
+        setUser(userData)
+        localStorage.setItem('auth-token', data.accessToken)
+        localStorage.setItem('user-data', JSON.stringify(userData))
+        
+        toast.success(`Welcome back, ${userData.name}!`)
+        return true
+      }
+      
+      // Fallback to demo login for development
       if (email === 'demo@ceerion.com' && password === 'demo') {
         const demoUser = {
           id: '1',
@@ -47,37 +108,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: 'Demo User'
         }
         
-        // Set localStorage first
         localStorage.setItem('auth-token', 'demo-token')
         localStorage.setItem('user-data', JSON.stringify(demoUser))
-        
-        // Then update state
         setUser(demoUser)
         
-        console.log('Demo login successful, user set:', demoUser)
+        toast.success(`Welcome back, ${demoUser.name}!`)
         return true
       }
       
-      // For real API integration later
-      const response = await fetch('http://localhost:4000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      toast.error('Invalid email or password')
+      return false
+    } catch (error) {
+      console.error('Login error:', error)
+      toast.error('Login failed. Please try again.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data.user)
-        localStorage.setItem('auth-token', data.token)
-        localStorage.setItem('user-data', JSON.stringify(data.user))
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await client.auth.refresh()
+      
+      if (data && !error) {
+        localStorage.setItem('auth-token', data.accessToken)
         return true
       }
       
       return false
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('Token refresh error:', error)
       return false
     }
   }
@@ -85,15 +146,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem('auth-token')
+    localStorage.removeItem('refresh-token')
     localStorage.removeItem('user-data')
+    toast.success('Logged out successfully')
   }
 
   const value = {
     user,
     isAuthenticated: !!user,
     isLoading,
+    client,
     login,
     logout,
+    refreshToken,
   }
 
   return (
