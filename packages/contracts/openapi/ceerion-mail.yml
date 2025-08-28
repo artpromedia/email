@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CEERION Mail API
   version: 1.0.0
-  description: Backend API for CEERION Mail application
+  description: Backend API for CEERION Mail application with comprehensive authentication and mail handling
   contact:
     name: CEERION Team
   license:
@@ -14,67 +14,634 @@ servers:
   - url: https://api.mail.ceerion.com
     description: Production server
 
+security:
+  - bearerJWT: []
+
 paths:
+  # Health & Readiness
   /healthz:
     get:
       summary: Health check endpoint
       operationId: healthCheck
-      tags:
-        - Health
+      security: []
+      tags: [Health]
       responses:
         '200':
           description: Service is healthy
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  timestamp:
-                    type: string
-                    format: date-time
-                  version:
-                    type: string
-                    example: 1.0.0
+                $ref: '#/components/schemas/HealthResponse'
 
-  /api/v1/auth/login:
+  /readyz:
+    get:
+      summary: Readiness check endpoint
+      operationId: readinessCheck
+      security: []
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  # Authentication
+  /auth/login:
     post:
-      summary: User login
+      summary: User login with email/password
       operationId: login
-      tags:
-        - Authentication
+      security: []
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-              required:
-                - email
-                - password
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: Refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimit'
+
+  /auth/logout:
+    post:
+      summary: Logout user and invalidate tokens
+      operationId: logout
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refreshToken
+      security:
+        - cookieRefresh: []
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/mfa/verify:
+    post:
+      summary: Verify MFA token
+      operationId: verifyMFA
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+      responses:
+        '200':
+          description: MFA verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Password Recovery
+  /auth/password/reset/request:
+    post:
+      summary: Request password reset
+      operationId: requestPasswordReset
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Reset email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /auth/password/reset/confirm:
+    post:
+      summary: Confirm password reset
+      operationId: confirmPasswordReset
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /auth/sessions/revoke-all:
+    post:
+      summary: Revoke all user sessions
+      operationId: revokeAllSessions
+      tags: [Authentication]
+      responses:
+        '200':
+          description: All sessions revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # WebAuthn/Passkeys
+  /auth/webauthn/register:
+    post:
+      summary: Start WebAuthn registration
+      operationId: startWebAuthnRegistration
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Registration challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAuthnChallenge'
+
+  /auth/webauthn/verify:
+    post:
+      summary: Verify WebAuthn registration
+      operationId: verifyWebAuthnRegistration
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnVerifyRequest'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /auth/webauthn/login/start:
+    post:
+      summary: Start WebAuthn login
+      operationId: startWebAuthnLogin
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnLoginStart'
+      responses:
+        '200':
+          description: Login challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAuthnChallenge'
+
+  /auth/webauthn/login/finish:
+    post:
+      summary: Complete WebAuthn login
+      operationId: finishWebAuthnLogin
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebAuthnLoginFinish'
       responses:
         '200':
           description: Login successful
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                  user:
-                    $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/LoginResponse'
+
+  # OIDC Authentication
+  /auth/oidc/{provider}/login:
+    get:
+      summary: Start OIDC login
+      operationId: startOIDCLogin
+      security: []
+      tags: [Authentication]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, entra]
+      responses:
+        '302':
+          description: Redirect to provider
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/oidc/{provider}/callback:
+    get:
+      summary: OIDC callback handler
+      operationId: handleOIDCCallback
+      security: []
+      tags: [Authentication]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, entra]
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to application
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Mail Management
+  /mail/messages:
+    get:
+      summary: List messages
+      operationId: listMessages
+      tags: [Mail]
+      parameters:
+        - name: folder
+          in: query
+          schema:
+            type: string
+            default: inbox
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesResponse'
+
+  /mail/messages/{id}:
+    get:
+      summary: Get message by ID
+      operationId: getMessage
+      tags: [Mail]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mail/send:
+    post:
+      summary: Send email
+      operationId: sendMessage
+      tags: [Mail]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /mail/drafts:
+    post:
+      summary: Create draft
+      operationId: createDraft
+      tags: [Mail]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftRequest'
+      responses:
+        '201':
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /mail/drafts/{id}:
+    patch:
+      summary: Update draft
+      operationId: updateDraft
+      tags: [Mail]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftRequest'
+      responses:
+        '200':
+          description: Draft updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /mail/attachments:
+    post:
+      summary: Upload attachment
+      operationId: uploadAttachment
+      tags: [Mail]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Attachment uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+
+  /mail/mark:
+    post:
+      summary: Mark messages
+      operationId: markMessages
+      tags: [Mail]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkMessagesRequest'
+      responses:
+        '200':
+          description: Messages marked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /mail/move:
+    post:
+      summary: Move messages
+      operationId: moveMessages
+      tags: [Mail]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveMessagesRequest'
+      responses:
+        '200':
+          description: Messages moved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /mail/snooze:
+    post:
+      summary: Snooze messages
+      operationId: snoozeMessages
+      tags: [Mail]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnoozeMessagesRequest'
+      responses:
+        '200':
+          description: Messages snoozed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Policy Management
+  /policy/trusted-senders:
+    get:
+      summary: Get trusted senders
+      operationId: getTrustedSenders
+      tags: [Policy]
+      responses:
+        '200':
+          description: Trusted senders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedSendersResponse'
+    post:
+      summary: Add trusted sender
+      operationId: addTrustedSender
+      tags: [Policy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedSenderRequest'
+      responses:
+        '201':
+          description: Trusted sender added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+    delete:
+      summary: Remove trusted sender
+      operationId: removeTrustedSender
+      tags: [Policy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveTrustedSenderRequest'
+      responses:
+        '200':
+          description: Trusted sender removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Settings
+  /settings:
+    get:
+      summary: Get user settings
+      operationId: getSettings
+      tags: [Settings]
+      responses:
+        '200':
+          description: User settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+    put:
+      summary: Update user settings
+      operationId: updateSettings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSettingsRequest'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+
+  # Calendar (Stub)
+  /calendar/events:
+    get:
+      summary: List calendar events
+      operationId: listCalendarEvents
+      tags: [Calendar]
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Calendar events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEventsResponse'
+
+  # Chat (Stub)
+  /chat/conversations:
+    get:
+      summary: List chat conversations
+      operationId: listChatConversations
+      tags: [Chat]
+      responses:
+        '200':
+          description: Chat conversations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationsResponse'
 
 components:
+  securitySchemes:
+    bearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: RS256 JWT access token
+    cookieRefresh:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: Refresh token in HTTP-only cookie
+    # Note: WebAuthn would be implemented via custom headers/body
+
   schemas:
+    # Core Entities
     User:
       type: object
       properties:
@@ -86,30 +653,726 @@ components:
           format: email
         name:
           type: string
+        emailVerified:
+          type: boolean
+        mfaEnabled:
+          type: boolean
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - email
-        - name
-        - createdAt
-        - updatedAt
+      required: [id, email, name, emailVerified, mfaEnabled, createdAt, updatedAt]
 
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        deviceInfo:
+          type: string
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, expiresAt, createdAt]
 
-security:
-  - bearerAuth: []
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+        threadId:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: email
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+        subject:
+          type: string
+        body:
+          type: string
+        htmlBody:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        flags:
+          type: array
+          items:
+            type: string
+            enum: [seen, answered, flagged, deleted, draft, recent]
+        folder:
+          type: string
+        priority:
+          type: string
+          enum: [low, normal, high]
+        sentAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, messageId, from, subject, body, folder, createdAt, updatedAt]
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        contentId:
+          type: string
+        disposition:
+          type: string
+          enum: [attachment, inline]
+        url:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, filename, contentType, size, disposition, url, createdAt]
+
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, userId, createdAt]
+
+    Policy:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [trusted_sender, block_sender, spam_filter]
+        value:
+          type: string
+        action:
+          type: string
+          enum: [allow, block, mark_as_spam]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, type, value, action, createdAt]
+
+    Audit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        resource:
+          type: string
+        resourceId:
+          type: string
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, action, resource, ipAddress, createdAt]
+
+    # Request/Response Types
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+          example: 1.0.0
+      required: [status, timestamp, version]
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ready
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [healthy, unhealthy]
+            redis:
+              type: string
+              enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+      required: [status, checks, timestamp]
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        mfaCode:
+          type: string
+          pattern: '^[0-9]{6}$'
+        rememberMe:
+          type: boolean
+          default: false
+      required: [email, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+        requiresMFA:
+          type: boolean
+        mfaToken:
+          type: string
+      required: [accessToken, expiresIn, user]
+
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+      required: [accessToken, expiresIn]
+
+    MFAVerifyRequest:
+      type: object
+      properties:
+        mfaToken:
+          type: string
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+      required: [mfaToken, code]
+
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+
+    PasswordResetConfirm:
+      type: object
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required: [token, newPassword]
+
+    WebAuthnChallenge:
+      type: object
+      properties:
+        challenge:
+          type: string
+        timeout:
+          type: integer
+        rpId:
+          type: string
+        allowCredentials:
+          type: array
+          items:
+            type: object
+      required: [challenge]
+
+    WebAuthnVerifyRequest:
+      type: object
+      properties:
+        challenge:
+          type: string
+        response:
+          type: object
+      required: [challenge, response]
+
+    WebAuthnLoginStart:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+
+    WebAuthnLoginFinish:
+      type: object
+      properties:
+        challenge:
+          type: string
+        response:
+          type: object
+      required: [challenge, response]
+
+    SendMessageRequest:
+      type: object
+      properties:
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+        subject:
+          type: string
+        body:
+          type: string
+        htmlBody:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+            format: uuid
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+      required: [to, subject, body]
+
+    DraftRequest:
+      type: object
+      properties:
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+        subject:
+          type: string
+        body:
+          type: string
+        htmlBody:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    MarkMessagesRequest:
+      type: object
+      properties:
+        messageIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        action:
+          type: string
+          enum: [read, unread, flag, unflag, archive]
+      required: [messageIds, action]
+
+    MoveMessagesRequest:
+      type: object
+      properties:
+        messageIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        folder:
+          type: string
+      required: [messageIds, folder]
+
+    SnoozeMessagesRequest:
+      type: object
+      properties:
+        messageIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        snoozeUntil:
+          type: string
+          format: date-time
+      required: [messageIds, snoozeUntil]
+
+    MessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required: [messages, pagination]
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+      required: [total, limit, offset, hasMore]
+
+    TrustedSenderRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        domain:
+          type: string
+      anyOf:
+        - required: [email]
+        - required: [domain]
+
+    RemoveTrustedSenderRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        domain:
+          type: string
+      anyOf:
+        - required: [email]
+        - required: [domain]
+
+    TrustedSendersResponse:
+      type: object
+      properties:
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+      required: [policies]
+
+    UserSettings:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        theme:
+          type: string
+          enum: [light, dark, system]
+          default: system
+        language:
+          type: string
+          default: en
+        timezone:
+          type: string
+          default: UTC
+        emailSignature:
+          type: string
+        autoReply:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            message:
+              type: string
+            startDate:
+              type: string
+              format: date-time
+            endDate:
+              type: string
+              format: date-time
+        notifications:
+          type: object
+          properties:
+            email:
+              type: boolean
+            push:
+              type: boolean
+            desktop:
+              type: boolean
+        privacy:
+          type: object
+          properties:
+            readReceipts:
+              type: boolean
+            trackingImages:
+              type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, userId, theme, language, timezone, updatedAt]
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, system]
+        language:
+          type: string
+        timezone:
+          type: string
+        emailSignature:
+          type: string
+        autoReply:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            message:
+              type: string
+            startDate:
+              type: string
+              format: date-time
+            endDate:
+              type: string
+              format: date-time
+        notifications:
+          type: object
+          properties:
+            email:
+              type: boolean
+            push:
+              type: boolean
+            desktop:
+              type: boolean
+        privacy:
+          type: object
+          properties:
+            readReceipts:
+              type: boolean
+            trackingImages:
+              type: boolean
+
+    # Calendar & Chat Stubs
+    CalendarEventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              title:
+                type: string
+              start:
+                type: string
+                format: date-time
+              end:
+                type: string
+                format: date-time
+      required: [events]
+
+    ChatConversationsResponse:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              lastMessage:
+                type: string
+              updatedAt:
+                type: string
+                format: date-time
+      required: [conversations]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        success:
+          type: boolean
+          default: true
+      required: [message, success]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+      required: [error, message]
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimit:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          description: Request limit per window
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: Requests remaining in window
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          description: Window reset time (Unix timestamp)
+          schema:
+            type: integer
+        Retry-After:
+          description: Seconds until retry allowed
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
 tags:
   - name: Health
-    description: Health check endpoints
+    description: Health and readiness endpoints
   - name: Authentication
-    description: User authentication endpoints
+    description: Authentication and authorization
+  - name: Mail
+    description: Email management
+  - name: Policy
+    description: Security policies
+  - name: Settings
+    description: User preferences
+  - name: Calendar
+    description: Calendar integration (stub)
+  - name: Chat
+    description: Chat integration (stub)

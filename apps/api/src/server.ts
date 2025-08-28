@@ -7,6 +7,10 @@ import swaggerUi from '@fastify/swagger-ui';
 import { loadEnv } from './config/env';
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
+import prismaPlugin from './plugins/prisma';
+import redisPlugin from './plugins/redis';
+import { authMiddleware } from './auth/middleware';
+import './types'; // Import type declarations
 
 const env = loadEnv();
 
@@ -29,6 +33,13 @@ async function start() {
 
     // Register sensible plugin for HTTP errors
     await fastify.register(sensible);
+
+    // Register database and cache plugins
+    await fastify.register(prismaPlugin);
+    await fastify.register(redisPlugin);
+
+    // Register authentication middleware
+    await fastify.register(authMiddleware);
 
     // Swagger documentation
     await fastify.register(swagger, {

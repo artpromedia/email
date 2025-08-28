@@ -1,0 +1,375 @@
+import { useState, useMemo, useCallback } from 'react'
+import { ArrowLeft, Search, Archive, Trash2, Star, MoreHorizontal, Plus, Paperclip } from 'lucide-react'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Badge } from '../components/ui/badge'
+import { ComposeSheet } from './ComposeSheet'
+import { useMessages, useMarkMessages, useAddTrustedSender } from '../hooks/useMail'
+import { cn } from '../lib/utils'
+
+const folders = [
+  { id: 'inbox', name: 'Inbox', count: 0 },
+  { id: 'sent', name: 'Sent', count: 0 },
+  { id: 'drafts', name: 'Drafts', count: 0 },
+  { id: 'trash', name: 'Trash', count: 0 },
+  { id: 'spam', name: 'Spam', count: 0 },
+]
+
+const messages = [
+  {
+    id: '1',
+    from: 'Sarah Chen',
+    fromEmail: 'sarah@acme.com',
+    subject: 'Q4 Marketing Campaign Strategy',
+    preview: 'Hi team, I wanted to share the latest updates on our Q4 marketing campaign strategy. We\'ve identified several key opportunities...',
+    time: '2m ago',
+    unread: true,
+    starred: false,
+    hasAttachments: true,
+    priority: 'high',
+    category: 'work'
+  },
+  {
+    id: '2', 
+    from: 'Alex Rodriguez',
+    fromEmail: 'alex@techcorp.io',
+    subject: 'Meeting Notes - Project Alpha Review',
+    preview: 'Thanks for joining today\'s meeting. Here are the key takeaways and action items from our Project Alpha review session...',
+    time: '1h ago',
+    unread: true,
+    starred: true,
+    hasAttachments: false,
+    priority: 'normal',
+    category: 'work'
+  },
+  {
+    id: '3',
+    from: 'LinkedIn',
+    fromEmail: 'notifications@linkedin.com',
+    subject: 'You have 3 new profile views',
+    preview: 'Your profile has been viewed by professionals in your network. See who\'s been checking out your profile...',
+    time: '3h ago',
+    unread: false,
+    starred: false,
+    hasAttachments: false,
+    priority: 'low',
+    category: 'social'
+  },
+  {
+    id: '4',
+    from: 'Maria Santos',
+    fromEmail: 'maria@designstudio.com',
+    subject: 'Design System Updates - Review Required',
+    preview: 'Hi everyone, I\'ve updated our design system with new components and tokens. Please review the changes and provide feedback...',
+    time: '5h ago',
+    unread: false,
+    starred: false,
+    hasAttachments: true,
+    priority: 'normal',
+    category: 'work'
+  },
+  {
+    id: '5',
+    from: 'GitHub',
+    fromEmail: 'noreply@github.com',
+    subject: 'Pull Request #247 - Security Updates',
+    preview: 'A new pull request has been opened in your repository. This PR includes important security updates that should be reviewed...',
+    time: '1d ago',
+    unread: false,
+    starred: true,
+    hasAttachments: false,
+    priority: 'high',
+    category: 'dev'
+  }
+]
+
+export function MailLayout() {
+  const [selectedMessage, setSelectedMessage] = useState<string | null>(null)
+  const [showThread, setShowThread] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showCompose, setShowCompose] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState('inbox')
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([])
+
+  // API hooks
+  const { data: messagesData, isLoading, refetch } = useMessages({
+    folder: selectedFolder,
+    search: searchQuery || undefined,
+    limit: 50,
+  })
+  
+  const markMessages = useMarkMessages()
+  const addTrustedSender = useAddTrustedSender()
+
+  // Memoized messages list
+  const messages = useMemo(() => {
+    return messagesData?.messages || []
+  }, [messagesData])
+
+  const handleMarkAsRead = (messageIds: string[]) => {
+    markMessages.mutate({
+      messageIds,
+      action: 'read'
+    })
+  }
+
+  const handleArchive = (messageIds: string[]) => {
+    markMessages.mutate({
+      messageIds,
+      action: 'archive'
+    })
+  }
+
+  const handleFlag = (messageIds: string[]) => {
+    markMessages.mutate({
+      messageIds,
+      action: 'flag'
+    })
+  }
+
+  const toggleMessageSelection = (messageId: string) => {
+    setSelectedMessages(prev => 
+      prev.includes(messageId) 
+        ? prev.filter(id => id !== messageId)
+        : [...prev, messageId]
+    )
+  }
+
+  const isMessageRead = (message: any) => {
+    return message.flags?.includes('\\Seen') || false
+  }
+
+  const isMessageFlagged = (message: any) => {
+    return message.flags?.includes('\\Flagged') || false
+  }
+
+  return (
+    <div className="mail-layout">
+      {/* Floating Compose Button */}
+      <ComposeSheet 
+        isOpen={showCompose} 
+        onClose={() => setShowCompose(false)}
+      >
+        <Button 
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 md:bottom-8 md:right-8"
+          onClick={() => setShowCompose(true)}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      </ComposeSheet>
+
+      {/* Message List Pane */}
+      <div className={cn(
+        "mail-list-pane",
+        showThread && "hidden md:flex"
+      )}>
+        {/* Search and Filters */}
+        <div className="p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          
+          {/* Category Pills */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {categories.map((category) => (
+              <Button
+                key={category.name}
+                variant={category.active ? "default" : "ghost"}
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                {category.name}
+                <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                  {category.count}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Message List */}
+        <div className="flex-1 overflow-y-auto">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              onClick={() => handleMessageSelect(message.id)}
+              className={cn(
+                "p-4 border-b cursor-pointer transition-colors hover:bg-muted/50",
+                selectedMessage === message.id && "bg-muted border-primary/20",
+                message.unread && "bg-accent/5"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "font-medium truncate",
+                        message.unread && "font-semibold"
+                      )}>
+                        {message.from}
+                      </span>
+                      {message.priority === 'high' && (
+                        <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                          High
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>{message.time}</span>
+                      {message.starred && (
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className={cn(
+                    "text-sm mb-1 truncate",
+                    message.unread ? "font-medium" : "text-muted-foreground"
+                  )}>
+                    {message.subject}
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground line-clamp-2">
+                    {message.preview}
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2">
+                      {message.hasAttachments && (
+                        <Badge variant="outline" className="h-5 px-1.5 text-xs">
+                          📎 Attachment
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="h-5 px-1.5 text-xs capitalize">
+                        {message.category}
+                      </Badge>
+                    </div>
+                    
+                    {message.unread && (
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Thread View Pane */}
+      <div className={cn(
+        "mail-thread-pane",
+        !showThread && "hidden md:flex"
+      )}>
+        {selectedMessage ? (
+          <div className="flex flex-col h-full">
+            {/* Thread Header */}
+            <div className="p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="flex items-center gap-3 mb-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleBackToList}
+                  className="md:hidden"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1">
+                  <h2 className="font-semibold text-lg line-clamp-1">
+                    {messages.find(m => m.id === selectedMessage)?.subject}
+                  </h2>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{messages.find(m => m.id === selectedMessage)?.from}</span>
+                    <span>•</span>
+                    <span>{messages.find(m => m.id === selectedMessage)?.time}</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm">
+                    <Archive className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <Star className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Thread Content */}
+            <div className="flex-1 p-4 overflow-y-auto">
+              <div className="prose prose-sm max-w-none">
+                <p>
+                  Hi team, I wanted to share the latest updates on our Q4 marketing campaign strategy. 
+                  We've identified several key opportunities that could significantly impact our growth trajectory.
+                </p>
+                
+                <p>
+                  The analysis shows promising trends in our target demographics, particularly in the 25-40 age range. 
+                  Our social media engagement has increased by 34% over the past quarter, and we're seeing strong 
+                  conversion rates from our recent content marketing initiatives.
+                </p>
+                
+                <h3>Key Focus Areas:</h3>
+                <ul>
+                  <li>Expand social media presence across LinkedIn and Twitter</li>
+                  <li>Develop targeted email campaigns for different user segments</li>
+                  <li>Launch the new product features campaign in early Q4</li>
+                  <li>Partner with industry influencers for broader reach</li>
+                </ul>
+                
+                <p>
+                  I've attached the detailed strategy document and budget breakdown for review. 
+                  Please let me know your thoughts, and we can schedule a follow-up meeting to discuss implementation.
+                </p>
+                
+                <p>Best regards,<br />Sarah</p>
+              </div>
+              
+              {/* Attachments */}
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2">Attachments</h4>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
+                    📄
+                  </div>
+                  <span>Q4-Marketing-Strategy.pdf</span>
+                  <span className="text-muted-foreground">(2.4 MB)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Reply */}
+            <div className="p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="flex gap-2">
+                <Button size="sm">Reply</Button>
+                <Button variant="outline" size="sm">Reply All</Button>
+                <Button variant="outline" size="sm">Forward</Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <h3 className="text-lg font-medium mb-2">No message selected</h3>
+              <p className="text-muted-foreground">Choose a message to read</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

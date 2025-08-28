@@ -1,0 +1,220 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String?
+  emailVerified Boolean   @default(false)
+  mfaEnabled    Boolean   @default(false)
+  mfaSecret     String?
+  mfaVerifiedAt DateTime?
+  isAdmin       Boolean   @default(false)
+  isDeleted     Boolean   @default(false)
+  isSuspended   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  sessions          Session[]
+  messages          Message[]
+  labels            Label[]
+  policies          Policy[]
+  audits            Audit[]
+  webauthnCreds     WebAuthnCredential[]
+  oidcIdentities    OIDCIdentity[]
+  settings          UserSettings?
+  attachments       Attachment[]
+
+  @@map("users")
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  userId      String
+  tokenHash   String    @unique
+  deviceInfo  String?
+  ipAddress   String
+  userAgent   String?
+  expiresAt   DateTime
+  isRevoked   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  messageId   String    @unique // RFC 2822 Message-ID
+  threadId    String?
+  userId      String
+  from        String
+  to          String[]
+  cc          String[]  @default([])
+  bcc         String[]  @default([])
+  subject     String
+  body        String
+  htmlBody    String?
+  flags       String[]  @default([])
+  folder      String    @default("inbox")
+  priority    String    @default("normal")
+  sentAt      DateTime?
+  receivedAt  DateTime?
+  snoozedUntil DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
+  messageLabels MessageLabel[]
+
+  @@map("messages")
+}
+
+model Attachment {
+  id          String    @id @default(cuid())
+  messageId   String?
+  userId      String
+  filename    String
+  contentType String
+  size        Int
+  contentId   String?
+  disposition String    @default("attachment")
+  path        String    // File system path
+  url         String?   // Public URL
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  message     Message?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model Label {
+  id        String    @id @default(cuid())
+  name      String
+  color     String    @default("#000000")
+  userId    String
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageLabels MessageLabel[]
+
+  @@unique([userId, name])
+  @@map("labels")
+}
+
+model MessageLabel {
+  messageId String
+  labelId   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, labelId])
+  @@map("message_labels")
+}
+
+model Policy {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String    // trusted_sender, block_sender, spam_filter
+  value     String    // email or domain
+  action    String    // allow, block, mark_as_spam
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, value])
+  @@map("policies")
+}
+
+model Audit {
+  id         String    @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  ipAddress  String
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  // Relations
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audits")
+}
+
+model WebAuthnCredential {
+  id              String    @id @default(cuid())
+  userId          String
+  credentialId    String    @unique
+  publicKey       String
+  counter         Int       @default(0)
+  transports      String[]  @default([])
+  aaguid          String?
+  name            String?
+  createdAt       DateTime  @default(now())
+  lastUsedAt      DateTime?
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("webauthn_credentials")
+}
+
+model OIDCIdentity {
+  id          String    @id @default(cuid())
+  userId      String
+  provider    String    // google, entra
+  providerId  String    // Provider's user ID
+  email       String
+  name        String?
+  picture     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@map("oidc_identities")
+}
+
+model UserSettings {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  theme           String    @default("system")
+  language        String    @default("en")
+  timezone        String    @default("UTC")
+  emailSignature  String?
+  autoReply       Json?
+  notifications   Json?
+  privacy         Json?
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}

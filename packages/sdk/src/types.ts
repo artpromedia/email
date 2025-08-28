@@ -21,7 +21,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/login": {
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness check endpoint */
+        get: operations["readinessCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -30,8 +47,436 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** User login */
+        /** User login with email/password */
         post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout user and invalidate tokens */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh access token */
+        post: operations["refreshToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify MFA token */
+        post: operations["verifyMFA"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request password reset */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm password reset */
+        post: operations["confirmPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions/revoke-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke all user sessions */
+        post: operations["revokeAllSessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/webauthn/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start WebAuthn registration */
+        post: operations["startWebAuthnRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/webauthn/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify WebAuthn registration */
+        post: operations["verifyWebAuthnRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/webauthn/login/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start WebAuthn login */
+        post: operations["startWebAuthnLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/webauthn/login/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete WebAuthn login */
+        post: operations["finishWebAuthnLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/{provider}/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Start OIDC login */
+        get: operations["startOIDCLogin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** OIDC callback handler */
+        get: operations["handleOIDCCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List messages */
+        get: operations["listMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/messages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get message by ID */
+        get: operations["getMessage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send email */
+        post: operations["sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create draft */
+        post: operations["createDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update draft */
+        patch: operations["updateDraft"];
+        trace?: never;
+    };
+    "/mail/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload attachment */
+        post: operations["uploadAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/mark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark messages */
+        post: operations["markMessages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move messages */
+        post: operations["moveMessages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snooze messages */
+        post: operations["snoozeMessages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policy/trusted-senders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get trusted senders */
+        get: operations["getTrustedSenders"];
+        put?: never;
+        /** Add trusted sender */
+        post: operations["addTrustedSender"];
+        /** Remove trusted sender */
+        delete: operations["removeTrustedSender"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get user settings */
+        get: operations["getSettings"];
+        /** Update user settings */
+        put: operations["updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendar/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List calendar events */
+        get: operations["listCalendarEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List chat conversations */
+        get: operations["listChatConversations"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -48,13 +493,375 @@ export interface components {
             /** Format: email */
             email: string;
             name: string;
+            emailVerified: boolean;
+            mfaEnabled: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
         };
+        Session: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            deviceInfo?: string;
+            ipAddress?: string;
+            userAgent?: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Message: {
+            /** Format: uuid */
+            id: string;
+            messageId: string;
+            /** Format: uuid */
+            threadId?: string;
+            /** Format: email */
+            from: string;
+            to?: string[];
+            cc?: string[];
+            bcc?: string[];
+            subject: string;
+            body: string;
+            htmlBody?: string;
+            attachments?: components["schemas"]["Attachment"][];
+            labels?: components["schemas"]["Label"][];
+            flags?: ("seen" | "answered" | "flagged" | "deleted" | "draft" | "recent")[];
+            folder: string;
+            /** @enum {string} */
+            priority?: "low" | "normal" | "high";
+            /** Format: date-time */
+            sentAt?: string;
+            /** Format: date-time */
+            receivedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Attachment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            messageId?: string;
+            filename: string;
+            contentType: string;
+            size: number;
+            contentId?: string;
+            /** @enum {string} */
+            disposition: "attachment" | "inline";
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Label: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            color?: string;
+            /** Format: uuid */
+            userId: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Policy: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            /** @enum {string} */
+            type: "trusted_sender" | "block_sender" | "spam_filter";
+            value: string;
+            /** @enum {string} */
+            action: "allow" | "block" | "mark_as_spam";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Audit: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId?: string;
+            action: string;
+            resource: string;
+            resourceId?: string;
+            ipAddress: string;
+            userAgent?: string;
+            metadata?: Record<string, never>;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        HealthResponse: {
+            /** @example ok */
+            status: string;
+            /** Format: date-time */
+            timestamp: string;
+            /** @example 1.0.0 */
+            version: string;
+        };
+        ReadinessResponse: {
+            /** @example ready */
+            status: string;
+            checks: {
+                /** @enum {string} */
+                database?: "healthy" | "unhealthy";
+                /** @enum {string} */
+                redis?: "healthy" | "unhealthy";
+            };
+            /** Format: date-time */
+            timestamp: string;
+        };
+        LoginRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
+            mfaCode?: string;
+            /** @default false */
+            rememberMe: boolean;
+        };
+        LoginResponse: {
+            accessToken: string;
+            expiresIn: number;
+            user: components["schemas"]["User"];
+            requiresMFA?: boolean;
+            mfaToken?: string;
+        };
+        RefreshResponse: {
+            accessToken: string;
+            expiresIn: number;
+        };
+        MFAVerifyRequest: {
+            mfaToken: string;
+            code: string;
+        };
+        PasswordResetRequest: {
+            /** Format: email */
+            email: string;
+        };
+        PasswordResetConfirm: {
+            token: string;
+            newPassword: string;
+        };
+        WebAuthnChallenge: {
+            challenge: string;
+            timeout?: number;
+            rpId?: string;
+            allowCredentials?: Record<string, never>[];
+        };
+        WebAuthnVerifyRequest: {
+            challenge: string;
+            response: Record<string, never>;
+        };
+        WebAuthnLoginStart: {
+            /** Format: email */
+            email: string;
+        };
+        WebAuthnLoginFinish: {
+            challenge: string;
+            response: Record<string, never>;
+        };
+        SendMessageRequest: {
+            to: string[];
+            cc?: string[];
+            bcc?: string[];
+            subject: string;
+            body: string;
+            htmlBody?: string;
+            attachments?: string[];
+            /**
+             * @default normal
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high";
+        };
+        DraftRequest: {
+            to?: string[];
+            cc?: string[];
+            bcc?: string[];
+            subject?: string;
+            body?: string;
+            htmlBody?: string;
+            attachments?: string[];
+        };
+        MarkMessagesRequest: {
+            messageIds: string[];
+            /** @enum {string} */
+            action: "read" | "unread" | "flag" | "unflag" | "archive";
+        };
+        MoveMessagesRequest: {
+            messageIds: string[];
+            folder: string;
+        };
+        SnoozeMessagesRequest: {
+            messageIds: string[];
+            /** Format: date-time */
+            snoozeUntil: string;
+        };
+        MessagesResponse: {
+            messages: components["schemas"]["Message"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        Pagination: {
+            total: number;
+            limit: number;
+            offset: number;
+            hasMore: boolean;
+        };
+        TrustedSenderRequest: {
+            /** Format: email */
+            email?: string;
+            domain?: string;
+        } | unknown | unknown;
+        RemoveTrustedSenderRequest: {
+            /** Format: email */
+            email?: string;
+            domain?: string;
+        } | unknown | unknown;
+        TrustedSendersResponse: {
+            policies: components["schemas"]["Policy"][];
+        };
+        UserSettings: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            /**
+             * @default system
+             * @enum {string}
+             */
+            theme: "light" | "dark" | "system";
+            /** @default en */
+            language: string;
+            /** @default UTC */
+            timezone: string;
+            emailSignature?: string;
+            autoReply?: {
+                enabled?: boolean;
+                message?: string;
+                /** Format: date-time */
+                startDate?: string;
+                /** Format: date-time */
+                endDate?: string;
+            };
+            notifications?: {
+                email?: boolean;
+                push?: boolean;
+                desktop?: boolean;
+            };
+            privacy?: {
+                readReceipts?: boolean;
+                trackingImages?: boolean;
+            };
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateSettingsRequest: {
+            /** @enum {string} */
+            theme?: "light" | "dark" | "system";
+            language?: string;
+            timezone?: string;
+            emailSignature?: string;
+            autoReply?: {
+                enabled?: boolean;
+                message?: string;
+                /** Format: date-time */
+                startDate?: string;
+                /** Format: date-time */
+                endDate?: string;
+            };
+            notifications?: {
+                email?: boolean;
+                push?: boolean;
+                desktop?: boolean;
+            };
+            privacy?: {
+                readReceipts?: boolean;
+                trackingImages?: boolean;
+            };
+        };
+        CalendarEventsResponse: {
+            events: {
+                /** Format: uuid */
+                id?: string;
+                title?: string;
+                /** Format: date-time */
+                start?: string;
+                /** Format: date-time */
+                end?: string;
+            }[];
+        };
+        ChatConversationsResponse: {
+            conversations: {
+                /** Format: uuid */
+                id?: string;
+                name?: string;
+                lastMessage?: string;
+                /** Format: date-time */
+                updatedAt?: string;
+            }[];
+        };
+        MessageResponse: {
+            message: string;
+            /** @default true */
+            success: boolean;
+        };
+        ErrorResponse: {
+            error: string;
+            message: string;
+            code?: string;
+            details?: Record<string, never>;
+        };
     };
-    responses: never;
+    responses: {
+        /** @description Bad request */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Unauthorized */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Not found */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Rate limit exceeded */
+        RateLimit: {
+            headers: {
+                /** @description Request limit per window */
+                "X-RateLimit-Limit"?: number;
+                /** @description Requests remaining in window */
+                "X-RateLimit-Remaining"?: number;
+                /** @description Window reset time (Unix timestamp) */
+                "X-RateLimit-Reset"?: number;
+                /** @description Seconds until retry allowed */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+    };
     parameters: never;
     requestBodies: never;
     headers: never;
@@ -77,14 +884,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @example ok */
-                        status?: string;
-                        /** Format: date-time */
-                        timestamp?: string;
-                        /** @example 1.0.0 */
-                        version?: string;
-                    };
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    readinessCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service is ready */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
                 };
             };
         };
@@ -98,11 +918,237 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    password: string;
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Login successful */
+            200: {
+                headers: {
+                    /** @description Refresh token cookie */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["RateLimit"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logout successful */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    refreshToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token refreshed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    verifyMFA: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MFAVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description MFA verified */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Reset email sent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    confirmPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirm"];
+            };
+        };
+        responses: {
+            /** @description Password reset successful */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    revokeAllSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All sessions revoked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    startWebAuthnRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Registration challenge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAuthnChallenge"];
+                };
+            };
+        };
+    };
+    verifyWebAuthnRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebAuthnVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Registration successful */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    startWebAuthnLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebAuthnLoginStart"];
+            };
+        };
+        responses: {
+            /** @description Login challenge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAuthnChallenge"];
+                };
+            };
+        };
+    };
+    finishWebAuthnLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebAuthnLoginFinish"];
             };
         };
         responses: {
@@ -112,10 +1158,428 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        token?: string;
-                        user?: components["schemas"]["User"];
-                    };
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+        };
+    };
+    startOIDCLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "google" | "entra";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to provider */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    handleOIDCCallback: {
+        parameters: {
+            query: {
+                code: string;
+                state: string;
+            };
+            header?: never;
+            path: {
+                provider: "google" | "entra";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to application */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    listMessages: {
+        parameters: {
+            query?: {
+                folder?: string;
+                limit?: number;
+                offset?: number;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesResponse"];
+                };
+            };
+        };
+    };
+    getMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Message details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Message sent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    createDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    updateDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    uploadAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Attachment uploaded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+        };
+    };
+    markMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkMessagesRequest"];
+            };
+        };
+        responses: {
+            /** @description Messages marked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    moveMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveMessagesRequest"];
+            };
+        };
+        responses: {
+            /** @description Messages moved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    snoozeMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnoozeMessagesRequest"];
+            };
+        };
+        responses: {
+            /** @description Messages snoozed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    getTrustedSenders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trusted senders list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrustedSendersResponse"];
+                };
+            };
+        };
+    };
+    addTrustedSender: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrustedSenderRequest"];
+            };
+        };
+        responses: {
+            /** @description Trusted sender added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+        };
+    };
+    removeTrustedSender: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveTrustedSenderRequest"];
+            };
+        };
+        responses: {
+            /** @description Trusted sender removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettings"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Settings updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettings"];
+                };
+            };
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query?: {
+                start?: string;
+                end?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventsResponse"];
+                };
+            };
+        };
+    };
+    listChatConversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chat conversations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatConversationsResponse"];
                 };
             };
         };

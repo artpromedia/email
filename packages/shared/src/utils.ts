@@ -23,6 +23,25 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
+ * Alias for isValidEmail for API compatibility
+ */
+export const isEmailValid = isValidEmail;
+
+/**
+ * Validate password strength
+ */
+export function isPasswordStrong(password: string): boolean {
+  // Minimum 8 characters, at least one uppercase, one lowercase, one number, one special character
+  const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar;
+}
+
+/**
  * Generate a random string for IDs
  */
 export function generateId(length: number = 12): string {
