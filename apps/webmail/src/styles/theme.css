@@ -66,6 +66,14 @@
   --color-ring: 20 184 166; /* teal-500 */
 }
 
+/* Theme transitions for smooth switching */
+* {
+  transition: 
+    background-color 200ms ease-in-out,
+    border-color 200ms ease-in-out,
+    color 200ms ease-in-out;
+}
+
 /* Base styles */
 * {
   @apply border-border;

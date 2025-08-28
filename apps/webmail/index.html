@@ -2,9 +2,38 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/brand/ceerion/mark-dark.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CEERION Mail</title>
+    
+    <!-- Inline theme script to prevent FOUC -->
+    <script>
+      (function() {
+        const storageKey = 'ceerion-mail-theme';
+        const defaultTheme = 'dark';
+        
+        function getStoredTheme() {
+          try {
+            return localStorage.getItem(storageKey) || defaultTheme;
+          } catch {
+            return defaultTheme;
+          }
+        }
+        
+        function getResolvedTheme(theme) {
+          if (theme === 'system') {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          return theme;
+        }
+        
+        const theme = getStoredTheme();
+        const resolvedTheme = getResolvedTheme(theme);
+        
+        document.documentElement.setAttribute('data-theme', resolvedTheme);
+        document.documentElement.classList.add(resolvedTheme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

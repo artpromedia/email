@@ -6,18 +6,16 @@ import {
   MessageSquare, 
   Settings, 
   User, 
-  Moon, 
-  Sun, 
   Menu,
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useTheme } from '@/components/theme-provider'
+import { BrandLogo } from '@/components/brand-logo'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { theme, setTheme } = useTheme()
   const location = useLocation()
 
   const navigation = [
@@ -45,27 +43,13 @@ export function AppShell() {
             {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
           
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-xl text-primary-foreground font-bold text-sm">
-              C
-            </div>
-            <div>
-              <h1 className="font-semibold text-lg">CEERION</h1>
-              <p className="text-xs text-muted-foreground">mail.ceerion.com</p>
-            </div>
-          </div>
+          <BrandLogo />
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          <ThemeToggle />
           
-          <Button variant="ghost" size="icon-sm">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
             <User className="h-4 w-4" />
           </Button>
         </div>
