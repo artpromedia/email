@@ -2,26 +2,24 @@
 
 This directory contains the brand assets for CEERION Mail.
 
-## Logo Guidelines
+## Logo Variants
 
-- **Header height**: 28–32px recommended
-- **Logo variants**:
-  - `logo-dark.svg`: Dark text/graphics on light backgrounds
-  - `logo-light.svg`: Light text/graphics on dark backgrounds
-- **Mark variants** (icon only):
-  - `mark-dark.svg`: Dark icon on light backgrounds  
-  - `mark-light.svg`: Light icon on dark backgrounds
+- `logo-dark.svg` - Dark text logo for use on light backgrounds
+- `logo-light.svg` - Light text logo for use on dark backgrounds  
+- `mark-dark.svg` - Dark icon mark for use on light backgrounds
+- `mark-light.svg` - Light icon mark for use on dark backgrounds
 
-## Usage
+## Usage Guidelines
 
-The application automatically selects the appropriate logo variant based on the current theme:
-- Dark theme → uses `logo-light.svg`
-- Light theme → uses `logo-dark.svg`
+### Header Logo
+- Recommended height: 28–32px
+- Use logo-light.svg in dark theme
+- Use logo-dark.svg in light theme
+- Fallback to text "CEERION" if assets are missing
 
-If assets are missing, the application falls back to text "CEERION".
+### Icon Mark
+- For favicons, app icons, and compact layouts
+- Maintains brand recognition in small sizes
 
-## File Requirements
-
-- Format: SVG (scalable vector graphics)
-- Optimization: Minified/compressed SVG recommended
-- Accessibility: Include appropriate `title` and `desc` elements
+## Hot-swapping
+Replace any file in this folder to update the brand assets without code changes. The theme system will automatically pick up the new assets.

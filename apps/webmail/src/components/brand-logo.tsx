@@ -1,62 +1,46 @@
-import { useState, useEffect } from 'react'
-import { useTheme } from './theme-provider'
+import { useEffect, useState } from 'react'
+import { useTheme } from '@/components/theme-provider'
 
-interface BrandLogoProps {
-  className?: string
-  showSubtitle?: boolean
-  variant?: 'logo' | 'mark'
-}
-
-export function BrandLogo({ className = '', showSubtitle = true, variant = 'logo' }: BrandLogoProps) {
+export function BrandLogo() {
   const { resolvedTheme } = useTheme()
-  const [logoError, setLogoError] = useState(false)
-  const [logoSrc, setLogoSrc] = useState<string>('')
+  const [logoSrc, setLogoSrc] = useState<string | null>(null)
+  const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
     // Reset error state when theme changes
-    setLogoError(false)
+    setHasError(false)
     
-    // Determine which logo to use based on theme
-    const themeVariant = resolvedTheme === 'dark' ? 'light' : 'dark'
-    const newLogoSrc = `/brand/ceerion/${variant}-${themeVariant}.svg`
+    // Use logo-light.svg in dark theme, logo-dark.svg in light theme
+    const logoVariant = resolvedTheme === 'dark' ? 'light' : 'dark'
+    const logoPath = `/brand/ceerion/logo-${logoVariant}.svg`
     
-    setLogoSrc(newLogoSrc)
-  }, [resolvedTheme, variant])
-
-  const handleImageError = () => {
-    setLogoError(true)
-  }
-
-  if (logoError || !logoSrc) {
-    // Fallback to text logo
-    return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight">CEERION</span>
-          {showSubtitle && (
-            <span className="text-sm text-muted-foreground hidden sm:inline">
-              mail.ceerion.com
-            </span>
-          )}
-        </div>
-      </div>
-    )
-  }
+    // Test if the logo exists
+    const img = new Image()
+    img.onload = () => {
+      setLogoSrc(logoPath)
+    }
+    img.onerror = () => {
+      setHasError(true)
+      setLogoSrc(null)
+    }
+    img.src = logoPath
+  }, [resolvedTheme])
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <img
-        src={logoSrc}
-        alt="CEERION"
-        className={variant === 'logo' ? 'h-8' : 'h-8 w-8'}
-        onError={handleImageError}
-        style={{ height: variant === 'logo' ? '28px' : '28px', width: variant === 'mark' ? '28px' : 'auto' }}
-      />
-      {showSubtitle && variant === 'logo' && (
-        <span className="text-sm text-muted-foreground hidden sm:inline">
-          mail.ceerion.com
-        </span>
+    <div className="flex items-center gap-3">
+      {logoSrc && !hasError ? (
+        <img
+          src={logoSrc}
+          alt="CEERION"
+          className="h-8 w-auto"
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <span className="text-xl font-bold tracking-tight">CEERION</span>
       )}
+      <span className="text-sm text-muted-foreground hidden sm:block">
+        mail.ceerion.com
+      </span>
     </div>
   )
 }

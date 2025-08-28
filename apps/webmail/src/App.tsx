@@ -22,7 +22,9 @@ const queryClient = new QueryClient({
 })
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
+
+  console.log('AppRoutes render:', { isAuthenticated, isLoading, user })
 
   if (isLoading) {
     return (
@@ -58,7 +60,7 @@ function AppRoutes() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="ceerion-mail-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="ceerion-mail-theme">
         <AuthProvider>
           <TooltipProvider>
             <Router>

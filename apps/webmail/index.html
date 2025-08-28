@@ -2,37 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/brand/ceerion/mark-dark.svg" />
+    <link rel="icon" type="image/svg+xml" href="/brand/ceerion/mark-light.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CEERION Mail</title>
     
-    <!-- Inline theme script to prevent FOUC -->
+    <!-- FOUC Prevention Script -->
     <script>
       (function() {
-        const storageKey = 'ceerion-mail-theme';
-        const defaultTheme = 'dark';
-        
-        function getStoredTheme() {
+        // Get stored theme or default to 'dark'
+        const getStoredTheme = () => {
           try {
-            return localStorage.getItem(storageKey) || defaultTheme;
+            return localStorage.getItem('ceerion-mail-theme') || 'dark'
           } catch {
-            return defaultTheme;
+            return 'dark'
           }
         }
         
-        function getResolvedTheme(theme) {
+        // Resolve theme to actual 'dark' or 'light'
+        const resolveTheme = (theme) => {
           if (theme === 'system') {
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
           }
-          return theme;
+          return theme
         }
         
-        const theme = getStoredTheme();
-        const resolvedTheme = getResolvedTheme(theme);
+        const theme = getStoredTheme()
+        const resolvedTheme = resolveTheme(theme)
         
-        document.documentElement.setAttribute('data-theme', resolvedTheme);
-        document.documentElement.classList.add(resolvedTheme);
-      })();
+        // Apply theme immediately to prevent FOUC
+        document.documentElement.setAttribute('data-theme', resolvedTheme)
+        document.documentElement.classList.add(resolvedTheme)
+      })()
     </script>
   </head>
   <body>

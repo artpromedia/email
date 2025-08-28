@@ -1,26 +1,26 @@
 import { Moon, Sun, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useTheme } from './theme-provider'
+import { useTheme } from '@/components/theme-provider'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
   const handleToggle = () => {
-    if (theme === 'dark') {
-      setTheme('light')
-    } else if (theme === 'light') {
+    if (theme === 'light') {
+      setTheme('dark')
+    } else if (theme === 'dark') {
       setTheme('system')
     } else {
-      setTheme('dark')
+      setTheme('light')
     }
   }
 
   const getIcon = () => {
     switch (theme) {
-      case 'dark':
-        return <Moon className="h-4 w-4" />
       case 'light':
         return <Sun className="h-4 w-4" />
+      case 'dark':
+        return <Moon className="h-4 w-4" />
       case 'system':
         return <Monitor className="h-4 w-4" />
       default:
@@ -28,27 +28,26 @@ export function ThemeToggle() {
     }
   }
 
-  const getLabel = () => {
+  const getTooltip = () => {
     switch (theme) {
-      case 'dark':
-        return 'Dark theme'
       case 'light':
-        return 'Light theme'
+        return 'Switch to dark theme'
+      case 'dark':
+        return 'Switch to system theme'
       case 'system':
-        return 'System theme'
+        return 'Switch to light theme'
       default:
-        return 'Dark theme'
+        return 'Toggle theme'
     }
   }
 
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size="icon-sm"
       onClick={handleToggle}
-      className="h-8 w-8 p-0"
-      title={`Switch to ${theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark'} theme`}
-      aria-label={getLabel()}
+      title={getTooltip()}
+      className="h-8 w-8"
     >
       {getIcon()}
     </Button>
