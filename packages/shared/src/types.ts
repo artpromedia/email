@@ -78,3 +78,51 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     totalPages: number;
   };
 }
+
+// Mail API types
+export interface SendMailRequest {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  body: string;
+  htmlBody?: string;
+  attachments?: {
+    filename: string;
+    contentType: string;
+    content: string; // base64 encoded
+    size: number;
+  }[];
+  priority?: 'low' | 'normal' | 'high';
+  scheduleAt?: Date;
+}
+
+export interface SendMailResponse {
+  messageId: string;
+  queueId: string;
+  status: 'queued' | 'scheduled';
+}
+
+export interface MailSearchRequest {
+  query?: string;
+  folder?: string;
+  from?: string;
+  to?: string;
+  subject?: string;
+  hasAttachment?: boolean;
+  dateFrom?: Date;
+  dateTo?: Date;
+  flags?: EmailFlag[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface MailSearchResponse {
+  messages: EmailMessage[];
+  total: number;
+  hasMore: boolean;
+}
+
+// Aliases for backward compatibility
+export type MailMessage = EmailMessage;
+export type MailFolder = EmailFolder;

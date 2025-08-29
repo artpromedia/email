@@ -1,0 +1,22 @@
+# PostgreSQL configuration for Dovecot authentication
+driver = pgsql
+connect = host=postgres-mail dbname=ceerion_mail user=ceerion password=ceerion_secure_2024
+
+# Password query
+password_query = \
+  SELECT email as user, password, \
+    '/var/mail/%d/%n/Maildir' as userdb_home, \
+    '/var/mail/%d/%n/Maildir' as userdb_mail, \
+    5000 as userdb_uid, 5000 as userdb_gid \
+  FROM virtual_users WHERE email='%u' AND active=1
+
+# User query  
+user_query = \
+  SELECT '/var/mail/%d/%n/Maildir' as home, \
+    '/var/mail/%d/%n/Maildir' as mail, \
+    5000 as uid, 5000 as gid, \
+    concat('dirsize:storage=', quota) as quota \
+  FROM virtual_users WHERE email='%u' AND active=1
+
+# Iteration query for doveadm
+iterate_query = SELECT email as username FROM virtual_users WHERE active=1

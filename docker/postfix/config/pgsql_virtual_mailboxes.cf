@@ -1,0 +1,6 @@
+# PostgreSQL connection for virtual mailboxes
+hosts = postgres-mail:5432
+user = ceerion
+password = ceerion_secure_2024
+dbname = ceerion_mail
+query = SELECT maildir FROM virtual_users WHERE email='%s' AND active=1

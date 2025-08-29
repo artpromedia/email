@@ -1,0 +1,6 @@
+# PostgreSQL connection for virtual aliases
+hosts = postgres-mail:5432
+user = ceerion
+password = ceerion_secure_2024
+dbname = ceerion_mail
+query = SELECT destination FROM virtual_aliases WHERE source='%s' AND active=1

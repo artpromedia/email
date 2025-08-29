@@ -20,8 +20,10 @@ const telemetry = initTelemetry({
 
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
+import { mailRoutes } from './routes/mail';
 import prismaPlugin from './plugins/prisma';
 import redisPlugin from './plugins/redis';
+import databasePlugin from './plugins/database';
 import { authMiddleware } from './auth/middleware';
 import './types'; // Import type declarations
 
@@ -48,6 +50,7 @@ async function start() {
     // Register database and cache plugins
     await fastify.register(prismaPlugin);
     await fastify.register(redisPlugin);
+    await fastify.register(databasePlugin);
 
     // Register authentication middleware
     await fastify.register(authMiddleware);
@@ -87,6 +90,7 @@ async function start() {
     // Register routes
     await fastify.register(healthRoutes);
     await fastify.register(authRoutes, { prefix: '/auth' });
+    await fastify.register(mailRoutes, { prefix: '/mail' });
 
     // Serve OpenAPI JSON
     fastify.get('/openapi.json', async () => {
