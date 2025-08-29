@@ -7,57 +7,61 @@ info:
     name: CEERION Team
   license:
     name: MIT
+
 servers:
   - url: http://localhost:4000
     description: Development server
   - url: https://api.mail.ceerion.com
     description: Production server
+
 security:
   - bearerJWT: []
+
 paths:
+  # Health & Readiness
   /healthz:
     get:
       summary: Health check endpoint
       operationId: healthCheck
       security: []
-      tags:
-        - Health
+      tags: [Health]
       responses:
-        "200":
+        '200':
           description: Service is healthy
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
+                $ref: '#/components/schemas/HealthResponse'
+
   /readyz:
     get:
       summary: Readiness check endpoint
       operationId: readinessCheck
       security: []
-      tags:
-        - Health
+      tags: [Health]
       responses:
-        "200":
+        '200':
           description: Service is ready
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReadinessResponse"
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  # Authentication
   /auth/login:
     post:
       summary: User login with email/password
       operationId: login
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: '#/components/schemas/LoginRequest'
       responses:
-        "200":
+        '200':
           description: Login successful
           headers:
             Set-Cookie:
@@ -67,225 +71,224 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LoginResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "429":
-          $ref: "#/components/responses/RateLimit"
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimit'
+
   /auth/logout:
     post:
       summary: Logout user and invalidate tokens
       operationId: logout
-      tags:
-        - Authentication
+      tags: [Authentication]
       responses:
-        "200":
+        '200':
           description: Logout successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
   /auth/refresh:
     post:
       summary: Refresh access token
       operationId: refreshToken
       security:
         - cookieRefresh: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       responses:
-        "200":
+        '200':
           description: Token refreshed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RefreshResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /auth/mfa/verify:
     post:
       summary: Verify MFA token
       operationId: verifyMFA
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MFAVerifyRequest"
+              $ref: '#/components/schemas/MFAVerifyRequest'
       responses:
-        "200":
+        '200':
           description: MFA verified
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LoginResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Password Recovery
   /auth/password/reset/request:
     post:
       summary: Request password reset
       operationId: requestPasswordReset
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PasswordResetRequest"
+              $ref: '#/components/schemas/PasswordResetRequest'
       responses:
-        "200":
+        '200':
           description: Reset email sent
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
   /auth/password/reset/confirm:
     post:
       summary: Confirm password reset
       operationId: confirmPasswordReset
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PasswordResetConfirm"
+              $ref: '#/components/schemas/PasswordResetConfirm'
       responses:
-        "200":
+        '200':
           description: Password reset successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
   /auth/sessions/revoke-all:
     post:
       summary: Revoke all user sessions
       operationId: revokeAllSessions
-      tags:
-        - Authentication
+      tags: [Authentication]
       responses:
-        "200":
+        '200':
           description: All sessions revoked
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
+  # WebAuthn/Passkeys
   /auth/webauthn/register:
     post:
       summary: Start WebAuthn registration
       operationId: startWebAuthnRegistration
-      tags:
-        - Authentication
+      tags: [Authentication]
       responses:
-        "200":
+        '200':
           description: Registration challenge
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WebAuthnChallenge"
+                $ref: '#/components/schemas/WebAuthnChallenge'
+
   /auth/webauthn/verify:
     post:
       summary: Verify WebAuthn registration
       operationId: verifyWebAuthnRegistration
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WebAuthnVerifyRequest"
+              $ref: '#/components/schemas/WebAuthnVerifyRequest'
       responses:
-        "200":
+        '200':
           description: Registration successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
   /auth/webauthn/login/start:
     post:
       summary: Start WebAuthn login
       operationId: startWebAuthnLogin
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WebAuthnLoginStart"
+              $ref: '#/components/schemas/WebAuthnLoginStart'
       responses:
-        "200":
+        '200':
           description: Login challenge
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WebAuthnChallenge"
+                $ref: '#/components/schemas/WebAuthnChallenge'
+
   /auth/webauthn/login/finish:
     post:
       summary: Complete WebAuthn login
       operationId: finishWebAuthnLogin
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WebAuthnLoginFinish"
+              $ref: '#/components/schemas/WebAuthnLoginFinish'
       responses:
-        "200":
+        '200':
           description: Login successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LoginResponse"
+                $ref: '#/components/schemas/LoginResponse'
+
+  # OIDC Authentication
   /auth/oidc/{provider}/login:
     get:
       summary: Start OIDC login
       operationId: startOIDCLogin
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       parameters:
         - name: provider
           in: path
           required: true
           schema:
             type: string
-            enum:
-              - google
-              - entra
+            enum: [google, entra]
       responses:
-        "302":
+        '302':
           description: Redirect to provider
-        "400":
-          $ref: "#/components/responses/BadRequest"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /auth/oidc/{provider}/callback:
     get:
       summary: OIDC callback handler
       operationId: handleOIDCCallback
       security: []
-      tags:
-        - Authentication
+      tags: [Authentication]
       parameters:
         - name: provider
           in: path
           required: true
           schema:
             type: string
-            enum:
-              - google
-              - entra
+            enum: [google, entra]
         - name: code
           in: query
           required: true
@@ -297,42 +300,31 @@ paths:
           schema:
             type: string
       responses:
-        "302":
+        '302':
           description: Redirect to application
-        "400":
-          $ref: "#/components/responses/BadRequest"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Mail Management
   /mail/messages:
     get:
       summary: List messages with complete folder coverage
       operationId: listMessages
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: folder
           in: query
           description: System folder (inbox, sent, drafts, trash, spam, archive)
           schema:
             type: string
-            enum:
-              - inbox
-              - sent
-              - drafts
-              - trash
-              - spam
-              - archive
-              - scheduled
-              - outbox
+            enum: [inbox, sent, drafts, trash, spam, archive, scheduled, outbox]
             default: inbox
         - name: view
           in: query
           description: Message view filter
           schema:
             type: string
-            enum:
-              - all
-              - unread
-              - starred
-              - important
+            enum: [all, unread, starred, important]
             default: all
         - name: labelId
           in: query
@@ -345,12 +337,7 @@ paths:
           description: Message category filter
           schema:
             type: string
-            enum:
-              - primary
-              - social
-              - promotions
-              - updates
-              - forums
+            enum: [primary, social, promotions, updates, forums]
         - name: page
           in: query
           description: Page number (1-based)
@@ -392,31 +379,31 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: Messages list with pagination
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessagesResponse"
+                $ref: '#/components/schemas/MessagesResponse'
+
   /mail/counts:
     get:
       summary: Get unread counts per folder and label
       operationId: getMailCounts
-      tags:
-        - Mail
+      tags: [Mail]
       responses:
-        "200":
+        '200':
           description: Mail counts by folder and label
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MailCountsResponse"
+                $ref: '#/components/schemas/MailCountsResponse'
+
   /mail/messages/{id}:
     get:
       summary: Get message by ID
       operationId: getMessage
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -425,39 +412,39 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Message details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/send:
     post:
       summary: Send email
       operationId: sendMessage
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendMessageRequest"
+              $ref: '#/components/schemas/SendMessageRequest'
       responses:
-        "200":
+        '200':
           description: Message sent
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
+                $ref: '#/components/schemas/Message'
+
   /mail/drafts:
     get:
       summary: List drafts
       operationId: listDrafts
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: page
           in: query
@@ -473,36 +460,35 @@ paths:
             maximum: 100
             default: 50
       responses:
-        "200":
+        '200':
           description: Drafts list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessagesResponse"
+                $ref: '#/components/schemas/MessagesResponse'
     post:
       summary: Create draft
       operationId: createDraft
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DraftRequest"
+              $ref: '#/components/schemas/DraftRequest'
       responses:
-        "201":
+        '201':
           description: Draft created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
+                $ref: '#/components/schemas/Message'
+
   /mail/drafts/{id}:
     get:
       summary: Get draft by ID
       operationId: getDraft
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -511,19 +497,18 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Draft details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       summary: Update draft
       operationId: updateDraft
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -536,21 +521,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DraftRequest"
+              $ref: '#/components/schemas/DraftRequest'
       responses:
-        "200":
+        '200':
           description: Draft updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       summary: Delete draft
       operationId: deleteDraft
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -559,16 +543,16 @@ paths:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Draft deleted
-        "404":
-          $ref: "#/components/responses/NotFound"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/scheduled:
     get:
       summary: List scheduled messages
       operationId: listScheduled
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: page
           in: query
@@ -584,18 +568,18 @@ paths:
             maximum: 100
             default: 50
       responses:
-        "200":
+        '200':
           description: Scheduled messages list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessagesResponse"
+                $ref: '#/components/schemas/MessagesResponse'
+
   /mail/scheduled/{id}:
     patch:
       summary: Update scheduled message send time
       operationId: updateScheduled
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -608,22 +592,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateScheduledRequest"
+              $ref: '#/components/schemas/UpdateScheduledRequest'
       responses:
-        "200":
+        '200':
           description: Scheduled message updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/scheduled/{id}/send-now:
     post:
       summary: Send scheduled message immediately
       operationId: sendScheduledNow
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -632,20 +616,20 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Message sent immediately
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/scheduled/{id}/cancel:
     post:
       summary: Cancel scheduled message
       operationId: cancelScheduled
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -654,20 +638,20 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Scheduled message cancelled (moved to drafts)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/outbox:
     get:
       summary: List outbox messages
       operationId: listOutbox
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: page
           in: query
@@ -683,18 +667,18 @@ paths:
             maximum: 100
             default: 50
       responses:
-        "200":
+        '200':
           description: Outbox messages list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessagesResponse"
+                $ref: '#/components/schemas/MessagesResponse'
+
   /mail/outbox/{id}/retry:
     post:
       summary: Retry failed outbox message
       operationId: retryOutbox
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -703,20 +687,20 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Message retry initiated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/outbox/{id}/cancel:
     post:
       summary: Cancel outbox message
       operationId: cancelOutbox
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -725,20 +709,20 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Outbox message cancelled (moved to drafts)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /mail/attachments:
     post:
       summary: Upload attachment
       operationId: uploadAttachment
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
@@ -750,106 +734,106 @@ paths:
                   type: string
                   format: binary
       responses:
-        "201":
+        '201':
           description: Attachment uploaded
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Attachment"
+                $ref: '#/components/schemas/Attachment'
+
   /mail/mark:
     post:
       summary: Mark messages
       operationId: markMessages
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MarkMessagesRequest"
+              $ref: '#/components/schemas/MarkMessagesRequest'
       responses:
-        "200":
+        '200':
           description: Messages marked
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
   /mail/move:
     post:
       summary: Move messages
       operationId: moveMessages
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MoveMessagesRequest"
+              $ref: '#/components/schemas/MoveMessagesRequest'
       responses:
-        "200":
+        '200':
           description: Messages moved
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
   /mail/snooze:
     post:
       summary: Snooze messages
       operationId: snoozeMessages
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SnoozeMessagesRequest"
+              $ref: '#/components/schemas/SnoozeMessagesRequest'
       responses:
-        "200":
+        '200':
           description: Messages snoozed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Labels Management
   /mail/labels:
     get:
       summary: List user labels
       operationId: listLabels
-      tags:
-        - Mail
+      tags: [Mail]
       responses:
-        "200":
+        '200':
           description: Labels list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LabelsResponse"
+                $ref: '#/components/schemas/LabelsResponse'
     post:
       summary: Create new label
       operationId: createLabel
-      tags:
-        - Mail
+      tags: [Mail]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateLabelRequest"
+              $ref: '#/components/schemas/CreateLabelRequest'
       responses:
-        "201":
+        '201':
           description: Label created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Label"
+                $ref: '#/components/schemas/Label'
+
   /mail/labels/{id}:
     get:
       summary: Get label by ID
       operationId: getLabel
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -858,19 +842,18 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Label details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Label"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Label'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       summary: Update label
       operationId: updateLabel
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -883,21 +866,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateLabelRequest"
+              $ref: '#/components/schemas/UpdateLabelRequest'
       responses:
-        "200":
+        '200':
           description: Label updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Label"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Label'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       summary: Delete label
       operationId: deleteLabel
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -906,16 +888,17 @@ paths:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Label deleted
-        "404":
-          $ref: "#/components/responses/NotFound"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Quarantine Management
   /mail/quarantine:
     get:
       summary: List quarantined messages for user
       operationId: listQuarantine
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: page
           in: query
@@ -931,18 +914,18 @@ paths:
             maximum: 100
             default: 50
       responses:
-        "200":
+        '200':
           description: Quarantined messages list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessagesResponse"
+                $ref: '#/components/schemas/MessagesResponse'
+
   /mail/quarantine/{id}/request-release:
     post:
       summary: Request release of quarantined message
       operationId: requestQuarantineRelease
-      tags:
-        - Mail
+      tags: [Mail]
       parameters:
         - name: id
           in: path
@@ -955,133 +938,131 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QuarantineReleaseRequest"
+              $ref: '#/components/schemas/QuarantineReleaseRequest'
       responses:
-        "200":
+        '200':
           description: Release request submitted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Policy Management
   /policy/trusted-senders:
     get:
       summary: Get trusted senders
       operationId: getTrustedSenders
-      tags:
-        - Policy
+      tags: [Policy]
       responses:
-        "200":
+        '200':
           description: Trusted senders list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TrustedSendersResponse"
+                $ref: '#/components/schemas/TrustedSendersResponse'
     post:
       summary: Add trusted sender
       operationId: addTrustedSender
-      tags:
-        - Policy
+      tags: [Policy]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TrustedSenderRequest"
+              $ref: '#/components/schemas/TrustedSenderRequest'
       responses:
-        "201":
+        '201':
           description: Trusted sender added
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Policy"
+                $ref: '#/components/schemas/Policy'
     delete:
       summary: Remove trusted sender
       operationId: removeTrustedSender
-      tags:
-        - Policy
+      tags: [Policy]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RemoveTrustedSenderRequest"
+              $ref: '#/components/schemas/RemoveTrustedSenderRequest'
       responses:
-        "200":
+        '200':
           description: Trusted sender removed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Settings
   /settings:
     get:
       summary: Get user settings bundle
       operationId: getSettings
-      tags:
-        - Settings
+      tags: [Settings]
       responses:
-        "200":
+        '200':
           description: User settings bundle
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserSettings"
+                $ref: '#/components/schemas/UserSettings'
     put:
       summary: Update user settings bundle
       operationId: updateSettings
-      tags:
-        - Settings
+      tags: [Settings]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateSettingsRequest"
+              $ref: '#/components/schemas/UpdateSettingsRequest'
       responses:
-        "200":
+        '200':
           description: Settings updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserSettings"
+                $ref: '#/components/schemas/UserSettings'
+
   /settings/signatures:
     get:
       summary: List email signatures
       operationId: listSignatures
-      tags:
-        - Settings
+      tags: [Settings]
       responses:
-        "200":
+        '200':
           description: Email signatures list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SignaturesResponse"
+                $ref: '#/components/schemas/SignaturesResponse'
     post:
       summary: Create email signature
       operationId: createSignature
-      tags:
-        - Settings
+      tags: [Settings]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateSignatureRequest"
+              $ref: '#/components/schemas/CreateSignatureRequest'
       responses:
-        "201":
+        '201':
           description: Signature created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Signature"
+                $ref: '#/components/schemas/Signature'
+
   /settings/signatures/{id}:
     get:
       summary: Get signature by ID
       operationId: getSignature
-      tags:
-        - Settings
+      tags: [Settings]
       parameters:
         - name: id
           in: path
@@ -1090,19 +1071,18 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Signature details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Signature"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Signature'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       summary: Update signature
       operationId: updateSignature
-      tags:
-        - Settings
+      tags: [Settings]
       parameters:
         - name: id
           in: path
@@ -1115,21 +1095,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateSignatureRequest"
+              $ref: '#/components/schemas/UpdateSignatureRequest'
       responses:
-        "200":
+        '200':
           description: Signature updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Signature"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Signature'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       summary: Delete signature
       operationId: deleteSignature
-      tags:
-        - Settings
+      tags: [Settings]
       parameters:
         - name: id
           in: path
@@ -1138,47 +1117,46 @@ paths:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Signature deleted
-        "404":
-          $ref: "#/components/responses/NotFound"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /settings/templates:
     get:
       summary: List email templates
       operationId: listTemplates
-      tags:
-        - Settings
+      tags: [Settings]
       responses:
-        "200":
+        '200':
           description: Email templates list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TemplatesResponse"
+                $ref: '#/components/schemas/TemplatesResponse'
     post:
       summary: Create email template
       operationId: createTemplate
-      tags:
-        - Settings
+      tags: [Settings]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateTemplateRequest"
+              $ref: '#/components/schemas/CreateTemplateRequest'
       responses:
-        "201":
+        '201':
           description: Template created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Template"
+                $ref: '#/components/schemas/Template'
+
   /settings/templates/{id}:
     get:
       summary: Get template by ID
       operationId: getTemplate
-      tags:
-        - Settings
+      tags: [Settings]
       parameters:
         - name: id
           in: path
@@ -1187,19 +1165,18 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Template details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Template"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Template'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       summary: Update template
       operationId: updateTemplate
-      tags:
-        - Settings
+      tags: [Settings]
       parameters:
         - name: id
           in: path
@@ -1212,21 +1189,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateTemplateRequest"
+              $ref: '#/components/schemas/UpdateTemplateRequest'
       responses:
-        "200":
+        '200':
           description: Template updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Template"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Template'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       summary: Delete template
       operationId: deleteTemplate
-      tags:
-        - Settings
+      tags: [Settings]
       parameters:
         - name: id
           in: path
@@ -1235,73 +1211,74 @@ paths:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Template deleted
-        "404":
-          $ref: "#/components/responses/NotFound"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /settings/ooo:
     get:
       summary: Get out-of-office settings
       operationId: getOutOfOffice
-      tags:
-        - Settings
+      tags: [Settings]
       responses:
-        "200":
+        '200':
           description: Out-of-office settings
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OutOfOfficeSettings"
+                $ref: '#/components/schemas/OutOfOfficeSettings'
     put:
       summary: Update out-of-office settings
       operationId: updateOutOfOffice
-      tags:
-        - Settings
+      tags: [Settings]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateOutOfOfficeRequest"
+              $ref: '#/components/schemas/UpdateOutOfOfficeRequest'
       responses:
-        "200":
+        '200':
           description: Out-of-office settings updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OutOfOfficeSettings"
+                $ref: '#/components/schemas/OutOfOfficeSettings'
+
+  # Security Management
   /security/sessions:
     get:
       summary: List active user sessions
       operationId: listSessions
-      tags:
-        - Security
+      tags: [Security]
       responses:
-        "200":
+        '200':
           description: Active sessions list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SessionsResponse"
+                $ref: '#/components/schemas/SessionsResponse'
+
   /security/sessions/revoke-all:
     post:
       summary: Revoke all user sessions except current
       operationId: revokeAllSessions
-      tags:
-        - Security
+      tags: [Security]
       responses:
-        "200":
+        '200':
           description: All sessions revoked
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Calendar (Stub)
   /calendar/events:
     get:
       summary: List calendar events
       operationId: listCalendarEvents
-      tags:
-        - Calendar
+      tags: [Calendar]
       parameters:
         - name: start
           in: query
@@ -1314,25 +1291,27 @@ paths:
             type: string
             format: date-time
       responses:
-        "200":
+        '200':
           description: Calendar events
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CalendarEventsResponse"
+                $ref: '#/components/schemas/CalendarEventsResponse'
+
+  # Chat (Stub)
   /chat/conversations:
     get:
       summary: List chat conversations
       operationId: listChatConversations
-      tags:
-        - Chat
+      tags: [Chat]
       responses:
-        "200":
+        '200':
           description: Chat conversations
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ChatConversationsResponse"
+                $ref: '#/components/schemas/ChatConversationsResponse'
+
 components:
   securitySchemes:
     bearerJWT:
@@ -1345,7 +1324,10 @@ components:
       in: cookie
       name: refresh_token
       description: Refresh token in HTTP-only cookie
+    # Note: WebAuthn would be implemented via custom headers/body
+
   schemas:
+    # Core Entities
     User:
       type: object
       properties:
@@ -1367,14 +1349,8 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - email
-        - name
-        - emailVerified
-        - mfaEnabled
-        - createdAt
-        - updatedAt
+      required: [id, email, name, emailVerified, mfaEnabled, createdAt, updatedAt]
+
     Session:
       type: object
       properties:
@@ -1404,15 +1380,8 @@ components:
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - userId
-        - deviceInfo
-        - ipAddress
-        - isCurrent
-        - lastActivity
-        - expiresAt
-        - createdAt
+      required: [id, userId, deviceInfo, ipAddress, isCurrent, lastActivity, expiresAt, createdAt]
+
     Message:
       type: object
       properties:
@@ -1451,30 +1420,21 @@ components:
         attachments:
           type: array
           items:
-            $ref: "#/components/schemas/Attachment"
+            $ref: '#/components/schemas/Attachment'
         labels:
           type: array
           items:
-            $ref: "#/components/schemas/Label"
+            $ref: '#/components/schemas/Label'
         flags:
           type: array
           items:
             type: string
-            enum:
-              - seen
-              - answered
-              - flagged
-              - deleted
-              - draft
-              - recent
+            enum: [seen, answered, flagged, deleted, draft, recent]
         folder:
           type: string
         priority:
           type: string
-          enum:
-            - low
-            - normal
-            - high
+          enum: [low, normal, high]
         sentAt:
           type: string
           format: date-time
@@ -1487,15 +1447,8 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - messageId
-        - from
-        - subject
-        - body
-        - folder
-        - createdAt
-        - updatedAt
+      required: [id, messageId, from, subject, body, folder, createdAt, updatedAt]
+
     Attachment:
       type: object
       properties:
@@ -1515,23 +1468,15 @@ components:
           type: string
         disposition:
           type: string
-          enum:
-            - attachment
-            - inline
+          enum: [attachment, inline]
         url:
           type: string
           format: uri
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - filename
-        - contentType
-        - size
-        - disposition
-        - url
-        - createdAt
+      required: [id, filename, contentType, size, disposition, url, createdAt]
+
     Label:
       type: object
       properties:
@@ -1542,7 +1487,7 @@ components:
           type: string
         color:
           type: string
-          pattern: ^#[0-9A-F]{6}$
+          pattern: '^#[0-9A-F]{6}$'
         description:
           type: string
         userId:
@@ -1563,15 +1508,8 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - name
-        - color
-        - userId
-        - isSystem
-        - messageCount
-        - unreadCount
-        - createdAt
+      required: [id, name, color, userId, isSystem, messageCount, unreadCount, createdAt]
+
     Policy:
       type: object
       properties:
@@ -1583,28 +1521,17 @@ components:
           format: uuid
         type:
           type: string
-          enum:
-            - trusted_sender
-            - block_sender
-            - spam_filter
+          enum: [trusted_sender, block_sender, spam_filter]
         value:
           type: string
         action:
           type: string
-          enum:
-            - allow
-            - block
-            - mark_as_spam
+          enum: [allow, block, mark_as_spam]
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - userId
-        - type
-        - value
-        - action
-        - createdAt
+      required: [id, userId, type, value, action, createdAt]
+
     Audit:
       type: object
       properties:
@@ -1629,12 +1556,9 @@ components:
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - action
-        - resource
-        - ipAddress
-        - createdAt
+      required: [id, action, resource, ipAddress, createdAt]
+
+    # Request/Response Types
     HealthResponse:
       type: object
       properties:
@@ -1647,10 +1571,8 @@ components:
         version:
           type: string
           example: 1.0.0
-      required:
-        - status
-        - timestamp
-        - version
+      required: [status, timestamp, version]
+
     ReadinessResponse:
       type: object
       properties:
@@ -1662,21 +1584,15 @@ components:
           properties:
             database:
               type: string
-              enum:
-                - healthy
-                - unhealthy
+              enum: [healthy, unhealthy]
             redis:
               type: string
-              enum:
-                - healthy
-                - unhealthy
+              enum: [healthy, unhealthy]
         timestamp:
           type: string
           format: date-time
-      required:
-        - status
-        - checks
-        - timestamp
+      required: [status, checks, timestamp]
+
     LoginRequest:
       type: object
       properties:
@@ -1687,13 +1603,12 @@ components:
           type: string
         mfaCode:
           type: string
-          pattern: ^[0-9]{6}$
+          pattern: '^[0-9]{6}$'
         rememberMe:
           type: boolean
           default: false
-      required:
-        - email
-        - password
+      required: [email, password]
+
     LoginResponse:
       type: object
       properties:
@@ -1702,15 +1617,13 @@ components:
         expiresIn:
           type: integer
         user:
-          $ref: "#/components/schemas/User"
+          $ref: '#/components/schemas/User'
         requiresMFA:
           type: boolean
         mfaToken:
           type: string
-      required:
-        - accessToken
-        - expiresIn
-        - user
+      required: [accessToken, expiresIn, user]
+
     RefreshResponse:
       type: object
       properties:
@@ -1718,9 +1631,8 @@ components:
           type: string
         expiresIn:
           type: integer
-      required:
-        - accessToken
-        - expiresIn
+      required: [accessToken, expiresIn]
+
     MFAVerifyRequest:
       type: object
       properties:
@@ -1728,18 +1640,17 @@ components:
           type: string
         code:
           type: string
-          pattern: ^[0-9]{6}$
-      required:
-        - mfaToken
-        - code
+          pattern: '^[0-9]{6}$'
+      required: [mfaToken, code]
+
     PasswordResetRequest:
       type: object
       properties:
         email:
           type: string
           format: email
-      required:
-        - email
+      required: [email]
+
     PasswordResetConfirm:
       type: object
       properties:
@@ -1748,9 +1659,8 @@ components:
         newPassword:
           type: string
           minLength: 8
-      required:
-        - token
-        - newPassword
+      required: [token, newPassword]
+
     WebAuthnChallenge:
       type: object
       properties:
@@ -1764,8 +1674,8 @@ components:
           type: array
           items:
             type: object
-      required:
-        - challenge
+      required: [challenge]
+
     WebAuthnVerifyRequest:
       type: object
       properties:
@@ -1773,17 +1683,16 @@ components:
           type: string
         response:
           type: object
-      required:
-        - challenge
-        - response
+      required: [challenge, response]
+
     WebAuthnLoginStart:
       type: object
       properties:
         email:
           type: string
           format: email
-      required:
-        - email
+      required: [email]
+
     WebAuthnLoginFinish:
       type: object
       properties:
@@ -1791,9 +1700,8 @@ components:
           type: string
         response:
           type: object
-      required:
-        - challenge
-        - response
+      required: [challenge, response]
+
     SendMessageRequest:
       type: object
       properties:
@@ -1825,15 +1733,10 @@ components:
             format: uuid
         priority:
           type: string
-          enum:
-            - low
-            - normal
-            - high
+          enum: [low, normal, high]
           default: normal
-      required:
-        - to
-        - subject
-        - body
+      required: [to, subject, body]
+
     DraftRequest:
       type: object
       properties:
@@ -1863,6 +1766,7 @@ components:
           items:
             type: string
             format: uuid
+
     MarkMessagesRequest:
       type: object
       properties:
@@ -1873,15 +1777,9 @@ components:
             format: uuid
         action:
           type: string
-          enum:
-            - read
-            - unread
-            - flag
-            - unflag
-            - archive
-      required:
-        - messageIds
-        - action
+          enum: [read, unread, flag, unflag, archive]
+      required: [messageIds, action]
+
     MoveMessagesRequest:
       type: object
       properties:
@@ -1892,9 +1790,8 @@ components:
             format: uuid
         folder:
           type: string
-      required:
-        - messageIds
-        - folder
+      required: [messageIds, folder]
+
     SnoozeMessagesRequest:
       type: object
       properties:
@@ -1906,9 +1803,8 @@ components:
         snoozeUntil:
           type: string
           format: date-time
-      required:
-        - messageIds
-        - snoozeUntil
+      required: [messageIds, snoozeUntil]
+
     MailCountsResponse:
       type: object
       properties:
@@ -1939,15 +1835,7 @@ components:
             outbox:
               type: integer
               default: 0
-          required:
-            - inbox
-            - sent
-            - drafts
-            - trash
-            - spam
-            - archive
-            - scheduled
-            - outbox
+          required: [inbox, sent, drafts, trash, spam, archive, scheduled, outbox]
         labels:
           type: object
           additionalProperties:
@@ -1956,22 +1844,19 @@ components:
         total:
           type: integer
           description: Total unread messages across all folders
-      required:
-        - folders
-        - labels
-        - total
+      required: [folders, labels, total]
+
     MessagesResponse:
       type: object
       properties:
         messages:
           type: array
           items:
-            $ref: "#/components/schemas/Message"
+            $ref: '#/components/schemas/Message'
         pagination:
-          $ref: "#/components/schemas/Pagination"
-      required:
-        - messages
-        - pagination
+          $ref: '#/components/schemas/Pagination'
+      required: [messages, pagination]
+
     Pagination:
       type: object
       properties:
@@ -1983,11 +1868,8 @@ components:
           type: integer
         hasMore:
           type: boolean
-      required:
-        - total
-        - limit
-        - offset
-        - hasMore
+      required: [total, limit, offset, hasMore]
+
     TrustedSenderRequest:
       type: object
       properties:
@@ -1997,10 +1879,9 @@ components:
         domain:
           type: string
       anyOf:
-        - required:
-            - email
-        - required:
-            - domain
+        - required: [email]
+        - required: [domain]
+
     RemoveTrustedSenderRequest:
       type: object
       properties:
@@ -2010,19 +1891,18 @@ components:
         domain:
           type: string
       anyOf:
-        - required:
-            - email
-        - required:
-            - domain
+        - required: [email]
+        - required: [domain]
+
     TrustedSendersResponse:
       type: object
       properties:
         policies:
           type: array
           items:
-            $ref: "#/components/schemas/Policy"
-      required:
-        - policies
+            $ref: '#/components/schemas/Policy'
+      required: [policies]
+
     UserSettings:
       type: object
       properties:
@@ -2034,10 +1914,7 @@ components:
           format: uuid
         theme:
           type: string
-          enum:
-            - light
-            - dark
-            - system
+          enum: [light, dark, system]
           default: system
         language:
           type: string
@@ -2079,22 +1956,14 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - userId
-        - theme
-        - language
-        - timezone
-        - updatedAt
+      required: [id, userId, theme, language, timezone, updatedAt]
+
     UpdateSettingsRequest:
       type: object
       properties:
         theme:
           type: string
-          enum:
-            - light
-            - dark
-            - system
+          enum: [light, dark, system]
         language:
           type: string
         timezone:
@@ -2130,23 +1999,26 @@ components:
               type: boolean
             trackingImages:
               type: boolean
+
+    # Extended Mail Management Schemas
     UpdateScheduledRequest:
       type: object
       properties:
         sendAt:
           type: string
           format: date-time
-      required:
-        - sendAt
+      required: [sendAt]
+
+    # Labels Management
     LabelsResponse:
       type: object
       properties:
         labels:
           type: array
           items:
-            $ref: "#/components/schemas/Label"
-      required:
-        - labels
+            $ref: '#/components/schemas/Label'
+      required: [labels]
+
     CreateLabelRequest:
       type: object
       properties:
@@ -2156,13 +2028,12 @@ components:
           maxLength: 50
         color:
           type: string
-          pattern: ^#[0-9A-F]{6}$
+          pattern: '^#[0-9A-F]{6}$'
         description:
           type: string
           maxLength: 200
-      required:
-        - name
-        - color
+      required: [name, color]
+
     UpdateLabelRequest:
       type: object
       properties:
@@ -2172,16 +2043,20 @@ components:
           maxLength: 50
         color:
           type: string
-          pattern: ^#[0-9A-F]{6}$
+          pattern: '^#[0-9A-F]{6}$'
         description:
           type: string
           maxLength: 200
+
+    # Quarantine Management
     QuarantineReleaseRequest:
       type: object
       properties:
         reason:
           type: string
           maxLength: 500
+
+    # Settings Management
     Signature:
       type: object
       properties:
@@ -2202,23 +2077,17 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - name
-        - content
-        - isDefault
-        - isActive
-        - createdAt
-        - updatedAt
+      required: [id, name, content, isDefault, isActive, createdAt, updatedAt]
+
     SignaturesResponse:
       type: object
       properties:
         signatures:
           type: array
           items:
-            $ref: "#/components/schemas/Signature"
-      required:
-        - signatures
+            $ref: '#/components/schemas/Signature'
+      required: [signatures]
+
     CreateSignatureRequest:
       type: object
       properties:
@@ -2234,9 +2103,8 @@ components:
         isActive:
           type: boolean
           default: true
-      required:
-        - name
-        - content
+      required: [name, content]
+
     UpdateSignatureRequest:
       type: object
       properties:
@@ -2251,6 +2119,7 @@ components:
           type: boolean
         isActive:
           type: boolean
+
     Template:
       type: object
       properties:
@@ -2267,35 +2136,24 @@ components:
           type: boolean
         category:
           type: string
-          enum:
-            - personal
-            - business
-            - support
-            - marketing
+          enum: [personal, business, support, marketing]
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required:
-        - id
-        - name
-        - subject
-        - content
-        - isActive
-        - category
-        - createdAt
-        - updatedAt
+      required: [id, name, subject, content, isActive, category, createdAt, updatedAt]
+
     TemplatesResponse:
       type: object
       properties:
         templates:
           type: array
           items:
-            $ref: "#/components/schemas/Template"
-      required:
-        - templates
+            $ref: '#/components/schemas/Template'
+      required: [templates]
+
     CreateTemplateRequest:
       type: object
       properties:
@@ -2314,16 +2172,10 @@ components:
           default: true
         category:
           type: string
-          enum:
-            - personal
-            - business
-            - support
-            - marketing
+          enum: [personal, business, support, marketing]
           default: personal
-      required:
-        - name
-        - subject
-        - content
+      required: [name, subject, content]
+
     UpdateTemplateRequest:
       type: object
       properties:
@@ -2341,11 +2193,8 @@ components:
           type: boolean
         category:
           type: string
-          enum:
-            - personal
-            - business
-            - support
-            - marketing
+          enum: [personal, business, support, marketing]
+
     OutOfOfficeSettings:
       type: object
       properties:
@@ -2372,9 +2221,8 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required:
-        - enabled
-        - updatedAt
+      required: [enabled, updatedAt]
+
     UpdateOutOfOfficeRequest:
       type: object
       properties:
@@ -2402,17 +2250,19 @@ components:
         externalMessage:
           type: string
           maxLength: 5000
-      required:
-        - enabled
+      required: [enabled]
+
+    # Security Management
     SessionsResponse:
       type: object
       properties:
         sessions:
           type: array
           items:
-            $ref: "#/components/schemas/Session"
-      required:
-        - sessions
+            $ref: '#/components/schemas/Session'
+      required: [sessions]
+
+    # Calendar & Chat Stubs
     CalendarEventsResponse:
       type: object
       properties:
@@ -2432,8 +2282,8 @@ components:
               end:
                 type: string
                 format: date-time
-      required:
-        - events
+      required: [events]
+
     ChatConversationsResponse:
       type: object
       properties:
@@ -2452,8 +2302,8 @@ components:
               updatedAt:
                 type: string
                 format: date-time
-      required:
-        - conversations
+      required: [conversations]
+
     MessageResponse:
       type: object
       properties:
@@ -2462,9 +2312,8 @@ components:
         success:
           type: boolean
           default: true
-      required:
-        - message
-        - success
+      required: [message, success]
+
     ErrorResponse:
       type: object
       properties:
@@ -2476,28 +2325,30 @@ components:
           type: string
         details:
           type: object
-      required:
-        - error
-        - message
+      required: [error, message]
+
   responses:
     BadRequest:
       description: Bad request
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
+
     Unauthorized:
       description: Unauthorized
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
+
     NotFound:
       description: Not found
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
+
     RateLimit:
       description: Rate limit exceeded
       headers:
@@ -2520,7 +2371,8 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: '#/components/schemas/ErrorResponse'
+
 tags:
   - name: Health
     description: Health and readiness endpoints
