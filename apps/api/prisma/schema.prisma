@@ -35,6 +35,10 @@ model User {
   oidcIdentities    OIDCIdentity[]
   settings          UserSettings?
   attachments       Attachment[]
+  rules             Rule[]
+  ruleExecutions    RuleExecution[]
+  ruleAuditLogs     RuleAuditLog[]
+  ruleJobQueue      RuleJobQueue[]
 
   @@map("users")
 }
@@ -81,6 +85,8 @@ model Message {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   attachments Attachment[]
   messageLabels MessageLabel[]
+  ruleExecutions RuleExecution[]
+  ruleAuditLogs RuleAuditLog[]
 
   @@map("messages")
 }
@@ -217,4 +223,88 @@ model UserSettings {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
+}
+
+model Rule {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isEnabled   Boolean   @default(true)
+  priority    Int       @default(0) // Higher numbers = higher priority
+  conditions  Json      // Array of condition objects
+  actions     Json      // Array of action objects
+  triggers    String[]  @default(["on-receive"]) // on-receive, on-send, manual
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions      RuleExecution[]
+  auditLogs       RuleAuditLog[]
+
+  @@map("rules")
+}
+
+model RuleExecution {
+  id              String    @id @default(cuid())
+  ruleId          String
+  messageId       String?
+  userId          String
+  trigger         String    // on-receive, on-send, manual
+  status          String    // success, failure, skipped
+  executionTimeMs Int
+  actionsApplied  Json      // Array of applied actions
+  error           String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  rule            Rule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  message         Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rule_executions")
+}
+
+model RuleAuditLog {
+  id          String    @id @default(cuid())
+  ruleId      String
+  messageId   String?
+  userId      String
+  action      String    // created, updated, deleted, executed
+  changes     Json?     // What changed (for updates)
+  outcome     Json?     // Execution outcome
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  rule        Rule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  message     Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rule_audit_logs")
+}
+
+model RuleJobQueue {
+  id            String    @id @default(cuid())
+  userId        String
+  jobType       String    // run-on-existing, batch-process
+  status        String    // pending, running, completed, failed
+  progress      Int       @default(0) // 0-100
+  totalItems    Int       @default(0)
+  processedItems Int      @default(0)
+  failedItems   Int       @default(0)
+  parameters    Json?     // Job-specific parameters
+  result        Json?     // Job result data
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rule_job_queue")
 }
