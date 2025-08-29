@@ -1,12 +1,12 @@
 import { useState, ReactNode, useEffect } from 'react'
-import { X, Paperclip, Send, Smile, Bold, Italic, Underline, Link2, Clock, ChevronDown } from 'lucide-react'
+import { X, Send, Paperclip, Smile, Bold, Italic, Underline, Link2, Clock, ChevronDown } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 import { useMail } from '../hooks/useMail'
 import { useI18n } from '../contexts/I18nContext'
-import toast from 'react-hot-toast'
+import { toast } from 'react-hot-toast'
 
 interface ComposeSheetProps {
   isOpen: boolean
@@ -42,7 +42,6 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
   const [activeSuggestions, setActiveSuggestions] = useState<Contact[]>([])
   const [isSending, setIsSending] = useState(false)
   const [priority, setPriority] = useState<'low' | 'normal' | 'high'>('normal')
-  const [scheduledSend, setScheduledSend] = useState<string>('')
   
   const { sendMessage, saveDraft } = useMail()
   const { t } = useI18n()
@@ -74,6 +73,17 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
       console.error('Auto-save failed:', error)
     }
   }
+
+  const handleToInputChange = (value: string) => {
+    setToInput(value)
+    if (value.length > 0) {
+      const filtered = suggestions.filter(
+        s => s.name.toLowerCase().includes(value.toLowerCase()) ||
+             s.email.toLowerCase().includes(value.toLowerCase())
+      )
+      setActiveSuggestions(filtered)
+      setShowSuggestions(filtered.length > 0)
+    } else {
       setShowSuggestions(false)
     }
   }
@@ -102,15 +112,35 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
     }
   }
 
-  const handleSend = () => {
-    console.log('Sending email:', {
-      to: toContacts,
-      cc: ccContacts,
-      bcc: bccContacts,
-      subject,
-      content
-    })
-    onClose()
+  const handleSend = async () => {
+    if (!toContacts.length || !subject.trim()) return
+    
+    setIsSending(true)
+    try {
+      await sendMessage({
+        to: toContacts.map(c => c.email),
+        cc: ccContacts.map(c => c.email),
+        bcc: bccContacts.map(c => c.email),
+        subject,
+        body: content,
+        priority,
+      })
+      
+      // Clear form and close
+      setToContacts([])
+      setCcContacts([])
+      setBccContacts([])
+      setSubject('')
+      setContent('')
+      setPriority('normal')
+      onClose()
+      
+      toast.success(t('mail.sent'))
+    } catch (error) {
+      toast.error(t('errors.sendFailed'))
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const ContactChip = ({ contact, onRemove }: { contact: Contact; onRemove: () => void }) => (
@@ -317,9 +347,9 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
               <Button variant="outline" onClick={onClose}>
                 Save Draft
               </Button>
-              <Button onClick={handleSend} disabled={toContacts.length === 0 || !subject.trim()}>
+              <Button onClick={handleSend} disabled={isSending || toContacts.length === 0 || !subject.trim()}>
                 <Send className="h-4 w-4 mr-2" />
-                Send
+                {isSending ? 'Sending...' : 'Send'}
               </Button>
             </div>
           </div>

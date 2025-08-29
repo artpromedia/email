@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+// import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
 export interface QuarantinedMessage {
@@ -22,7 +22,8 @@ export interface QuarantinedMessage {
 }
 
 export function useQuarantine() {
-  const { client } = useAuth()
+  // TODO: Implement real API calls when backend is ready
+  // const { client } = useAuth()
   const [messages, setMessages] = useState<QuarantinedMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

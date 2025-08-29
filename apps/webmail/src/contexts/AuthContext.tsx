@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { createCeerionMailClient } from '@ceerion/sdk'
-import toast from 'react-hot-toast'
+import { toast } from 'react-hot-toast'
 
 interface User {
   id: string

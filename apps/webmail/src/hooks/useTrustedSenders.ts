@@ -25,7 +25,14 @@ export function useTrustedSenders() {
       const { data, error: apiError } = await client.policy.getTrustedSenders()
       
       if (data && !apiError) {
-        setTrustedSenders(data.trustedSenders || [])
+        // Extract trusted sender policies from the response
+        const trusted = data.policies?.filter(p => p.type === 'trusted_sender') || []
+        setTrustedSenders(trusted.map(p => ({
+          id: p.id,
+          email: p.value,
+          addedBy: p.userId,
+          addedAt: p.createdAt,
+        })))
       } else {
         // Mock data for development
         const mockTrustedSenders: TrustedSender[] = [
@@ -59,8 +66,13 @@ export function useTrustedSenders() {
     try {
       setLoading(true)
       
+      // Ensure we have either email or domain
+      if (!senderData.email && !senderData.domain) {
+        throw new Error('Either email or domain is required')
+      }
+      
       const { data, error: apiError } = await client.policy.addTrustedSender({
-        email: senderData.email,
+        email: senderData.email || '',
         domain: senderData.domain
       })
       
