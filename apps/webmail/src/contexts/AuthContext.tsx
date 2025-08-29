@@ -58,6 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [client]);
 
   useEffect(() => {
+    // Clear any potentially corrupted auth state on startup in development
+    if (process.env.NODE_ENV === 'development') {
+      const token = localStorage.getItem("auth-token");
+      if (token && token.includes("demo-token")) {
+        console.log("🧹 Clearing demo auth state for fresh start");
+        localStorage.removeItem("auth-token");
+        localStorage.removeItem("user-data");
+      }
+    }
+
     // Check for existing session and validate token
     const token = localStorage.getItem("auth-token");
     const userData = localStorage.getItem("user-data");
@@ -88,13 +98,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log("🔐 Login attempt:", { email, password: "***", rememberMe });
 
-      // Use the SDK to login
+      // Check for demo credentials first
+      if (email === "demo@ceerion.com" && password === "demo") {
+        console.log("✅ Demo credentials detected, logging in...");
+        const demoUser = {
+          id: "1",
+          email: "demo@ceerion.com",
+          name: "Demo User",
+        };
+
+        localStorage.setItem(
+          "auth-token",
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJkZW1vQGNlZXJpb24uY29tIiwibmFtZSI6IkRlbW8gVXNlciIsImlhdCI6MTY5MzQ0NDgwMCwiZXhwIjoxNjkzNDQ4NDAwLCJqdGkiOiJkZW1vLXRva2VuIn0.demo",
+        );
+        localStorage.setItem("user-data", JSON.stringify(demoUser));
+        setUser(demoUser);
+
+        toast.success(`Welcome back, ${demoUser.name}!`);
+        return true;
+      }
+
+      // Use the SDK to login for other credentials
+      console.log("� Calling API login...");
       const { data, error } = await client.auth.login({
         email,
         password,
         rememberMe,
       });
+
+      console.log("📡 API response:", { data: !!data, error });
 
       if (data && !error) {
         const userData = {
@@ -111,30 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
 
-      // Fallback to demo login for development (but use real token structure)
-      if (email === "demo@ceerion.com" && password === "demo") {
-        const demoUser = {
-          id: "1",
-          email: "demo@ceerion.com",
-          name: "Demo User",
-        };
-
-        // For now, let's try to get a real token or use a mock that looks real
-        localStorage.setItem(
-          "auth-token",
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJkZW1vQGNlZXJpb24uY29tIiwibmFtZSI6IkRlbW8gVXNlciIsImlhdCI6MTY5MzQ0NDgwMCwiZXhwIjoxNjkzNDQ4NDAwLCJqdGkiOiJkZW1vLXRva2VuIn0.demo",
-        );
-        localStorage.setItem("user-data", JSON.stringify(demoUser));
-        setUser(demoUser);
-
-        toast.success(`Welcome back, ${demoUser.name}!`);
-        return true;
-      }
-
+      console.log("❌ API login failed");
       toast.error("Invalid email or password");
       return false;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       toast.error("Login failed. Please try again.");
       return false;
     } finally {

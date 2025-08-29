@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AccountSettings } from "./settings/AccountSettings";
 import { SecuritySettings } from "./settings/SecuritySettings";
 import { MailSettings } from "./settings/MailSettings";
-import { FiltersSettings } from "./settings/FiltersSettings";
+import RulesSettings from "./settings/RulesSettings";
 import { ForwardingSettings } from "./settings/ForwardingSettings";
 import { NotificationsSettings } from "./settings/NotificationsSettings";
 import { AppearanceSettings } from "./settings/AppearanceSettings";
@@ -158,7 +158,7 @@ export function SettingsPage() {
               </TabsContent>
 
               <TabsContent value="filters" className="space-y-6">
-                <FiltersSettings />
+                <RulesSettings />
               </TabsContent>
 
               <TabsContent value="forwarding" className="space-y-6">
