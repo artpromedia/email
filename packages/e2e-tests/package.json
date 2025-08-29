@@ -1,0 +1,33 @@
+{
+  "name": "@ceerion/e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CEERION Mail end-to-end tests",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:webmail": "playwright test --grep \"Webmail\"",
+    "test:admin": "playwright test --grep \"Admin\"",
+    "test:smoke": "playwright test --grep \"@smoke\"",
+    "test:lighthouse": "playwright test lighthouse.spec.ts",
+    "test:a11y": "playwright test accessibility.spec.ts",
+    "install": "playwright install",
+    "report": "playwright show-report",
+    "clean": "rm -rf test-results playwright-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.8.5",
+    "@playwright/test": "^1.41.0",
+    "@types/js-yaml": "^4.0.5",
+    "js-yaml": "^4.1.0",
+    "lighthouse": "^11.5.0",
+    "playwright-lighthouse": "^4.0.0"
+  },
+  "devDependencies": {
+    "@ceerion/config": "workspace:*",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

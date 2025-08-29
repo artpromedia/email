@@ -5,14 +5,25 @@ import sensible from '@fastify/sensible';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { loadEnv } from './config/env';
+import { initTelemetry, getTelemetry } from '@ceerion/observability';
+
+const env = loadEnv();
+
+// Initialize telemetry before other imports
+const telemetry = initTelemetry({
+  serviceName: 'ceerion-api',
+  serviceVersion: '1.0.0',
+  environment: env.NODE_ENV,
+  otlpEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT,
+  prometheusEnabled: true,
+});
+
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
 import prismaPlugin from './plugins/prisma';
 import redisPlugin from './plugins/redis';
 import { authMiddleware } from './auth/middleware';
 import './types'; // Import type declarations
-
-const env = loadEnv();
 
 const fastify = Fastify({
   logger: {

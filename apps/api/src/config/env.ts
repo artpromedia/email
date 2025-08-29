@@ -15,6 +15,9 @@ export interface Environment {
   OIDC_GOOGLE_CLIENT_SECRET: string;
   API_PORT: number;
   API_HOST: string;
+  OTEL_EXPORTER_OTLP_ENDPOINT?: string;
+  OTEL_SERVICE_NAME?: string;
+  PROMETHEUS_ENABLED?: boolean;
 }
 
 export function loadEnv(): Environment {
@@ -29,5 +32,8 @@ export function loadEnv(): Environment {
     OIDC_GOOGLE_CLIENT_SECRET: process.env.OIDC_GOOGLE_CLIENT_SECRET || '__placeholder__',
     API_PORT: parseInt(process.env.API_PORT || '4000', 10),
     API_HOST: process.env.API_HOST || 'localhost',
+    OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME || 'ceerion-api',
+    PROMETHEUS_ENABLED: process.env.PROMETHEUS_ENABLED !== 'false',
   };
 }

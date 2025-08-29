@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@ceerion/contracts": "workspace:*",
+    "@ceerion/observability": "workspace:*",
     "@ceerion/sdk": "workspace:*",
     "@ceerion/shared": "workspace:*",
     "@fastify/cors": "^9.0.0",

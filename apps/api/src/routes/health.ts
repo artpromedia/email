@@ -1,6 +1,14 @@
 import { FastifyPluginAsync } from 'fastify';
 
 export const healthRoutes: FastifyPluginAsync = async (fastify) => {
+  let telemetry: any = null;
+  
+  try {
+    const { getTelemetry } = await import('@ceerion/observability');
+    telemetry = getTelemetry();
+  } catch (error) {
+    console.log('Telemetry not available, skipping metrics endpoint');
+  }
   // Health check endpoint
   fastify.get('/health', {
     schema: {
@@ -128,5 +136,28 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
     };
 
     return reply.code(statusCode).send(response);
+  });
+
+  // Prometheus metrics endpoint
+  fastify.get('/metrics', {
+    schema: {
+      tags: ['Monitoring'],
+      summary: 'Prometheus metrics endpoint',
+      response: {
+        200: {
+          type: 'string',
+          description: 'Prometheus metrics in text format',
+        },
+      },
+    },
+    handler: async (request, reply) => {
+      if (!telemetry) {
+        return reply.code(404).send('Metrics not available');
+      }
+
+      const metrics = telemetry.getPrometheusMetrics();
+      reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      return metrics;
+    },
   });
 };

@@ -19,8 +19,30 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "test:smoke": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:lighthouse": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:a11y": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:contract-drift": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "clean": {
       "cache": false
+    },
+    "openapi:check": {
+      "cache": false
+    },
+    "openapi:codegen": {
+      "dependsOn": ["openapi:check"]
     }
   }
 }

@@ -1,0 +1,143 @@
+groups:
+  - name: ceerion-mail-alerts
+    rules:
+      # SMTP Queue Backlog
+      - alert: SMTPQueueBacklog
+        expr: sum(ceerion_smtp_queue_size) > 1000
+        for: 5m
+        labels:
+          severity: critical
+          service: ceerion-mail
+        annotations:
+          summary: "SMTP queue backlog exceeds 1000 emails"
+          description: "SMTP queue has {{ $value }} emails pending for more than 5 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/smtp-queue-backlog"
+
+      # High DMARC Failure Rate
+      - alert: HighDMARCFailureRate
+        expr: rate(ceerion_dmarc_reports_total{disposition="reject"}[5m]) / rate(ceerion_dmarc_reports_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: ceerion-mail
+        annotations:
+          summary: "DMARC failure rate exceeds 10%"
+          description: "DMARC failure rate is {{ printf \"%.2f\" $value }}% for the last 10 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/dmarc-failures"
+
+      # TLS-RPT Failure Spike
+      - alert: TLSRPTFailureSpike
+        expr: rate(ceerion_tls_rpt_reports_total{result="failure"}[5m]) / rate(ceerion_tls_rpt_reports_total[5m]) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          service: ceerion-mail
+        annotations:
+          summary: "TLS-RPT failure rate exceeds 5%"
+          description: "TLS-RPT failure rate is {{ printf \"%.2f\" $value }}% for the last 15 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/tls-failures"
+
+      # High Authentication Failure Rate
+      - alert: HighAuthFailureRate
+        expr: rate(ceerion_auth_attempts_total{status="failure"}[5m]) / rate(ceerion_auth_attempts_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: ceerion-mail
+        annotations:
+          summary: "Authentication failure rate exceeds 20%"
+          description: "Authentication failure rate is {{ printf \"%.2f\" $value }}% for the last 5 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/auth-failures"
+
+      # Indexer High Latency
+      - alert: IndexerHighLatency
+        expr: histogram_quantile(0.95, rate(ceerion_indexer_latency_seconds_bucket[5m])) > 2.0
+        for: 10m
+        labels:
+          severity: warning
+          service: ceerion-mail
+        annotations:
+          summary: "95th percentile indexer latency exceeds 2 seconds"
+          description: "95th percentile indexer latency is {{ printf \"%.2f\" $value }}s for the last 10 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/indexer-latency"
+
+      # SMTP Processing High Latency
+      - alert: SMTPProcessingHighLatency
+        expr: histogram_quantile(0.95, rate(ceerion_smtp_processing_duration_seconds_bucket[5m])) > 30.0
+        for: 10m
+        labels:
+          severity: critical
+          service: ceerion-mail
+        annotations:
+          summary: "95th percentile SMTP processing time exceeds 30 seconds"
+          description: "95th percentile SMTP processing time is {{ printf \"%.2f\" $value }}s for the last 10 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/smtp-latency"
+
+      # Service Down
+      - alert: CeerionAPIDown
+        expr: up{job="ceerion-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ceerion-mail
+        annotations:
+          summary: "CEERION API is down"
+          description: "CEERION API has been down for more than 1 minute"
+          runbook_url: "https://docs.ceerion.com/runbooks/service-down"
+
+      # Database Connection Issues
+      - alert: DatabaseConnectionFailure
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: ceerion-mail
+        annotations:
+          summary: "Database connection failure"
+          description: "Cannot connect to PostgreSQL database for more than 2 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/database-down"
+
+      # Redis Connection Issues
+      - alert: RedisConnectionFailure
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: ceerion-mail
+        annotations:
+          summary: "Redis connection failure"
+          description: "Cannot connect to Redis for more than 2 minutes"
+          runbook_url: "https://docs.ceerion.com/runbooks/redis-down"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ printf \"%.2f\" $value }}% for the last 5 minutes"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ printf \"%.2f\" $value }}% for the last 5 minutes"
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "Disk space running low"
+          description: "Disk space is {{ printf \"%.2f\" $value }}% available on {{ $labels.device }}"

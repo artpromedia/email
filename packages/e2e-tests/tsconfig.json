@@ -1,0 +1,11 @@
+{
+  "extends": "@ceerion/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node", "@playwright/test"],
+    "lib": ["dom", "dom.iterable", "es2020"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["dist", "node_modules", "test-results", "playwright-report"]
+}

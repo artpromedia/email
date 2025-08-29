@@ -1,0 +1,64 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  
+  memory_limiter:
+    limit_mib: 512
+  
+  resource:
+    attributes:
+      - key: service.environment
+        value: "${env:ENVIRONMENT}"
+        action: upsert
+      - key: service.version
+        value: "${env:SERVICE_VERSION}"
+        action: upsert
+
+exporters:
+  # Jaeger for traces
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  
+  # Prometheus for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    const_labels:
+      env: "${env:ENVIRONMENT}"
+  
+  # Loki for logs
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    
+  # Debug exporter for development
+  logging:
+    loglevel: info
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [jaeger, logging]
+    
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheus]
+    
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [loki, logging]
+
+  extensions: []
