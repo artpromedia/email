@@ -25,6 +25,12 @@ export interface Mail {
   scheduledAt?: Date;
   isSpam: boolean;
   isTrash: boolean;
+  // Additional fields for folder-specific behaviors
+  lastEditedAt?: Date;
+  deliveryStatus?: "sent" | "queued" | "bounced" | "failed";
+  failureReason?: string;
+  retryCount?: number;
+  autoSaveInterval?: number;
 }
 
 export interface Thread {
@@ -108,7 +114,26 @@ type MailAction =
   | { type: "ARCHIVE_THREADS"; payload: string[] }
   | { type: "DELETE_THREADS"; payload: string[] }
   | { type: "STAR_THREADS"; payload: { threadIds: string[]; starred: boolean } }
-  | { type: "MARK_READ"; payload: { threadIds: string[]; read: boolean } };
+  | { type: "MARK_READ"; payload: { threadIds: string[]; read: boolean } }
+  | {
+      type: "AUTO_SAVE_DRAFT";
+      payload: { draftId: string; content: Partial<Mail> };
+    }
+  | { type: "DISCARD_DRAFT"; payload: string }
+  | {
+      type: "CONVERT_TO_SCHEDULED";
+      payload: { draftId: string; scheduledAt: Date };
+    }
+  | { type: "RESEND_MESSAGE"; payload: string }
+  | { type: "CREATE_TEMPLATE"; payload: string }
+  | {
+      type: "EDIT_SCHEDULED";
+      payload: { messageId: string; scheduledAt: Date };
+    }
+  | { type: "SEND_NOW"; payload: string }
+  | { type: "CANCEL_SCHEDULED"; payload: string }
+  | { type: "RETRY_OUTBOX"; payload: string }
+  | { type: "CANCEL_OUTBOX"; payload: string };
 
 const initialState: MailState = {
   threads: [],
@@ -271,6 +296,154 @@ function mailReducer(state: MailState, action: MailAction): MailState {
             : thread,
         ),
       };
+    case "AUTO_SAVE_DRAFT":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.messages.some((msg) => msg.id === action.payload.draftId)
+            ? {
+                ...thread,
+                messages: thread.messages.map((msg) =>
+                  msg.id === action.payload.draftId
+                    ? {
+                        ...msg,
+                        ...action.payload.content,
+                        lastEditedAt: new Date(),
+                      }
+                    : msg,
+                ),
+                lastMessageDate: new Date(),
+              }
+            : thread,
+        ),
+      };
+    case "DISCARD_DRAFT":
+      return {
+        ...state,
+        threads: state.threads.filter(
+          (thread) => !thread.messages.some((msg) => msg.id === action.payload),
+        ),
+        selectedThread: state.selectedThread?.messages.some(
+          (msg) => msg.id === action.payload,
+        )
+          ? null
+          : state.selectedThread,
+      };
+    case "CONVERT_TO_SCHEDULED":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.messages.some((msg) => msg.id === action.payload.draftId)
+            ? {
+                ...thread,
+                messages: thread.messages.map((msg) =>
+                  msg.id === action.payload.draftId
+                    ? {
+                        ...msg,
+                        isDraft: false,
+                        isScheduled: true,
+                        scheduledAt: action.payload.scheduledAt,
+                        folder: "scheduled",
+                      }
+                    : msg,
+                ),
+                folder: "scheduled",
+              }
+            : thread,
+        ),
+      };
+    case "SEND_NOW":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.messages.some((msg) => msg.id === action.payload)
+            ? {
+                ...thread,
+                messages: thread.messages.map((msg) =>
+                  msg.id === action.payload
+                    ? {
+                        ...msg,
+                        isScheduled: false,
+                        scheduledAt: undefined,
+                        folder: "sent",
+                        deliveryStatus: "sent",
+                        date: new Date(),
+                      }
+                    : msg,
+                ),
+                folder: "sent",
+                lastMessageDate: new Date(),
+              }
+            : thread,
+        ),
+      };
+    case "CANCEL_SCHEDULED":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.messages.some((msg) => msg.id === action.payload)
+            ? {
+                ...thread,
+                messages: thread.messages.map((msg) =>
+                  msg.id === action.payload
+                    ? {
+                        ...msg,
+                        isScheduled: false,
+                        scheduledAt: undefined,
+                        isDraft: true,
+                        folder: "drafts",
+                      }
+                    : msg,
+                ),
+                folder: "drafts",
+              }
+            : thread,
+        ),
+      };
+    case "RETRY_OUTBOX":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.messages.some((msg) => msg.id === action.payload)
+            ? {
+                ...thread,
+                messages: thread.messages.map((msg) =>
+                  msg.id === action.payload
+                    ? {
+                        ...msg,
+                        deliveryStatus: "queued",
+                        retryCount: (msg.retryCount || 0) + 1,
+                        failureReason: undefined,
+                      }
+                    : msg,
+                ),
+              }
+            : thread,
+        ),
+      };
+    case "CANCEL_OUTBOX":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.messages.some((msg) => msg.id === action.payload)
+            ? {
+                ...thread,
+                messages: thread.messages.map((msg) =>
+                  msg.id === action.payload
+                    ? {
+                        ...msg,
+                        isDraft: true,
+                        folder: "drafts",
+                        deliveryStatus: undefined,
+                        failureReason: undefined,
+                      }
+                    : msg,
+                ),
+                folder: "drafts",
+              }
+            : thread,
+        ),
+      };
     default:
       return state;
   }
@@ -286,6 +459,20 @@ interface MailContextType extends MailState {
   markAsRead: (threadIds: string[], read: boolean) => void;
   createLabel: (name: string, color: string) => void;
   deleteLabel: (labelId: string) => void;
+  // Drafts actions
+  autoSaveDraft: (draftId: string, content: Partial<Mail>) => void;
+  discardDraft: (draftId: string) => void;
+  convertToScheduled: (draftId: string, scheduledAt: Date) => void;
+  // Sent actions
+  resendMessage: (messageId: string) => void;
+  createTemplate: (messageId: string) => void;
+  // Scheduled actions
+  editScheduled: (messageId: string, scheduledAt: Date) => void;
+  sendNow: (messageId: string) => void;
+  cancelScheduled: (messageId: string) => void;
+  // Outbox actions
+  retryOutbox: (messageId: string) => void;
+  cancelOutbox: (messageId: string) => void;
 }
 
 const MailContext = createContext<MailContextType | null>(null);
@@ -336,6 +523,148 @@ export function MailProvider({ children }: { children: React.ReactNode }) {
               folder: "inbox",
               labels: ["work"],
               date: new Date(),
+              isDraft: false,
+              isScheduled: false,
+              isSpam: false,
+              isTrash: false,
+            },
+          ],
+        },
+        // Mock Drafts
+        {
+          id: "draft-1",
+          subject: "Project Update Draft",
+          participants: ["team@company.com"],
+          lastMessageDate: new Date(Date.now() - 3600000), // 1 hour ago
+          unreadCount: 0,
+          isStarred: false,
+          isImportant: false,
+          labels: ["work"],
+          folder: "drafts",
+          messages: [
+            {
+              id: "draft-msg-1",
+              threadId: "draft-1",
+              from: "user@ceerion.com",
+              to: ["team@company.com"],
+              subject: "Project Update Draft",
+              body: "Hi team,\n\nI wanted to update you on the current project status...",
+              isRead: true,
+              isStarred: false,
+              isImportant: false,
+              isArchived: false,
+              isSnoozed: false,
+              folder: "drafts",
+              labels: ["work"],
+              date: new Date(Date.now() - 3600000),
+              lastEditedAt: new Date(Date.now() - 1800000), // 30 min ago
+              isDraft: true,
+              isScheduled: false,
+              isSpam: false,
+              isTrash: false,
+            },
+          ],
+        },
+        // Mock Sent
+        {
+          id: "sent-1",
+          subject: "Meeting Minutes",
+          participants: ["client@company.com"],
+          lastMessageDate: new Date(Date.now() - 7200000), // 2 hours ago
+          unreadCount: 0,
+          isStarred: false,
+          isImportant: false,
+          labels: [],
+          folder: "sent",
+          messages: [
+            {
+              id: "sent-msg-1",
+              threadId: "sent-1",
+              from: "user@ceerion.com",
+              to: ["client@company.com"],
+              subject: "Meeting Minutes",
+              body: "Thank you for the productive meeting today...",
+              isRead: true,
+              isStarred: false,
+              isImportant: false,
+              isArchived: false,
+              isSnoozed: false,
+              folder: "sent",
+              labels: [],
+              date: new Date(Date.now() - 7200000),
+              deliveryStatus: "sent",
+              isDraft: false,
+              isScheduled: false,
+              isSpam: false,
+              isTrash: false,
+            },
+          ],
+        },
+        // Mock Scheduled
+        {
+          id: "scheduled-1",
+          subject: "Weekly Newsletter",
+          participants: ["subscribers@newsletter.com"],
+          lastMessageDate: new Date(Date.now() + 86400000), // Tomorrow
+          unreadCount: 0,
+          isStarred: false,
+          isImportant: false,
+          labels: ["newsletter"],
+          folder: "scheduled",
+          messages: [
+            {
+              id: "scheduled-msg-1",
+              threadId: "scheduled-1",
+              from: "user@ceerion.com",
+              to: ["subscribers@newsletter.com"],
+              subject: "Weekly Newsletter",
+              body: "This week's highlights include...",
+              isRead: true,
+              isStarred: false,
+              isImportant: false,
+              isArchived: false,
+              isSnoozed: false,
+              folder: "scheduled",
+              labels: ["newsletter"],
+              date: new Date(),
+              scheduledAt: new Date(Date.now() + 86400000), // Tomorrow
+              isDraft: false,
+              isScheduled: true,
+              isSpam: false,
+              isTrash: false,
+            },
+          ],
+        },
+        // Mock Outbox
+        {
+          id: "outbox-1",
+          subject: "Important Announcement",
+          participants: ["all@company.com"],
+          lastMessageDate: new Date(Date.now() - 1800000), // 30 min ago
+          unreadCount: 0,
+          isStarred: false,
+          isImportant: true,
+          labels: [],
+          folder: "outbox",
+          messages: [
+            {
+              id: "outbox-msg-1",
+              threadId: "outbox-1",
+              from: "user@ceerion.com",
+              to: ["all@company.com"],
+              subject: "Important Announcement",
+              body: "Please be aware of the following important updates...",
+              isRead: true,
+              isStarred: false,
+              isImportant: true,
+              isArchived: false,
+              isSnoozed: false,
+              folder: "outbox",
+              labels: [],
+              date: new Date(Date.now() - 1800000),
+              deliveryStatus: "failed",
+              failureReason: "SMTP server temporarily unavailable",
+              retryCount: 2,
               isDraft: false,
               isScheduled: false,
               isSpam: false,
@@ -404,8 +733,105 @@ export function MailProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Drafts actions
+  const autoSaveDraft = (draftId: string, content: Partial<Mail>) => {
+    dispatch({ type: "AUTO_SAVE_DRAFT", payload: { draftId, content } });
+  };
+
+  const discardDraft = (draftId: string) => {
+    dispatch({ type: "DISCARD_DRAFT", payload: draftId });
+  };
+
+  const convertToScheduled = (draftId: string, scheduledAt: Date) => {
+    dispatch({
+      type: "CONVERT_TO_SCHEDULED",
+      payload: { draftId, scheduledAt },
+    });
+  };
+
+  // Sent actions
+  const resendMessage = (messageId: string) => {
+    // Create a new draft based on the sent message
+    dispatch({ type: "RESEND_MESSAGE", payload: messageId });
+    // TODO: Implement actual resend logic via API
+  };
+
+  const createTemplate = (messageId: string) => {
+    dispatch({ type: "CREATE_TEMPLATE", payload: messageId });
+    // TODO: Implement template creation via API
+  };
+
+  // Scheduled actions
+  const editScheduled = (messageId: string, scheduledAt: Date) => {
+    dispatch({ type: "EDIT_SCHEDULED", payload: { messageId, scheduledAt } });
+  };
+
+  const sendNow = (messageId: string) => {
+    dispatch({ type: "SEND_NOW", payload: messageId });
+    // TODO: Implement immediate send via API
+  };
+
+  const cancelScheduled = (messageId: string) => {
+    dispatch({ type: "CANCEL_SCHEDULED", payload: messageId });
+  };
+
+  // Outbox actions
+  const retryOutbox = (messageId: string) => {
+    dispatch({ type: "RETRY_OUTBOX", payload: messageId });
+    // TODO: Implement retry logic via API
+  };
+
+  const cancelOutbox = (messageId: string) => {
+    dispatch({ type: "CANCEL_OUTBOX", payload: messageId });
+  };
+
+  // Filter threads based on current view
+  const filteredThreads = state.threads.filter((thread) => {
+    if (state.currentLabel) {
+      return thread.labels.includes(state.currentLabel);
+    }
+
+    // Filter by folder
+    switch (state.currentView) {
+      case "inbox":
+        return (
+          thread.folder === "inbox" &&
+          !thread.messages[0]?.isTrash &&
+          !thread.messages[0]?.isSpam
+        );
+      case "starred":
+        return thread.isStarred;
+      case "important":
+        return thread.isImportant;
+      case "sent":
+        return thread.folder === "sent";
+      case "drafts":
+        return (
+          thread.folder === "drafts" ||
+          thread.messages.some((msg) => msg.isDraft)
+        );
+      case "scheduled":
+        return thread.messages.some((msg) => msg.isScheduled);
+      case "outbox":
+        return thread.folder === "outbox";
+      case "spam":
+        return thread.messages[0]?.isSpam;
+      case "trash":
+        return thread.messages[0]?.isTrash;
+      case "archive":
+        return thread.folder === "archive";
+      case "snoozed":
+        return thread.folder === "snoozed";
+      case "quarantine":
+        return thread.folder === "quarantine";
+      default:
+        return thread.folder === "inbox";
+    }
+  });
+
   const contextValue: MailContextType = {
     ...state,
+    threads: filteredThreads, // Use filtered threads instead of all threads
     dispatch,
     selectThread,
     toggleThreadSelection,
@@ -415,6 +841,16 @@ export function MailProvider({ children }: { children: React.ReactNode }) {
     markAsRead,
     createLabel,
     deleteLabel,
+    autoSaveDraft,
+    discardDraft,
+    convertToScheduled,
+    resendMessage,
+    createTemplate,
+    editScheduled,
+    sendNow,
+    cancelScheduled,
+    retryOutbox,
+    cancelOutbox,
   };
 
   return (

@@ -7,6 +7,12 @@ import {
   Paperclip,
   Clock,
   Zap,
+  Edit,
+  Send,
+  Calendar,
+  RefreshCw,
+  AlertCircle,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,6 +41,16 @@ export function MailList() {
     deleteThreads,
     starThreads,
     markAsRead,
+    // Folder-specific actions
+    discardDraft,
+    convertToScheduled,
+    resendMessage,
+    createTemplate,
+    editScheduled,
+    sendNow,
+    cancelScheduled,
+    retryOutbox,
+    cancelOutbox,
   } = useMail();
   const navigate = useNavigate();
 
@@ -67,6 +83,74 @@ export function MailList() {
 
   const handleStar = (threadId: string, starred: boolean) => {
     starThreads([threadId], starred);
+  };
+
+  // Folder-specific action handlers
+  const handleDraftAction = (
+    messageId: string,
+    action: "edit" | "discard" | "schedule",
+  ) => {
+    switch (action) {
+      case "edit":
+        // Navigate to compose view with draft
+        navigate(`/compose/${messageId}`);
+        break;
+      case "discard":
+        discardDraft(messageId);
+        break;
+      case "schedule":
+        // Show scheduling dialog
+        const scheduledTime = new Date(Date.now() + 86400000); // Default to tomorrow
+        convertToScheduled(messageId, scheduledTime);
+        break;
+    }
+  };
+
+  const handleSentAction = (
+    messageId: string,
+    action: "resend" | "template",
+  ) => {
+    switch (action) {
+      case "resend":
+        resendMessage(messageId);
+        break;
+      case "template":
+        createTemplate(messageId);
+        break;
+    }
+  };
+
+  const handleScheduledAction = (
+    messageId: string,
+    action: "edit" | "send" | "cancel",
+  ) => {
+    switch (action) {
+      case "edit":
+        // Show scheduling dialog
+        const newTime = new Date(Date.now() + 172800000); // Default to day after tomorrow
+        editScheduled(messageId, newTime);
+        break;
+      case "send":
+        sendNow(messageId);
+        break;
+      case "cancel":
+        cancelScheduled(messageId);
+        break;
+    }
+  };
+
+  const handleOutboxAction = (
+    messageId: string,
+    action: "retry" | "cancel",
+  ) => {
+    switch (action) {
+      case "retry":
+        retryOutbox(messageId);
+        break;
+      case "cancel":
+        cancelOutbox(messageId);
+        break;
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -247,8 +331,58 @@ export function MailList() {
                       {thread.messages.some((m) => m.isSnoozed) && (
                         <Clock className="h-3 w-3 text-muted-foreground" />
                       )}
+                      {/* Folder-specific indicators */}
+                      {currentView === "drafts" &&
+                        thread.messages[0]?.lastEditedAt && (
+                          <Badge
+                            variant="outline"
+                            className="h-5 px-1.5 text-xs"
+                          >
+                            Draft
+                          </Badge>
+                        )}
+                      {currentView === "scheduled" &&
+                        thread.messages[0]?.scheduledAt && (
+                          <Badge
+                            variant="outline"
+                            className="h-5 px-1.5 text-xs bg-blue-50 text-blue-700"
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(
+                              thread.messages[0].scheduledAt,
+                            ).toLocaleDateString()}
+                          </Badge>
+                        )}
+                      {currentView === "sent" &&
+                        thread.messages[0]?.deliveryStatus && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "h-5 px-1.5 text-xs",
+                              thread.messages[0].deliveryStatus === "sent" &&
+                                "bg-green-50 text-green-700",
+                              thread.messages[0].deliveryStatus === "bounced" &&
+                                "bg-red-50 text-red-700",
+                            )}
+                          >
+                            {thread.messages[0].deliveryStatus}
+                          </Badge>
+                        )}
+                      {currentView === "outbox" &&
+                        thread.messages[0]?.deliveryStatus === "failed" && (
+                          <Badge
+                            variant="destructive"
+                            className="h-5 px-1.5 text-xs"
+                          >
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Failed
+                          </Badge>
+                        )}
                       <span className="text-xs text-muted-foreground">
-                        {formatDate(thread.lastMessageDate)}
+                        {currentView === "drafts" &&
+                        thread.messages[0]?.lastEditedAt
+                          ? formatDate(thread.messages[0].lastEditedAt)
+                          : formatDate(thread.lastMessageDate)}
                       </span>
                     </div>
                   </div>
@@ -271,6 +405,167 @@ export function MailList() {
                     </div>
 
                     <div className="flex items-center gap-2 ml-2">
+                      {/* Folder-specific action buttons */}
+                      {currentView === "drafts" && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDraftAction(thread.messages[0]?.id, "edit");
+                            }}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleDraftAction(
+                                    thread.messages[0]?.id,
+                                    "schedule",
+                                  )
+                                }
+                              >
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Schedule send
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleDraftAction(
+                                    thread.messages[0]?.id,
+                                    "discard",
+                                  )
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Discard
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+
+                      {currentView === "sent" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleSentAction(
+                                  thread.messages[0]?.id,
+                                  "resend",
+                                )
+                              }
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Resend
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleSentAction(
+                                  thread.messages[0]?.id,
+                                  "template",
+                                )
+                              }
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Create template
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+
+                      {currentView === "scheduled" && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleScheduledAction(
+                                thread.messages[0]?.id,
+                                "send",
+                              );
+                            }}
+                          >
+                            <Send className="h-3 w-3" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleScheduledAction(
+                                    thread.messages[0]?.id,
+                                    "edit",
+                                  )
+                                }
+                              >
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Edit schedule
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleScheduledAction(
+                                    thread.messages[0]?.id,
+                                    "cancel",
+                                  )
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Cancel
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+
+                      {currentView === "outbox" && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOutboxAction(
+                                thread.messages[0]?.id,
+                                "retry",
+                              );
+                            }}
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOutboxAction(
+                                thread.messages[0]?.id,
+                                "cancel",
+                              );
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+
                       {thread.labels.map((labelId) => {
                         const label = useMail().labels.find(
                           (l) => l.id === labelId,

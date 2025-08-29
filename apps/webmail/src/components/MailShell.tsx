@@ -15,6 +15,7 @@ import { MailSidebar } from "./MailSidebar";
 import { MailList } from "./MailList";
 import { MailThread } from "./MailThread";
 import { ComposeSheet } from "./ComposeSheet";
+import { ComposeView } from "./ComposeView";
 import { HelpPage } from "@/pages/help";
 import { SettingsPage } from "@/pages/settings";
 import { useMail } from "@/contexts/MailContext";
@@ -170,6 +171,14 @@ export function MailShell() {
             <Route path="/" element={<Navigate to="/mail/inbox" replace />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
+            <Route
+              path="/compose/:messageId"
+              element={
+                <div className="w-full bg-background">
+                  <ComposeView />
+                </div>
+              }
+            />
             <Route
               path="/mail/*"
               element={
