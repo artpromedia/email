@@ -41,7 +41,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Initialize backup
+# Main backup function
+perform_backup() {
+    local backup_type="${1:-incremental}"
+    log "Performing ${backup_type} backup"
+    
+    init_backup
+    backup_postgres
+    backup_mail_data
+    backup_configuration
+    backup_dkim_keys
+    
+    # Create final archive
+    create_encrypted_archive
+    
+    # Upload to storage
+    upload_backup
+    
+    # Cleanup old backups
+    cleanup_old_backups
+    
+    log "Backup completed successfully"
+    echo "$(date +%s)" > "/backup/logs/last-backup.timestamp"
+}
 init_backup() {
     log "Starting CEERION Mail backup - ${TIMESTAMP}"
     

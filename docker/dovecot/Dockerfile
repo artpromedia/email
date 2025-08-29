@@ -1,6 +1,10 @@
 FROM debian:bookworm-slim
 
-# Install Dovecot with JMAP support
+# Set environment variables for non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN=true
+
+# Install Dovecot with essential packages
 RUN apt-get update && apt-get install -y \
     dovecot-core \
     dovecot-imapd \
@@ -8,30 +12,11 @@ RUN apt-get update && apt-get install -y \
     dovecot-pgsql \
     dovecot-managesieved \
     dovecot-sieve \
-    dovecot-antispam \
     redis-tools \
     postgresql-client \
     supervisor \
     curl \
-    git \
-    build-essential \
-    autoconf \
-    automake \
-    libtool \
-    pkg-config \
-    libjansson-dev \
-    libssl-dev \
-    libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Build and install JMAP support (Cyrus JMAP)
-RUN git clone https://github.com/cyrusimap/cyrus-jmap-api.git /tmp/jmap \
-    && cd /tmp/jmap \
-    && autoreconf -i \
-    && ./configure --prefix=/usr/local \
-    && make \
-    && make install \
-    && rm -rf /tmp/jmap
 
 # Create directories
 RUN mkdir -p /etc/dovecot/custom \
@@ -45,11 +30,11 @@ COPY config/ /etc/dovecot/custom/
 COPY scripts/ /usr/local/bin/
 COPY supervisord.conf /etc/supervisor/conf.d/
 
-# Set permissions
+# Create vmail user and group, set permissions
+RUN groupadd -r -g 5000 vmail && useradd -r -u 5000 -g vmail -d /var/mail -s /bin/false vmail
 RUN chmod +x /usr/local/bin/*.sh
-RUN chown -R dovecot:dovecot /var/mail /var/lib/dovecot
+RUN chown -R dovecot:dovecot /var/lib/dovecot
 RUN chown -R vmail:vmail /var/mail
-RUN useradd -r -u 5000 -g mail -d /var/mail -s /bin/false vmail
 
 # Expose ports
 EXPOSE 143 993 24 8080

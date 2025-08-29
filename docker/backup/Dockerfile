@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 # Install backup tools and encryption utilities
 RUN apt-get update && apt-get install -y \
-    postgresql-client-16 \
+    postgresql-client \
     awscli \
     gpg \
     gzip \
@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create backup user and directories
-RUN useradd -r -u 6000 -d /backup -s /bin/bash backup
+RUN if ! id -u backup 2>/dev/null; then useradd -r -u 6000 -d /backup -s /bin/bash backup; fi
 RUN mkdir -p /backup/{scripts,staging,logs,keys} \
     && chown -R backup:backup /backup
 

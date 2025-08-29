@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Simple KMS client for demo purposes
+# In production, use AWS CLI or proper KMS SDK
+
+case "$1" in
+    "encrypt")
+        KEY_ID="$2"
+        echo "KMS Encrypt with key: $KEY_ID"
+        # For now, use OpenSSL for demo encryption
+        openssl enc -aes-256-cbc -salt -pbkdf2 -iter 100000
+        ;;
+    "decrypt")
+        KEY_ID="$2"
+        echo "KMS Decrypt with key: $KEY_ID" >&2
+        # For now, use OpenSSL for demo decryption
+        openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 100000
+        ;;
+    "generate-key")
+        echo "Generating KMS key..."
+        # Generate a simple key ID for demo
+        echo "key-$(date +%s)-$(openssl rand -hex 8)"
+        ;;
+    *)
+        echo "Usage: $0 {encrypt|decrypt|generate-key} [key-id]"
+        exit 1
+        ;;
+esac

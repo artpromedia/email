@@ -1,0 +1,7 @@
+# Backup service cron jobs
+# Daily backup at 2 AM
+0 2 * * * backup /backup/scripts/backup.sh
+# Weekly full backup on Sunday at 1 AM
+0 1 * * 0 backup /backup/scripts/full-backup.sh
+# Restore drill on first Saturday of month at 3 AM
+0 3 1-7 * 6 backup /backup/scripts/restore-drill.sh

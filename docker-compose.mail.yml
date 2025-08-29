@@ -1,3 +1,32 @@
+version: "3.8"
+
+networks:
+  ceerion-mail:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.32.0.0/16
+
+volumes:
+  postgres_mail_data:
+    driver: local
+  redis_mail_data:
+    driver: local
+  postfix_data:
+    driver: local
+  dovecot_data:
+    driver: local
+  rspamd_data:
+    driver: local
+  clamav_data:
+    driver: local
+  backup_data:
+    driver: local
+  ssl_certs:
+    driver: local
+  mail_storage:
+    driver: local
+
 services:
   # PostgreSQL Database for mail metadata
   postgres-mail:
@@ -11,11 +40,12 @@ services:
     volumes:
       - postgres_mail_data:/var/lib/postgresql/data
       - ./docker/postgres/init-mail.sql:/docker-entrypoint-initdb.d/init-mail.sql:ro
-      - ./docker/postgres/backup:/backup
+      - backup_data:/backup
     ports:
-      - "5433:5432"
+      - "5434:5432"
     networks:
-      - ceerion-mail
+      ceerion-mail:
+        ipv4_address: 172.32.0.10
     restart: unless-stopped
     command: >
       postgres
@@ -26,19 +56,83 @@ services:
       -c effective_cache_size=1GB
       -c work_mem=4MB
       -c maintenance_work_mem=64MB
+      -c log_statement=all
+      -c log_min_duration_statement=1000
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ceerion -d ceerion_mail"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Redis for session management and caching
+  # Redis for session management and queuing
   redis-mail:
     image: redis:7-alpine
     container_name: ceerion-redis-mail
-    command: redis-server --requirepass ${REDIS_PASSWORD:-ceerion_redis_2024} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server 
+      --requirepass ${REDIS_PASSWORD:-ceerion_redis_2024}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
     volumes:
       - redis_mail_data:/data
     ports:
-      - "6380:6379"
+      - "6381:6379"
     networks:
-      - ceerion-mail
+      ceerion-mail:
+        ipv4_address: 172.32.0.11
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ClamAV Antivirus Scanner
+  clamav:
+    image: clamav/clamav:latest
+    container_name: ceerion-clamav
+    environment:
+      CLAMAV_NO_FRESHCLAMD: false
+      CLAMAV_NO_CLAMD: false
+    volumes:
+      - clamav_data:/var/lib/clamav
+    networks:
+      ceerion-mail:
+        ipv4_address: 172.32.0.12
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamd", "--ping"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 300s
+
+  # Rspamd Anti-spam and Filtering
+  rspamd:
+    image: rspamd/rspamd:latest
+    container_name: ceerion-rspamd
+    volumes:
+      - rspamd_data:/var/lib/rspamd
+      - ./docker/rspamd/local.d:/etc/rspamd/local.d:ro
+      - ./docker/rspamd/override.d:/etc/rspamd/override.d:ro
+    ports:
+      - "11334:11334" # Web interface
+    networks:
+      ceerion-mail:
+        ipv4_address: 172.32.0.13
+    restart: unless-stopped
+    depends_on:
+      - redis-mail
+    healthcheck:
+      test: ["CMD", "rspamc", "stat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Postfix SMTP Server
   postfix:
@@ -49,38 +143,39 @@ services:
     container_name: ceerion-postfix
     hostname: mail.ceerion.com
     environment:
-      - POSTFIX_MYHOSTNAME=mail.ceerion.com
-      - POSTFIX_MYDOMAIN=ceerion.com
-      - POSTFIX_MYORIGIN=ceerion.com
-      - POSTFIX_MYDESTINATION=ceerion.com,localhost
-      - POSTFIX_RELAYHOST=
-      - POSTFIX_INET_INTERFACES=all
-      - POSTFIX_INET_PROTOCOLS=ipv4
-      - DKIM_DOMAIN=ceerion.com
-      - DKIM_SELECTOR=ceerion
-      - DMARC_POLICY=quarantine
-      - TLS_CERT_PATH=/etc/ssl/certs/mail.ceerion.com.crt
-      - TLS_KEY_PATH=/etc/ssl/private/mail.ceerion.com.key
-      - SUBMISSION_AUTH=yes
-      - RATE_LIMIT_PER_IP=100
-      - RATE_LIMIT_PER_USER=1000
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-ceerion.com}
+      POSTGRES_HOST: postgres-mail
+      POSTGRES_DB: ceerion_mail
+      POSTGRES_USER: ceerion
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceerion_secure_2024}
+      DKIM_SELECTOR: ceerion
+      REDIS_HOST: redis-mail
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ceerion_redis_2024}
     volumes:
-      - ./docker/postfix/config:/etc/postfix/custom:ro
-      - ./docker/ssl:/etc/ssl:ro
-      - ./docker/dkim:/etc/opendkim:ro
-      - postfix_queue:/var/spool/postfix
-      - postfix_logs:/var/log/postfix
+      - postfix_data:/var/spool/postfix
+      - ssl_certs:/etc/ssl/certs
+      - ./docker/postfix/config:/etc/postfix/config:ro
+      - ./docker/dkim:/etc/postfix/dkim:ro
     ports:
-      - "25:25"     # SMTP
-      - "465:465"   # SMTPS
-      - "587:587"   # Submission
+      - "25:25" # SMTP
+      - "465:465" # SMTPS
+      - "587:587" # Submission
     networks:
-      - ceerion-mail
+      ceerion-mail:
+        ipv4_address: 172.32.0.20
+    restart: unless-stopped
     depends_on:
       - postgres-mail
       - redis-mail
-      - dovecot
-    restart: unless-stopped
+      - rspamd
+      - clamav
+    cap_add:
+      - NET_BIND_SERVICE
+    healthcheck:
+      test: ["CMD", "postfix", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Dovecot IMAP/LMTP/JMAP Server
   dovecot:
@@ -91,84 +186,32 @@ services:
     container_name: ceerion-dovecot
     hostname: mail.ceerion.com
     environment:
-      - DOVECOT_HOSTNAME=mail.ceerion.com
-      - DOVECOT_DOMAIN=ceerion.com
-      - POSTGRES_HOST=postgres-mail
-      - POSTGRES_DB=ceerion_mail
-      - POSTGRES_USER=ceerion
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ceerion_secure_2024}
-      - REDIS_HOST=redis-mail
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-ceerion_redis_2024}
-      - JMAP_ENABLED=yes
-      - JMAP_PORT=8080
-      - IMAP_SSL_CERT=/etc/ssl/certs/mail.ceerion.com.crt
-      - IMAP_SSL_KEY=/etc/ssl/private/mail.ceerion.com.key
-      - SASL_ENABLED=yes
-      - QUOTA_ENABLED=yes
-      - DEFAULT_QUOTA=5G
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-ceerion.com}
+      POSTGRES_HOST: postgres-mail
+      POSTGRES_DB: ceerion_mail
+      POSTGRES_USER: ceerion
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceerion_secure_2024}
     volumes:
-      - ./docker/dovecot/config:/etc/dovecot/custom:ro
-      - ./docker/ssl:/etc/ssl:ro
-      - dovecot_mail:/var/mail
-      - dovecot_index:/var/lib/dovecot/index
-      - dovecot_logs:/var/log/dovecot
+      - dovecot_data:/var/lib/dovecot
+      - mail_storage:/var/mail
+      - ssl_certs:/etc/ssl/certs
+      - ./docker/dovecot/config:/etc/dovecot/config:ro
     ports:
-      - "143:143"   # IMAP
-      - "993:993"   # IMAPS
-      - "24:24"     # LMTP
+      - "143:143" # IMAP
+      - "993:993" # IMAPS
+      - "24:24" # LMTP
       - "8080:8080" # JMAP
     networks:
-      - ceerion-mail
+      ceerion-mail:
+        ipv4_address: 172.32.0.21
+    restart: unless-stopped
     depends_on:
       - postgres-mail
-      - redis-mail
-    restart: unless-stopped
-
-  # Rspamd Anti-spam and Filtering
-  rspamd:
-    image: ceerion/rspamd:latest
-    build:
-      context: ./docker/rspamd
-      dockerfile: Dockerfile
-    container_name: ceerion-rspamd
-    environment:
-      - RSPAMD_CONTROLLER_PASSWORD=${RSPAMD_PASSWORD:-rspamd_secure_2024}
-      - REDIS_HOST=redis-mail
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-ceerion_redis_2024}
-      - DKIM_DOMAIN=ceerion.com
-      - DKIM_SELECTOR=ceerion
-      - DMARC_ENABLED=yes
-    volumes:
-      - ./docker/rspamd/config:/etc/rspamd/local.d:ro
-      - ./docker/dkim:/var/lib/rspamd/dkim:ro
-      - rspamd_data:/var/lib/rspamd
-      - rspamd_logs:/var/log/rspamd
-    ports:
-      - "11334:11334" # Normal worker
-      - "11335:11335" # Controller web interface
-    networks:
-      - ceerion-mail
-    depends_on:
-      - redis-mail
-    restart: unless-stopped
-
-  # ClamAV Antivirus Scanner
-  clamav:
-    image: clamav/clamav:latest
-    container_name: ceerion-clamav
-    environment:
-      - CLAMAV_NO_FRESHCLAMD=false
-      - CLAMAV_NO_CLAMD=false
-    volumes:
-      - clamav_data:/var/lib/clamav
-      - clamav_logs:/var/log/clamav
-    ports:
-      - "3310:3310"
-    networks:
-      - ceerion-mail
-    restart: unless-stopped
+      - postfix
+    cap_add:
+      - NET_BIND_SERVICE
     healthcheck:
-      test: ["CMD", "clamdscan", "--ping"]
+      test: ["CMD", "doveadm", "service", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -178,95 +221,54 @@ services:
     image: nginx:alpine
     container_name: ceerion-nginx-mail
     volumes:
-      - ./docker/nginx/mail.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./docker/nginx/mta-sts:/var/www/mta-sts:ro
-      - ./docker/ssl:/etc/ssl:ro
-      - nginx_logs:/var/log/nginx
+      - ssl_certs:/etc/ssl/certs:ro
     ports:
       - "80:80"
       - "443:443"
     networks:
-      - ceerion-mail
+      ceerion-mail:
+        ipv4_address: 172.32.0.22
     restart: unless-stopped
     depends_on:
       - postfix
       - dovecot
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Mail Backup Service
-  mail-backup:
-    image: ceerion/mail-backup:latest
+  # Encrypted Backup Service
+  backup-service:
+    image: ceerion/backup:latest
     build:
       context: ./docker/backup
       dockerfile: Dockerfile
-    container_name: ceerion-mail-backup
+    container_name: ceerion-backup
     environment:
-      - POSTGRES_HOST=postgres-mail
-      - POSTGRES_DB=ceerion_mail
-      - POSTGRES_USER=ceerion
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ceerion_secure_2024}
-      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - BACKUP_BUCKET=${BACKUP_BUCKET:-ceerion-mail-backups}
-      - BACKUP_SCHEDULE="0 2 * * *"  # Daily at 2 AM
-      - SNAPSHOT_SCHEDULE="0 3 * * 0"  # Weekly on Sunday at 3 AM
-      - RETENTION_DAYS=30
-      - COMPRESSION_LEVEL=9
+      POSTGRES_HOST: postgres-mail
+      POSTGRES_DB: ceerion_mail
+      POSTGRES_USER: ceerion
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ceerion_secure_2024}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BACKUP_BUCKET:-ceerion-mail-backups}
+      KMS_KEY_ID: ${KMS_KEY_ID}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY}
     volumes:
+      - backup_data:/backup
+      - postgres_mail_data:/postgres_data:ro
+      - mail_storage:/mail_storage:ro
       - ./docker/backup/scripts:/backup/scripts:ro
-      - postgres_mail_data:/data/postgres:ro
-      - dovecot_mail:/data/mail:ro
-      - dovecot_index:/data/index:ro
-      - backup_staging:/backup/staging
-      - backup_logs:/var/log/backup
     networks:
-      - ceerion-mail
+      ceerion-mail:
+        ipv4_address: 172.32.0.30
+    restart: unless-stopped
     depends_on:
       - postgres-mail
-      - dovecot
-    restart: unless-stopped
-
-  # Key Management Service (KMS)
-  kms:
-    image: ceerion/kms:latest
-    build:
-      context: ./docker/kms
-      dockerfile: Dockerfile
-    container_name: ceerion-kms
-    environment:
-      - KMS_MASTER_KEY=${KMS_MASTER_KEY}
-      - KMS_DB_PATH=/var/lib/kms/keys.db
-      - KMS_ROTATION_SCHEDULE="0 4 1 * *"  # Monthly on 1st at 4 AM
-    volumes:
-      - kms_data:/var/lib/kms
-      - kms_logs:/var/log/kms
-    ports:
-      - "8443:8443"
-    networks:
-      - ceerion-mail
-    restart: unless-stopped
-
-volumes:
-  postgres_mail_data:
-  redis_mail_data:
-  postfix_queue:
-  postfix_logs:
-  dovecot_mail:
-  dovecot_index:
-  dovecot_logs:
-  rspamd_data:
-  rspamd_logs:
-  clamav_data:
-  clamav_logs:
-  nginx_logs:
-  backup_staging:
-  backup_logs:
-  kms_data:
-  kms_logs:
-
-networks:
-  ceerion-mail:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+    # Run backup at 2 AM daily
+    command: >
+      sh -c "echo '0 2 * * * /backup/scripts/backup.sh' | crontab - && crond -f"

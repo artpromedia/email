@@ -48,6 +48,72 @@ smtpd_tls_loglevel = 1
 smtp_tls_loglevel = 1
 
 # === SASL Authentication ===
+# Dovecot SASL for submission authentication
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_security_options = noanonymous, noplaintext
+smtpd_sasl_tls_security_options = noanonymous
+smtpd_sasl_local_domain = $mydomain
+
+# === PostgreSQL Virtual Configuration ===
+virtual_mailbox_domains = pgsql:/etc/postfix/pgsql_virtual_domains.cf
+virtual_mailbox_maps = pgsql:/etc/postfix/pgsql_virtual_mailboxes.cf  
+virtual_alias_maps = pgsql:/etc/postfix/pgsql_virtual_aliases.cf
+virtual_transport = lmtp:inet:dovecot:24
+
+# === Security Restrictions ===
+# HELO restrictions
+smtpd_helo_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_invalid_helo_hostname,
+    reject_non_fqdn_helo_hostname,
+    reject_unknown_helo_hostname,
+    warn_if_reject
+
+# Sender restrictions
+smtpd_sender_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain,
+    warn_if_reject
+
+# Recipient restrictions with Rspamd integration
+smtpd_recipient_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_recipient,
+    reject_unknown_recipient_domain,
+    reject_unauth_destination,
+    check_policy_service inet:172.20.0.13:11332,
+    warn_if_reject
+
+# Data restrictions
+smtpd_data_restrictions = 
+    reject_unauth_pipelining,
+    permit
+
+# === Rate Limiting ===
+# Per-IP rate limits (100/hour)
+smtpd_client_connection_count_limit = 10
+smtpd_client_connection_rate_limit = 100
+smtpd_client_message_rate_limit = 100
+smtpd_client_recipient_rate_limit = 1000
+smtpd_client_event_limit_exceptions = $mynetworks
+
+# === Anti-spam Integration ===
+# Rspamd milter integration
+milter_protocol = 6
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+milter_default_action = accept
+smtpd_milters = inet:172.20.0.13:11332
+non_smtpd_milters = inet:172.20.0.13:11332
+
+# === DKIM Configuration ===
+# OpenDKIM integration (handled by Rspamd)
+milter_connect_macros = j {daemon_name} v {if_name} _
 smtpd_sasl_auth_enable = yes
 smtpd_sasl_type = dovecot
 smtpd_sasl_path = private/auth

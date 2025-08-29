@@ -1,5 +1,15 @@
 FROM debian:bookworm-slim
 
+# Set environment variables for non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN=true
+
+# Pre-configure postfix and opendmarc to avoid interactive prompts
+RUN echo "postfix postfix/mailname string localhost" | debconf-set-selections && \
+    echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections && \
+    echo "opendmarc opendmarc/dbconfig-install boolean false" | debconf-set-selections && \
+    echo "opendmarc opendmarc/mysql/admin-pass password" | debconf-set-selections
+
 # Install Postfix, OpenDKIM, OpenDMARC, and utilities
 RUN apt-get update && apt-get install -y \
     postfix \
