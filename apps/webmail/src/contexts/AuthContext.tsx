@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Clear any potentially corrupted auth state on startup in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       const token = localStorage.getItem("auth-token");
       if (token && token.includes("demo-token")) {
         console.log("🧹 Clearing demo auth state for fresh start");
