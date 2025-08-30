@@ -1333,6 +1333,194 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatConversationsResponse"
+  /admin/audit:
+    get:
+      summary: List audit events
+      operationId: listAuditEvents
+      tags:
+        - Admin
+        - Audit
+      security:
+        - bearerJWT: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query for filtering events
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: Start date filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: actor
+          in: query
+          description: Filter by actor email
+          schema:
+            type: string
+        - name: action
+          in: query
+          description: Filter by action type
+          schema:
+            type: string
+        - name: resourceType
+          in: query
+          description: Filter by resource type
+          schema:
+            type: string
+        - name: resourceId
+          in: query
+          description: Filter by resource ID
+          schema:
+            type: string
+        - name: result
+          in: query
+          description: Filter by result type
+          schema:
+            type: string
+            enum: [SUCCESS, FAILURE]
+        - name: ip
+          in: query
+          description: Filter by IP address
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          description: Cursor for pagination
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/audit/{id}:
+    get:
+      summary: Get audit event details
+      operationId: getAuditEvent
+      tags:
+        - Admin
+        - Audit
+      security:
+        - bearerJWT: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Audit event ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/audit/export.csv:
+    get:
+      summary: Export audit events to CSV
+      operationId: exportAuditEvents
+      tags:
+        - Admin
+        - Audit
+      security:
+        - bearerJWT: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query for filtering events
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: Start date filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: actor
+          in: query
+          description: Filter by actor email
+          schema:
+            type: string
+        - name: action
+          in: query
+          description: Filter by action type
+          schema:
+            type: string
+        - name: resourceType
+          in: query
+          description: Filter by resource type
+          schema:
+            type: string
+        - name: resourceId
+          in: query
+          description: Filter by resource ID
+          schema:
+            type: string
+        - name: result
+          in: query
+          description: Filter by result type
+          schema:
+            type: string
+            enum: [SUCCESS, FAILURE]
+        - name: ip
+          in: query
+          description: Filter by IP address
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file with audit events
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 components:
   securitySchemes:
     bearerJWT:
@@ -2479,6 +2667,75 @@ components:
       required:
         - error
         - message
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ts:
+          type: string
+          format: date-time
+        actorId:
+          type: string
+          format: uuid
+          nullable: true
+        actorEmail:
+          type: string
+          format: email
+          nullable: true
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+          nullable: true
+        result:
+          type: string
+          enum: [SUCCESS, FAILURE]
+        ip:
+          type: string
+          nullable: true
+        userAgent:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          nullable: true
+        actor:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+            name:
+              type: string
+          nullable: true
+      required:
+        - id
+        - ts
+        - action
+        - resourceType
+        - result
+    AuditListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+        nextCursor:
+          type: string
+          nullable: true
+        totalApprox:
+          type: integer
+      required:
+        - items
+        - totalApprox
   responses:
     BadRequest:
       description: Bad request
@@ -2488,6 +2745,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Unauthorized:
       description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
       content:
         application/json:
           schema:
@@ -2534,6 +2797,10 @@ tags:
     description: User preferences
   - name: Security
     description: Security sessions and device management
+  - name: Admin
+    description: Administrative operations
+  - name: Audit
+    description: Audit logging and monitoring
   - name: Calendar
     description: Calendar integration (stub)
   - name: Chat

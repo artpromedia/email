@@ -266,8 +266,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List messages */
+        /** List messages with complete folder coverage */
         get: operations["listMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get unread counts per folder and label */
+        get: operations["getMailCounts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -317,7 +334,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List drafts */
+        get: operations["listDrafts"];
         put?: never;
         /** Create draft */
         post: operations["createDraft"];
@@ -334,14 +352,135 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Get draft by ID */
+        get: operations["getDraft"];
+        put?: never;
+        post?: never;
+        /** Delete draft */
+        delete: operations["deleteDraft"];
+        options?: never;
+        head?: never;
+        /** Update draft */
+        patch: operations["updateDraft"];
+        trace?: never;
+    };
+    "/mail/scheduled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List scheduled messages */
+        get: operations["listScheduled"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/scheduled/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
         get?: never;
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Update draft */
-        patch: operations["updateDraft"];
+        /** Update scheduled message send time */
+        patch: operations["updateScheduled"];
+        trace?: never;
+    };
+    "/mail/scheduled/{id}/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send scheduled message immediately */
+        post: operations["sendScheduledNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/scheduled/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel scheduled message */
+        post: operations["cancelScheduled"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List outbox messages */
+        get: operations["listOutbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/outbox/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry failed outbox message */
+        post: operations["retryOutbox"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/outbox/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel outbox message */
+        post: operations["cancelOutbox"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/mail/attachments": {
@@ -412,6 +551,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mail/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List user labels */
+        get: operations["listLabels"];
+        put?: never;
+        /** Create new label */
+        post: operations["createLabel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/labels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get label by ID */
+        get: operations["getLabel"];
+        put?: never;
+        post?: never;
+        /** Delete label */
+        delete: operations["deleteLabel"];
+        options?: never;
+        head?: never;
+        /** Update label */
+        patch: operations["updateLabel"];
+        trace?: never;
+    };
+    "/mail/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List quarantined messages for user */
+        get: operations["listQuarantine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/quarantine/{id}/request-release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request release of quarantined message */
+        post: operations["requestQuarantineRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/policy/trusted-senders": {
         parameters: {
             query?: never;
@@ -438,11 +648,137 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get user settings */
+        /** Get user settings bundle */
         get: operations["getSettings"];
-        /** Update user settings */
+        /** Update user settings bundle */
         put: operations["updateSettings"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List email signatures */
+        get: operations["listSignatures"];
+        put?: never;
+        /** Create email signature */
+        post: operations["createSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/signatures/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get signature by ID */
+        get: operations["getSignature"];
+        put?: never;
+        post?: never;
+        /** Delete signature */
+        delete: operations["deleteSignature"];
+        options?: never;
+        head?: never;
+        /** Update signature */
+        patch: operations["updateSignature"];
+        trace?: never;
+    };
+    "/settings/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List email templates */
+        get: operations["listTemplates"];
+        put?: never;
+        /** Create email template */
+        post: operations["createTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get template by ID */
+        get: operations["getTemplate"];
+        put?: never;
+        post?: never;
+        /** Delete template */
+        delete: operations["deleteTemplate"];
+        options?: never;
+        head?: never;
+        /** Update template */
+        patch: operations["updateTemplate"];
+        trace?: never;
+    };
+    "/settings/ooo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get out-of-office settings */
+        get: operations["getOutOfOffice"];
+        /** Update out-of-office settings */
+        put: operations["updateOutOfOffice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/security/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active user sessions */
+        get: operations["listSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/security/sessions/revoke-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke all user sessions except current */
+        post: operations["revokeAllSessions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -483,6 +819,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List audit events */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get audit event details */
+        get: operations["getAuditEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export audit events to CSV */
+        get: operations["exportAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -505,9 +892,14 @@ export interface components {
             id: string;
             /** Format: uuid */
             userId: string;
-            deviceInfo?: string;
-            ipAddress?: string;
+            deviceInfo: string;
+            ipAddress: string;
             userAgent?: string;
+            location?: string;
+            /** @default false */
+            isCurrent: boolean;
+            /** Format: date-time */
+            lastActivity: string;
             /** Format: date-time */
             expiresAt: string;
             /** Format: date-time */
@@ -562,11 +954,20 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
-            color?: string;
+            color: string;
+            description?: string;
             /** Format: uuid */
             userId: string;
+            /** @default false */
+            isSystem: boolean;
+            /** @default 0 */
+            messageCount: number;
+            /** @default 0 */
+            unreadCount: number;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         Policy: {
             /** Format: uuid */
@@ -701,6 +1102,32 @@ export interface components {
             /** Format: date-time */
             snoozeUntil: string;
         };
+        MailCountsResponse: {
+            folders: {
+                /** @default 0 */
+                inbox: number;
+                /** @default 0 */
+                sent: number;
+                /** @default 0 */
+                drafts: number;
+                /** @default 0 */
+                trash: number;
+                /** @default 0 */
+                spam: number;
+                /** @default 0 */
+                archive: number;
+                /** @default 0 */
+                scheduled: number;
+                /** @default 0 */
+                outbox: number;
+            };
+            /** @description Unread counts by label ID */
+            labels: {
+                [key: string]: number;
+            };
+            /** @description Total unread messages across all folders */
+            total: number;
+        };
         MessagesResponse: {
             messages: components["schemas"]["Message"][];
             pagination: components["schemas"]["Pagination"];
@@ -783,6 +1210,122 @@ export interface components {
                 trackingImages?: boolean;
             };
         };
+        UpdateScheduledRequest: {
+            /** Format: date-time */
+            sendAt: string;
+        };
+        LabelsResponse: {
+            labels: components["schemas"]["Label"][];
+        };
+        CreateLabelRequest: {
+            name: string;
+            color: string;
+            description?: string;
+        };
+        UpdateLabelRequest: {
+            name?: string;
+            color?: string;
+            description?: string;
+        };
+        QuarantineReleaseRequest: {
+            reason?: string;
+        };
+        Signature: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            content: string;
+            isDefault: boolean;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SignaturesResponse: {
+            signatures: components["schemas"]["Signature"][];
+        };
+        CreateSignatureRequest: {
+            name: string;
+            content: string;
+            isDefault?: boolean;
+            /** @default true */
+            isActive: boolean;
+        };
+        UpdateSignatureRequest: {
+            name?: string;
+            content?: string;
+            isDefault?: boolean;
+            isActive?: boolean;
+        };
+        Template: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            subject: string;
+            content: string;
+            isActive: boolean;
+            /** @enum {string} */
+            category: "personal" | "business" | "support" | "marketing";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        TemplatesResponse: {
+            templates: components["schemas"]["Template"][];
+        };
+        CreateTemplateRequest: {
+            name: string;
+            subject: string;
+            content: string;
+            /** @default true */
+            isActive: boolean;
+            /**
+             * @default personal
+             * @enum {string}
+             */
+            category: "personal" | "business" | "support" | "marketing";
+        };
+        UpdateTemplateRequest: {
+            name?: string;
+            subject?: string;
+            content?: string;
+            isActive?: boolean;
+            /** @enum {string} */
+            category?: "personal" | "business" | "support" | "marketing";
+        };
+        OutOfOfficeSettings: {
+            enabled: boolean;
+            subject?: string;
+            message?: string;
+            /** Format: date-time */
+            startDate?: string;
+            /** Format: date-time */
+            endDate?: string;
+            sendToContacts?: boolean;
+            sendToExternal?: boolean;
+            contactsOnlyMessage?: string;
+            externalMessage?: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateOutOfOfficeRequest: {
+            enabled: boolean;
+            subject?: string;
+            message?: string;
+            /** Format: date-time */
+            startDate?: string;
+            /** Format: date-time */
+            endDate?: string;
+            sendToContacts?: boolean;
+            sendToExternal?: boolean;
+            contactsOnlyMessage?: string;
+            externalMessage?: string;
+        };
+        SessionsResponse: {
+            sessions: components["schemas"]["Session"][];
+        };
         CalendarEventsResponse: {
             events: {
                 /** Format: uuid */
@@ -815,6 +1358,36 @@ export interface components {
             code?: string;
             details?: Record<string, never>;
         };
+        AuditEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            ts: string;
+            /** Format: uuid */
+            actorId?: string | null;
+            /** Format: email */
+            actorEmail?: string | null;
+            action: string;
+            resourceType: string;
+            resourceId?: string | null;
+            /** @enum {string} */
+            result: "SUCCESS" | "FAILURE";
+            ip?: string | null;
+            userAgent?: string | null;
+            metadata?: Record<string, never> | null;
+            actor?: {
+                /** Format: uuid */
+                id?: string;
+                /** Format: email */
+                email?: string;
+                name?: string;
+            } | null;
+        };
+        AuditListResponse: {
+            items: components["schemas"]["AuditEvent"][];
+            nextCursor?: string | null;
+            totalApprox: number;
+        };
     };
     responses: {
         /** @description Bad request */
@@ -828,6 +1401,15 @@ export interface components {
         };
         /** @description Unauthorized */
         Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Forbidden */
+        Forbidden: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1211,9 +1793,25 @@ export interface operations {
     listMessages: {
         parameters: {
             query?: {
-                folder?: string;
+                /** @description System folder (inbox, sent, drafts, trash, spam, archive) */
+                folder?: "inbox" | "sent" | "drafts" | "trash" | "spam" | "archive" | "scheduled" | "outbox";
+                /** @description Message view filter */
+                view?: "all" | "unread" | "starred" | "important";
+                /** @description Filter by label ID */
+                labelId?: string;
+                /** @description Message category filter */
+                category?: "primary" | "social" | "promotions" | "updates" | "forums";
+                /** @description Page number (1-based) */
+                page?: number;
+                /** @description Number of messages per page */
+                pageSize?: number;
+                /** @description Search query (supports full-text search) */
+                q?: string;
+                /** @description Maximum number of results (deprecated, use pageSize) */
                 limit?: number;
+                /** @description Number of results to skip (deprecated, use page) */
                 offset?: number;
+                /** @description Search query (deprecated, use q) */
                 search?: string;
             };
             header?: never;
@@ -1222,13 +1820,33 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Messages list */
+            /** @description Messages list with pagination */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["MessagesResponse"];
+                };
+            };
+        };
+    };
+    getMailCounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mail counts by folder and label */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailCountsResponse"];
                 };
             };
         };
@@ -1280,6 +1898,29 @@ export interface operations {
             };
         };
     };
+    listDrafts: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Drafts list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesResponse"];
+                };
+            };
+        };
+    };
     createDraft: {
         parameters: {
             query?: never;
@@ -1302,6 +1943,50 @@ export interface operations {
                     "application/json": components["schemas"]["Message"];
                 };
             };
+        };
+    };
+    getDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     updateDraft: {
@@ -1328,6 +2013,172 @@ export interface operations {
                     "application/json": components["schemas"]["Message"];
                 };
             };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listScheduled: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scheduled messages list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesResponse"];
+                };
+            };
+        };
+    };
+    updateScheduled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduledRequest"];
+            };
+        };
+        responses: {
+            /** @description Scheduled message updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    sendScheduledNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Message sent immediately */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    cancelScheduled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scheduled message cancelled (moved to drafts) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listOutbox: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Outbox messages list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesResponse"];
+                };
+            };
+        };
+    };
+    retryOutbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Message retry initiated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    cancelOutbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Outbox message cancelled (moved to drafts) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     uploadAttachment: {
@@ -1429,6 +2280,171 @@ export interface operations {
             };
         };
     };
+    listLabels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Labels list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelsResponse"];
+                };
+            };
+        };
+    };
+    createLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description Label created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+        };
+    };
+    getLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Label details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Label deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description Label updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Label"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listQuarantine: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quarantined messages list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesResponse"];
+                };
+            };
+        };
+    };
+    requestQuarantineRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["QuarantineReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Release request submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     getTrustedSenders: {
         parameters: {
             query?: never;
@@ -1506,7 +2522,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description User settings */
+            /** @description User settings bundle */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1537,6 +2553,320 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserSettings"];
+                };
+            };
+        };
+    };
+    listSignatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Email signatures list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignaturesResponse"];
+                };
+            };
+        };
+    };
+    createSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSignatureRequest"];
+            };
+        };
+        responses: {
+            /** @description Signature created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Signature"];
+                };
+            };
+        };
+    };
+    getSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signature details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Signature"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signature deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSignatureRequest"];
+            };
+        };
+        responses: {
+            /** @description Signature updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Signature"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Email templates list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplatesResponse"];
+                };
+            };
+        };
+    };
+    createTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Template created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+        };
+    };
+    getTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Template updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getOutOfOffice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Out-of-office settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutOfOfficeSettings"];
+                };
+            };
+        };
+    };
+    updateOutOfOffice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOutOfOfficeRequest"];
+            };
+        };
+        responses: {
+            /** @description Out-of-office settings updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutOfOfficeSettings"];
+                };
+            };
+        };
+    };
+    listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active sessions list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionsResponse"];
+                };
+            };
+        };
+    };
+    revokeAllSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All sessions revoked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
         };
@@ -1582,6 +2912,120 @@ export interface operations {
                     "application/json": components["schemas"]["ChatConversationsResponse"];
                 };
             };
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Search query for filtering events */
+                q?: string;
+                /** @description Start date filter (ISO 8601) */
+                from?: string;
+                /** @description End date filter (ISO 8601) */
+                to?: string;
+                /** @description Filter by actor email */
+                actor?: string;
+                /** @description Filter by action type */
+                action?: string;
+                /** @description Filter by resource type */
+                resourceType?: string;
+                /** @description Filter by resource ID */
+                resourceId?: string;
+                /** @description Filter by result type */
+                result?: "SUCCESS" | "FAILURE";
+                /** @description Filter by IP address */
+                ip?: string;
+                /** @description Page number */
+                page?: number;
+                /** @description Number of items per page */
+                limit?: number;
+                /** @description Cursor for pagination */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of audit events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getAuditEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Audit event ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit event details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEvent"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Search query for filtering events */
+                q?: string;
+                /** @description Start date filter (ISO 8601) */
+                from?: string;
+                /** @description End date filter (ISO 8601) */
+                to?: string;
+                /** @description Filter by actor email */
+                actor?: string;
+                /** @description Filter by action type */
+                action?: string;
+                /** @description Filter by resource type */
+                resourceType?: string;
+                /** @description Filter by resource ID */
+                resourceId?: string;
+                /** @description Filter by result type */
+                result?: "SUCCESS" | "FAILURE";
+                /** @description Filter by IP address */
+                ip?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV file with audit events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
 }

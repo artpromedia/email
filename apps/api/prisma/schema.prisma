@@ -30,7 +30,7 @@ model User {
   messages          Message[]
   labels            Label[]
   policies          Policy[]
-  audits            Audit[]
+  auditEvents       AuditEvent[] @relation("AuditActor")
   webauthnCreds     WebAuthnCredential[]
   oidcIdentities    OIDCIdentity[]
   settings          UserSettings?
@@ -39,6 +39,8 @@ model User {
   ruleExecutions    RuleExecution[]
   ruleAuditLogs     RuleAuditLog[]
   ruleJobQueue      RuleJobQueue[]
+  systemPolicies    SystemPolicy[] @relation("SystemPolicyCreatedBy")
+  trustedSenders    TrustedSender[] @relation("TrustedSenderCreatedBy")
 
   @@map("users")
 }
@@ -154,21 +156,36 @@ model Policy {
   @@map("policies")
 }
 
-model Audit {
-  id         String    @id @default(cuid())
-  userId     String?
-  action     String
-  resource   String
-  resourceId String?
-  ipAddress  String
-  userAgent  String?
-  metadata   Json?
-  createdAt  DateTime  @default(now())
+model AuditEvent {
+  id            String    @id @default(uuid())
+  ts            DateTime  @default(now())
+  actorId       String?   // uuid, nullable
+  actorEmail    String?   // text
+  action        String    // e.g., "user.update", "policy.save", "quarantine.release"
+  resourceType  String    // "user", "policy", "quarantine", "deliverability", etc.
+  resourceId    String?   // uuid or natural key as text
+  result        AuditResult @default(SUCCESS) // "success" | "failure"
+  ip            String?   // inet
+  userAgent     String?   // text
+  metadata      Json?     // jsonb - diff or extra context
 
   // Relations
-  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actor         User?     @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
-  @@map("audits")
+  // Indexes for performance
+  @@index([ts(sort: Desc)])
+  @@index([actorEmail])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@index([result])
+  
+  // TODO: Add retention policy job to keep ≥ 400 days
+  @@map("audit_events")
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
 }
 
 model WebAuthnCredential {
@@ -307,4 +324,33 @@ model RuleJobQueue {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("rule_job_queue")
+}
+
+// System policies for admin configuration
+model SystemPolicy {
+  id          String   @id @default(cuid())
+  type        String   @unique // password, mfa, external-banner
+  settings    Json     // Policy-specific settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+
+  // Relations
+  createdBy   User     @relation("SystemPolicyCreatedBy", fields: [createdById], references: [id])
+
+  @@map("system_policies")
+}
+
+// Trusted senders for policy management
+model TrustedSender {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  domain      String?
+  createdAt   DateTime @default(now())
+  createdById String
+
+  // Relations
+  createdBy   User     @relation("TrustedSenderCreatedBy", fields: [createdById], references: [id])
+
+  @@map("trusted_senders")
 }
