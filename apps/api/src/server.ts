@@ -30,6 +30,9 @@ import { adminPolicyRoutes } from "./routes/admin/policies";
 import { adminMFARoutes } from "./routes/admin/mfa";
 import { adminDKIMRoutes } from "./routes/admin/dkim";
 import { adminSystemRoutes } from "./routes/admin/system";
+import { adminQuarantineRoutes } from "./routes/admin/quarantine";
+import { adminDomainRoutes } from "./routes/admin/domains";
+import { adminAnalyticsRoutes } from "./routes/admin/analytics";
 import rulesRoutes from "./routes/rules-final";
 import prismaPlugin from "./plugins/prisma";
 import redisPlugin from "./plugins/redis";
@@ -119,6 +122,18 @@ async function start() {
             description: "Policy management",
           },
           {
+            name: "Quarantine",
+            description: "Quarantine message management",
+          },
+          {
+            name: "Domains",
+            description: "Domain management and configuration",
+          },
+          {
+            name: "Analytics",
+            description: "Analytics and monitoring",
+          },
+          {
             name: "Metrics",
             description: "System and security metrics",
           },
@@ -149,6 +164,9 @@ async function start() {
     await fastify.register(adminMFARoutes);
     await fastify.register(adminDKIMRoutes);
     await fastify.register(adminSystemRoutes);
+    await fastify.register(adminQuarantineRoutes);
+    await fastify.register(adminDomainRoutes);
+    await fastify.register(adminAnalyticsRoutes);
     await fastify.register(rulesRoutes, { prefix: "/api" });
 
     // Serve OpenAPI JSON

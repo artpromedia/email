@@ -103,6 +103,8 @@ export class AuditLogger {
     DKIM: "dkim",
     SESSION: "session",
     SYSTEM: "system",
+    DOMAIN: "domain",
+    ANALYTICS: "analytics",
   } as const;
 }
 
