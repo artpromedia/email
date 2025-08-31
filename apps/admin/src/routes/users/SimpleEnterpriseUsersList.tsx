@@ -8,6 +8,9 @@ import {
   Edit,
   Trash2,
   Shield,
+  Download,
+  Upload,
+  ChevronDown,
 } from "lucide-react";
 import {
   useUsers,
@@ -15,6 +18,13 @@ import {
   type AdminUser,
 } from "../../data/users-simple";
 import { UserListSkeleton } from "../../components/UserSkeletons";
+import { ImportUsersModal } from "../../components/ImportUsersModal";
+import {
+  exportToCSV,
+  exportToJSON,
+  exportToExcelCSV,
+  downloadImportTemplate,
+} from "../../utils/userExport";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -38,12 +48,77 @@ import { useDebounce } from "../../hooks/useDebounce";
 const SimpleToolbar = () => {
   const { params, updateParams } = useUsersParams();
   const [searchInput, setSearchInput] = useState(params.query || "");
+  const [showImportModal, setShowImportModal] = useState(false);
   const debouncedSearch = useDebounce(searchInput, 300);
 
   // Update URL when debounced search changes
   React.useEffect(() => {
     updateParams({ query: debouncedSearch });
   }, [debouncedSearch, updateParams]);
+
+  // Export functionality
+  const handleExportUsers = (format: "csv" | "excel" | "json" = "csv") => {
+    // In a real app, this would fetch all users from the API
+    const mockUsers = [
+      {
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@ceerion.com",
+        role: "admin",
+        status: "active",
+        enabled: true,
+        mfaEnabled: true,
+        quotaUsed: 2.5,
+        quotaLimit: 10,
+        lastLogin: "2024-01-15T10:30:00Z",
+        createdAt: "2023-06-01T09:00:00Z",
+      },
+      {
+        firstName: "Jane",
+        lastName: "Smith",
+        email: "jane.smith@ceerion.com",
+        role: "user",
+        status: "active",
+        enabled: true,
+        mfaEnabled: false,
+        quotaUsed: 1.2,
+        quotaLimit: 5,
+        lastLogin: "2024-01-14T16:45:00Z",
+        createdAt: "2023-08-15T11:30:00Z",
+      },
+    ];
+
+    switch (format) {
+      case "excel":
+        exportToExcelCSV(mockUsers);
+        break;
+      case "json":
+        exportToJSON(mockUsers);
+        break;
+      default:
+        exportToCSV(mockUsers);
+    }
+
+    alert(`Users exported successfully as ${format.toUpperCase()}!`);
+  };
+
+  // Download CSV template
+  const handleDownloadTemplate = (format: "csv" | "json" = "csv") => {
+    downloadImportTemplate(format);
+  };
+
+  // Handle bulk import from modal
+  const handleBulkImport = (users: any[]) => {
+    // In a real app, this would call the API to create users
+    console.log("Bulk importing users:", users);
+    alert(`Successfully imported ${users.length} users!`);
+    // In real app, would refetch the users list here
+  };
+
+  // Import functionality - replaced with modal
+  const handleImportUsers = () => {
+    setShowImportModal(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -53,12 +128,64 @@ const SimpleToolbar = () => {
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
         </div>
 
-        <Link to="/users/new">
-          <Button>
+        <div className="flex items-center gap-2">
+          {/* Template Download Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Template
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleDownloadTemplate("csv")}>
+                Download CSV Template
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownloadTemplate("json")}>
+                Download JSON Template
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Export
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExportUsers("csv")}>
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportUsers("excel")}>
+                Export as Excel CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportUsers("json")}>
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="outline"
+            onClick={handleImportUsers}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import Users
+          </Button>
+          <Link
+            to="/users/new"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add User
-          </Button>
-        </Link>
+          </Link>
+        </div>
       </div>
 
       <div className="flex items-center space-x-4">
@@ -82,7 +209,7 @@ const SimpleToolbar = () => {
             <SelectValue placeholder="Role" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Roles</SelectItem>
+            <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="user">User</SelectItem>
             <SelectItem value="support">Support</SelectItem>
@@ -98,13 +225,20 @@ const SimpleToolbar = () => {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Import Users Modal */}
+      <ImportUsersModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleBulkImport}
+      />
     </div>
   );
 };
@@ -265,7 +399,7 @@ const UsersListContent = () => {
     );
   }
 
-  if (!usersResponse) {
+  if (!usersResponse || !usersResponse.users) {
     return (
       <div className="p-6 text-center">
         <p className="text-gray-500">No data available</p>

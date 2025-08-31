@@ -3,10 +3,37 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
-import { createCeerionMailClient } from "@ceerion/sdk";
 import { toast } from "react-hot-toast";
+
+// Mock client for development
+const createCeerionMailClient = () => ({
+  auth: {
+    login: async (credentials: any) => {
+      // Mock successful login for admin
+      if (
+        credentials.email === "admin@ceerion.com" &&
+        credentials.password === "admin123"
+      ) {
+        return {
+          success: true,
+          user: {
+            id: "admin-1",
+            email: "admin@ceerion.com",
+            role: "admin",
+            name: "Admin User",
+            permissions: ["read", "write", "admin"],
+          },
+        };
+      }
+      return { success: false, error: "Invalid credentials" };
+    },
+    logout: async () => ({ success: true }),
+    getCurrentUser: async () => null,
+  },
+});
 
 interface AdminUser {
   id: string;
@@ -32,24 +59,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const client = createCeerionMailClient({
-    baseUrl: "http://localhost:4000",
-    headers: user
-      ? { Authorization: `Bearer ${localStorage.getItem("admin_token")}` }
-      : {},
-  });
+  const client = createCeerionMailClient();
 
-  useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    if (token) {
-      // Verify admin token and get user info
-      verifyAdminToken(token);
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const verifyAdminToken = async (_token: string) => {
+  const verifyAdminToken = useCallback(async (_token: string) => {
     try {
       // Mock admin verification - in real implementation, verify with API
       const mockAdmin: AdminUser = {
@@ -73,7 +85,17 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("admin_token");
+    if (token) {
+      // Verify admin token and get user info
+      verifyAdminToken(token);
+    } else {
+      setIsLoading(false);
+    }
+  }, []); // Empty dependency array is fine since we only want this to run once
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {

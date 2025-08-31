@@ -131,7 +131,7 @@ export function SecuritySettings() {
     });
   };
 
-  const handleRemovePasskey = (id: string) => {
+  const handleRemovePasskey = (/* id: string */) => {
     // TODO: Implement passkey removal
     toast({
       title: "Passkey removed",
@@ -139,7 +139,7 @@ export function SecuritySettings() {
     });
   };
 
-  const handleConnectProvider = (providerId: string) => {
+  const handleConnectProvider = (/* providerId: string */) => {
     // TODO: Implement OIDC provider connection
     toast({
       title: "Provider connection",
@@ -148,7 +148,7 @@ export function SecuritySettings() {
     });
   };
 
-  const handleDisconnectProvider = (providerId: string) => {
+  const handleDisconnectProvider = (/* providerId: string */) => {
     // TODO: Implement OIDC provider disconnection
     toast({
       title: "Provider disconnected",
@@ -157,7 +157,7 @@ export function SecuritySettings() {
     });
   };
 
-  const handleRevokeSession = (sessionId: string) => {
+  const handleRevokeSession = (/* sessionId: string */) => {
     // TODO: Implement session revocation
     toast({
       title: "Session revoked",
@@ -325,7 +325,7 @@ export function SecuritySettings() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleRemovePasskey(passkey.id)}
+                  onClick={() => handleRemovePasskey()}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -379,8 +379,8 @@ export function SecuritySettings() {
                   size="sm"
                   onClick={() =>
                     provider.connected
-                      ? handleDisconnectProvider(provider.id)
-                      : handleConnectProvider(provider.id)
+                      ? handleDisconnectProvider()
+                      : handleConnectProvider()
                   }
                 >
                   {provider.connected ? (
@@ -438,7 +438,7 @@ export function SecuritySettings() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleRevokeSession(session.id)}
+                    onClick={() => handleRevokeSession()}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Revoke

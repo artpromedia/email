@@ -1,9 +1,9 @@
-import * as argon2 from 'argon2';
-import * as jwt from 'jsonwebtoken';
-import { nanoid } from 'nanoid';
-import { loadEnv } from '../config/env';
-import { prisma } from '../db/prisma';
-import { redis, blacklistToken, isTokenBlacklisted } from '../db/redis';
+import * as argon2 from "argon2";
+import * as jwt from "jsonwebtoken";
+import { nanoid } from "nanoid";
+import { loadEnv } from "../config/env";
+import { prisma } from "../db/prisma";
+import { redis, blacklistToken, isTokenBlacklisted } from "../db/redis";
 
 const env = loadEnv();
 
@@ -14,6 +14,8 @@ export interface JWTPayload {
   iat: number;
   exp: number;
   jti: string; // JWT ID for blacklisting
+  amr: string[]; // Authentication Methods Reference: ["pwd"], ["pwd","otp"], ["pwd","passkey"]
+  mfa_level: string; // "none" | "otp" | "passkey"
 }
 
 export interface RefreshTokenPayload {
@@ -34,7 +36,10 @@ export async function hashPassword(password: string): Promise<string> {
   });
 }
 
-export async function verifyPassword(hash: string, password: string): Promise<boolean> {
+export async function verifyPassword(
+  hash: string,
+  password: string,
+): Promise<boolean> {
   try {
     return await argon2.verify(hash, password);
   } catch {
@@ -43,43 +48,60 @@ export async function verifyPassword(hash: string, password: string): Promise<bo
 }
 
 // JWT token management
-export function generateAccessToken(user: { id: string; email: string; name: string }): string {
-  const payload: Omit<JWTPayload, 'iat' | 'exp'> = {
+export function generateAccessToken(
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  },
+  options?: {
+    amr?: string[];
+    mfaLevel?: string;
+  },
+): string {
+  const payload: Omit<JWTPayload, "iat" | "exp"> = {
     sub: user.id,
     email: user.email,
     name: user.name,
     jti: nanoid(),
+    amr: options?.amr || ["pwd"],
+    mfa_level: options?.mfaLevel || "none",
   };
 
   return jwt.sign(payload, env.JWT_PRIVATE_KEY, {
-    algorithm: 'RS256',
-    expiresIn: '15m',
-    issuer: 'ceerion-mail',
-    audience: 'ceerion-mail-client',
+    algorithm: "RS256",
+    expiresIn: "15m",
+    issuer: "ceerion-mail",
+    audience: "ceerion-mail-client",
   });
 }
 
-export function generateRefreshToken(userId: string, sessionId: string): string {
-  const payload: Omit<RefreshTokenPayload, 'iat' | 'exp'> = {
+export function generateRefreshToken(
+  userId: string,
+  sessionId: string,
+): string {
+  const payload: Omit<RefreshTokenPayload, "iat" | "exp"> = {
     sub: userId,
     sessionId,
     jti: nanoid(),
   };
 
   return jwt.sign(payload, env.JWT_PRIVATE_KEY, {
-    algorithm: 'RS256',
-    expiresIn: '7d',
-    issuer: 'ceerion-mail',
-    audience: 'ceerion-mail-refresh',
+    algorithm: "RS256",
+    expiresIn: "7d",
+    issuer: "ceerion-mail",
+    audience: "ceerion-mail-refresh",
   });
 }
 
-export async function verifyAccessToken(token: string): Promise<JWTPayload | null> {
+export async function verifyAccessToken(
+  token: string,
+): Promise<JWTPayload | null> {
   try {
     const payload = jwt.verify(token, env.JWT_PRIVATE_KEY, {
-      algorithms: ['RS256'],
-      issuer: 'ceerion-mail',
-      audience: 'ceerion-mail-client',
+      algorithms: ["RS256"],
+      issuer: "ceerion-mail",
+      audience: "ceerion-mail-client",
     }) as JWTPayload;
 
     // Check if token is blacklisted
@@ -93,12 +115,14 @@ export async function verifyAccessToken(token: string): Promise<JWTPayload | nul
   }
 }
 
-export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
+export async function verifyRefreshToken(
+  token: string,
+): Promise<RefreshTokenPayload | null> {
   try {
     const payload = jwt.verify(token, env.JWT_PRIVATE_KEY, {
-      algorithms: ['RS256'],
-      issuer: 'ceerion-mail',
-      audience: 'ceerion-mail-refresh',
+      algorithms: ["RS256"],
+      issuer: "ceerion-mail",
+      audience: "ceerion-mail-refresh",
     }) as RefreshTokenPayload;
 
     // Check if token is blacklisted
@@ -148,7 +172,9 @@ export async function createSession(
   userId: string,
   ipAddress: string,
   userAgent?: string,
-  deviceInfo?: string
+  deviceInfo?: string,
+  mfaLevel: "NONE" | "OTP" | "PASSKEY" = "NONE",
+  amr: string[] = ["pwd"],
 ) {
   const sessionId = nanoid();
   const refreshToken = generateRefreshToken(userId, sessionId);
@@ -163,6 +189,8 @@ export async function createSession(
       ipAddress,
       userAgent,
       expiresAt: new Date(refreshPayload.exp * 1000),
+      mfaLevel,
+      amr,
     },
   });
 
@@ -173,6 +201,17 @@ export async function revokeSession(sessionId: string): Promise<void> {
   await prisma.session.update({
     where: { id: sessionId },
     data: { isRevoked: true },
+  });
+}
+
+export async function upgradeSessionMFA(
+  sessionId: string,
+  mfaLevel: "OTP" | "PASSKEY",
+  amr: string[],
+): Promise<void> {
+  await prisma.session.update({
+    where: { id: sessionId },
+    data: { mfaLevel, amr },
   });
 }
 
@@ -196,18 +235,25 @@ export function verifyMFACode(secret: string, code: string): boolean {
   // This is a simplified implementation
   // In production, use TOTP library like @otplib/preset-v11
   const timeWindow = Math.floor(Date.now() / 30000);
-  const expectedCode = ((timeWindow * parseInt(secret.substring(0, 8), 36)) % 900000 + 100000).toString();
+  const expectedCode = (
+    ((timeWindow * parseInt(secret.substring(0, 8), 36)) % 900000) +
+    100000
+  ).toString();
   return expectedCode === code;
 }
 
 // Password reset tokens
-export async function generatePasswordResetToken(email: string): Promise<string> {
+export async function generatePasswordResetToken(
+  email: string,
+): Promise<string> {
   const token = nanoid(32);
   await redis.setex(`password_reset:${token}`, 3600, email); // 1 hour expiry
   return token;
 }
 
-export async function verifyPasswordResetToken(token: string): Promise<string | null> {
+export async function verifyPasswordResetToken(
+  token: string,
+): Promise<string | null> {
   const email = await redis.get(`password_reset:${token}`);
   if (email) {
     await redis.del(`password_reset:${token}`); // One-time use
@@ -223,15 +269,17 @@ export async function logAuditEvent(
   ipAddress: string,
   userAgent: string | null,
   userId?: string,
-  metadata?: any
+  metadata?: any,
 ) {
-  await prisma.audit.create({
+  // Legacy function - consider migrating to new AuditLogger
+  await prisma.auditEvent.create({
     data: {
-      userId,
+      actorId: userId,
       action,
-      resource,
+      resourceType: resource,
       resourceId,
-      ipAddress,
+      result: "SUCCESS",
+      ip: ipAddress,
       userAgent,
       metadata,
     },

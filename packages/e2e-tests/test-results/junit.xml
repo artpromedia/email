@@ -1,2 +1,496 @@
-<testsuites id="" name="" tests="0" failures="0" skipped="0" errors="0" time="81.981033">
+<testsuites id="" name="" tests="14" failures="14" skipped="0" errors="0" time="75.992951">
+<testsuite name="admin-no-flicker.spec.ts" timestamp="2025-08-30T03:38:19.040Z" hostname="Admin - Chromium" tests="7" failures="7" skipped="0" time="58.817" errors="0">
+<testcase name="Admin - No Flicker &amp; Static Buttons › Navigate list → detail → back with no console errors and proper skeletons" classname="admin-no-flicker.spec.ts" time="10.734">
+<failure message="admin-no-flicker.spec.ts:28:7 Navigate list → detail → back with no console errors and proper skeletons" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:28:7 › Admin - No Flicker & Static Buttons › Navigate list → detail → back with no console errors and proper skeletons 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Row action: Toggle Admin (optimistic), rollback on forced 500" classname="admin-no-flicker.spec.ts" time="9.78">
+<failure message="admin-no-flicker.spec.ts:56:7 Row action: Toggle Admin (optimistic), rollback on forced 500" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:56:7 › Admin - No Flicker & Static Buttons › Row action: Toggle Admin (optimistic), rollback on forced 500 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Detail: change quota, add alias, unlink OIDC, revoke sessions → network calls &amp; toasts" classname="admin-no-flicker.spec.ts" time="6.717">
+<failure message="admin-no-flicker.spec.ts:93:7 Detail: change quota, add alias, unlink OIDC, revoke sessions → network calls &amp; toasts" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:93:7 › Admin - No Flicker & Static Buttons › Detail: change quota, add alias, unlink OIDC, revoke sessions → network calls & toasts 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Bulk import dry run → shows preview row errors; confirm → progress → success" classname="admin-no-flicker.spec.ts" time="7.778">
+<failure message="admin-no-flicker.spec.ts:145:7 Bulk import dry run → shows preview row errors; confirm → progress → success" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:145:7 › Admin - No Flicker & Static Buttons › Bulk import dry run → shows preview row errors; confirm → progress → success 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Users table virtualization performance" classname="admin-no-flicker.spec.ts" time="7.943">
+<failure message="admin-no-flicker.spec.ts:191:7 Users table virtualization performance" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:191:7 › Admin - No Flicker & Static Buttons › Users table virtualization performance 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › No static buttons or loading flicker during state changes" classname="admin-no-flicker.spec.ts" time="9.117">
+<failure message="admin-no-flicker.spec.ts:220:7 No static buttons or loading flicker during state changes" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:220:7 › Admin - No Flicker & Static Buttons › No static buttons or loading flicker during state changes 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Bulk actions with proper loading states" classname="admin-no-flicker.spec.ts" time="6.748">
+<failure message="admin-no-flicker.spec.ts:250:7 Bulk actions with proper loading states" type="FAILURE">
+<![CDATA[  [Admin - Chromium] › admin-no-flicker.spec.ts:250:7 › Admin - No Flicker & Static Buttons › Bulk actions with proper loading states 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="admin-no-flicker.spec.ts" timestamp="2025-08-30T03:38:19.040Z" hostname="Admin No-Flicker - Chromium" tests="7" failures="7" skipped="0" time="68.23" errors="0">
+<testcase name="Admin - No Flicker &amp; Static Buttons › Navigate list → detail → back with no console errors and proper skeletons" classname="admin-no-flicker.spec.ts" time="7.672">
+<failure message="admin-no-flicker.spec.ts:28:7 Navigate list → detail → back with no console errors and proper skeletons" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:28:7 › Admin - No Flicker & Static Buttons › Navigate list → detail → back with no console errors and proper skeletons 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-10587-errors-and-proper-skeletons-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Row action: Toggle Admin (optimistic), rollback on forced 500" classname="admin-no-flicker.spec.ts" time="8.634">
+<failure message="admin-no-flicker.spec.ts:56:7 Row action: Toggle Admin (optimistic), rollback on forced 500" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:56:7 › Admin - No Flicker & Static Buttons › Row action: Toggle Admin (optimistic), rollback on forced 500 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-54f74-stic-rollback-on-forced-500-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Detail: change quota, add alias, unlink OIDC, revoke sessions → network calls &amp; toasts" classname="admin-no-flicker.spec.ts" time="7.708">
+<failure message="admin-no-flicker.spec.ts:93:7 Detail: change quota, add alias, unlink OIDC, revoke sessions → network calls &amp; toasts" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:93:7 › Admin - No Flicker & Static Buttons › Detail: change quota, add alias, unlink OIDC, revoke sessions → network calls & toasts 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-1feac-ions-→-network-calls-toasts-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Bulk import dry run → shows preview row errors; confirm → progress → success" classname="admin-no-flicker.spec.ts" time="7.271">
+<failure message="admin-no-flicker.spec.ts:145:7 Bulk import dry run → shows preview row errors; confirm → progress → success" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:145:7 › Admin - No Flicker & Static Buttons › Bulk import dry run → shows preview row errors; confirm → progress → success 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-89f74-onfirm-→-progress-→-success-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Users table virtualization performance" classname="admin-no-flicker.spec.ts" time="6.107">
+<failure message="admin-no-flicker.spec.ts:191:7 Users table virtualization performance" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:191:7 › Admin - No Flicker & Static Buttons › Users table virtualization performance 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-7cc26--virtualization-performance-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › No static buttons or loading flicker during state changes" classname="admin-no-flicker.spec.ts" time="24.829">
+<failure message="admin-no-flicker.spec.ts:220:7 No static buttons or loading flicker during state changes" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:220:7 › Admin - No Flicker & Static Buttons › No static buttons or loading flicker during state changes 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-7be2e-licker-during-state-changes-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Admin - No Flicker &amp; Static Buttons › Bulk actions with proper loading states" classname="admin-no-flicker.spec.ts" time="6.009">
+<failure message="admin-no-flicker.spec.ts:250:7 Bulk actions with proper loading states" type="FAILURE">
+<![CDATA[  [Admin No-Flicker - Chromium] › admin-no-flicker.spec.ts:250:7 › Admin - No Flicker & Static Buttons › Bulk actions with proper loading states 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3001/
+    Call log:
+      - navigating to "http://localhost:3001/", waiting until "load"
+
+
+      20 |     
+      21 |     // Navigate to admin and login
+    > 22 |     await page.goto("http://localhost:3001/");
+         |                ^
+      23 |     
+      24 |     // Wait for admin login or dashboard to load
+      25 |     await page.waitForLoadState("networkidle");
+        at C:\Users\ofema\CNI\packages\e2e-tests\tests\admin-no-flicker.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin-No-Flicker---Chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin-No-Flicker---Chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin-No-Flicker---Chromium\test-failed-1.png]]
+
+[[ATTACHMENT|admin-no-flicker-Admin---N-3a20d--with-proper-loading-states-Admin-No-Flicker---Chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
 </testsuites>

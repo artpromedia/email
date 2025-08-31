@@ -334,7 +334,7 @@ export function UserExportPage() {
                       <SelectValue placeholder="Any role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any role</SelectItem>
+                      <SelectItem value="all">Any role</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="support">Support</SelectItem>
@@ -352,7 +352,7 @@ export function UserExportPage() {
                       <SelectValue placeholder="Any status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any status</SelectItem>
+                      <SelectItem value="all">Any status</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="suspended">Suspended</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
@@ -370,7 +370,7 @@ export function UserExportPage() {
                       <SelectValue placeholder="Any group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any group</SelectItem>
+                      <SelectItem value="all">Any group</SelectItem>
                       {groups?.map((group) => (
                         <SelectItem key={group.id} value={group.name}>
                           {group.name}

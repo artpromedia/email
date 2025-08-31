@@ -20,12 +20,23 @@ const telemetry = initTelemetry({
 
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
+import { mfaRoutes } from "./routes/mfa";
+import { securityRoutes } from "./routes/security";
 import { mailRoutes } from "./routes/mail";
+import { metricsRoutes } from "./routes/metrics";
+import { adminAuditRoutes } from "./routes/admin/audit";
+import { adminUserRoutes } from "./routes/admin/users";
+import { adminPolicyRoutes } from "./routes/admin/policies";
+import { adminMFARoutes } from "./routes/admin/mfa";
+import { adminDKIMRoutes } from "./routes/admin/dkim";
+import { adminSystemRoutes } from "./routes/admin/system";
 import rulesRoutes from "./routes/rules-final";
 import prismaPlugin from "./plugins/prisma";
 import redisPlugin from "./plugins/redis";
 import databasePlugin from "./plugins/database";
 import { authMiddleware } from "./auth/middleware";
+import { mfaEnforcementMiddleware } from "./auth/mfa-middleware";
+import { initializeAuditLogger } from "./utils/audit-logger";
 import "./types"; // Import type declarations
 
 const fastify = Fastify({
@@ -53,8 +64,14 @@ async function start() {
     await fastify.register(redisPlugin);
     await fastify.register(databasePlugin);
 
+    // Initialize audit logger after Prisma is registered
+    initializeAuditLogger(fastify.prisma);
+
     // Register authentication middleware
     await fastify.register(authMiddleware);
+
+    // Register MFA enforcement middleware as a global hook
+    fastify.addHook("preHandler", mfaEnforcementMiddleware);
 
     // Swagger documentation
     await fastify.register(swagger, {
@@ -77,6 +94,34 @@ async function start() {
             name: "Authentication",
             description: "User authentication endpoints",
           },
+          {
+            name: "MFA",
+            description: "Multi-factor authentication",
+          },
+          {
+            name: "Security",
+            description: "Security and session management",
+          },
+          {
+            name: "Admin",
+            description: "Administrative endpoints",
+          },
+          {
+            name: "Audit",
+            description: "Audit logging and monitoring",
+          },
+          {
+            name: "Users",
+            description: "User management",
+          },
+          {
+            name: "Policies",
+            description: "Policy management",
+          },
+          {
+            name: "Metrics",
+            description: "System and security metrics",
+          },
         ],
       },
     });
@@ -94,7 +139,16 @@ async function start() {
     // Register routes
     await fastify.register(healthRoutes);
     await fastify.register(authRoutes, { prefix: "/auth" });
+    await fastify.register(mfaRoutes);
+    await fastify.register(securityRoutes);
     await fastify.register(mailRoutes, { prefix: "/mail" });
+    await fastify.register(metricsRoutes);
+    await fastify.register(adminAuditRoutes);
+    await fastify.register(adminUserRoutes);
+    await fastify.register(adminPolicyRoutes);
+    await fastify.register(adminMFARoutes);
+    await fastify.register(adminDKIMRoutes);
+    await fastify.register(adminSystemRoutes);
     await fastify.register(rulesRoutes, { prefix: "/api" });
 
     // Serve OpenAPI JSON

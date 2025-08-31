@@ -154,7 +154,7 @@ const UsersToolbar = React.memo(
               <SelectValue placeholder="Role" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Roles</SelectItem>
+              <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="user">User</SelectItem>
               <SelectItem value="support">Support</SelectItem>
@@ -170,7 +170,7 @@ const UsersToolbar = React.memo(
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="suspended">Suspended</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
@@ -184,17 +184,17 @@ const UsersToolbar = React.memo(
                 ? "true"
                 : params.enabled === false
                   ? "false"
-                  : ""
+                  : "all"
             }
             onValueChange={(value) =>
-              updateParams({ enabled: value === "" ? "" : value === "true" })
+              updateParams({ enabled: value === "all" ? "" : value === "true" })
             }
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Enabled" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="true">Enabled</SelectItem>
               <SelectItem value="false">Disabled</SelectItem>
             </SelectContent>
@@ -203,17 +203,21 @@ const UsersToolbar = React.memo(
           {/* MFA Filter */}
           <Select
             value={
-              params.mfa === true ? "true" : params.mfa === false ? "false" : ""
+              params.mfa === true
+                ? "true"
+                : params.mfa === false
+                  ? "false"
+                  : "all"
             }
             onValueChange={(value) =>
-              updateParams({ mfa: value === "" ? "" : value === "true" })
+              updateParams({ mfa: value === "all" ? "" : value === "true" })
             }
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder="MFA" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="true">MFA On</SelectItem>
               <SelectItem value="false">MFA Off</SelectItem>
             </SelectContent>

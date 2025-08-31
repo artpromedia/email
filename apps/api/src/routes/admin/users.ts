@@ -31,25 +31,248 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
   // Add admin auth middleware to all routes
   fastify.addHook("preHandler", requireAdmin);
 
-  // PATCH /admin/users/:id - Enable/disable or change role
-  fastify.patch(
+  // POST /admin/users - Create new user
+  fastify.post(
+    "/admin/users",
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["email", "firstName", "lastName", "role"],
+          properties: {
+            email: { type: "string", format: "email" },
+            firstName: { type: "string", minLength: 1 },
+            lastName: { type: "string", minLength: 1 },
+            role: { type: "string", enum: ["user", "admin"] },
+            quotaLimit: { type: "number", minimum: 0 },
+            enabled: { type: "boolean" },
+          },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Body: {
+          email: string;
+          firstName: string;
+          lastName: string;
+          role: "user" | "admin";
+          quotaLimit?: number;
+          enabled?: boolean;
+        };
+      }>,
+      reply: FastifyReply,
+    ) => {
+      const {
+        email,
+        firstName,
+        lastName,
+        role,
+        quotaLimit = 10240,
+        enabled = true,
+      } = request.body;
+      const currentUser = request.user!;
+
+      try {
+        // Check if user already exists
+        const existingUser = await fastify.prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (existingUser) {
+          return reply.status(409).send({
+            error: "Conflict",
+            message: "User with this email already exists",
+          });
+        }
+
+        // Generate temporary password
+        const tempPassword = Math.random().toString(36).slice(-12) + "Aa1!";
+        const hashedPassword = await hashPassword(tempPassword);
+
+        // Create the user
+        const newUser = await fastify.prisma.user.create({
+          data: {
+            email,
+            name: `${firstName} ${lastName}`,
+            passwordHash: hashedPassword,
+            isAdmin: role === "admin",
+            isSuspended: !enabled,
+            emailVerified: false, // User needs to verify email
+          },
+        });
+
+        // Log audit event
+        await logAudit({
+          actorId: currentUser.sub,
+          actorEmail: currentUser.email,
+          action: "user.create",
+          resourceType: AuditLogger.ResourceTypes.USER,
+          resourceId: newUser.id,
+          result: "SUCCESS",
+          ip: request.ip,
+          userAgent: request.headers["user-agent"],
+          metadata: {
+            createdUser: {
+              email: newUser.email,
+              name: newUser.name,
+              role: role,
+              enabled: enabled,
+              quotaLimit: quotaLimit,
+            },
+          },
+        });
+
+        return reply.code(201).send({
+          message: "User created successfully",
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            name: newUser.name,
+            role: role,
+            enabled: enabled,
+            quotaLimit: quotaLimit,
+            createdAt: newUser.createdAt,
+          },
+          tempPassword, // Include temporary password for admin to share
+        });
+      } catch (error) {
+        // Log audit failure
+        await logAudit({
+          actorId: currentUser.sub,
+          actorEmail: currentUser.email,
+          action: "user.create",
+          resourceType: AuditLogger.ResourceTypes.USER,
+          resourceId: "unknown",
+          result: "FAILURE",
+          ip: request.ip,
+          userAgent: request.headers["user-agent"],
+          metadata: {
+            error: (error as Error)?.message || "Unknown error",
+            attemptedUserData: { email, firstName, lastName, role },
+          },
+        });
+
+        throw error;
+      }
+    },
+  );
+
+  // DELETE /admin/users/:id - Delete user
+  fastify.delete(
     "/admin/users/:id",
     {
       schema: {
-        tags: ["Admin", "Users"],
-        summary: "Enable/disable user or change role",
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+          },
+        },
       },
     },
     async (
       request: FastifyRequest<{
         Params: { id: string };
-        Body: { enabled?: boolean; role?: "user" | "admin" };
       }>,
       reply: FastifyReply,
     ) => {
       const { id: userId } = request.params;
-      const { enabled, role } = request.body;
       const currentUser = request.user!;
+
+      try {
+        // Get the target user first
+        const targetUser = await fastify.prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!targetUser) {
+          return reply.status(404).send({
+            error: "Not Found",
+            message: "User not found",
+          });
+        }
+
+        // Prevent self-deletion
+        if (targetUser.id === currentUser.sub) {
+          return reply.status(400).send({
+            error: "Bad Request",
+            message: "Cannot delete your own account",
+          });
+        }
+
+        // Delete the user (cascade should handle related data)
+        await fastify.prisma.user.delete({
+          where: { id: userId },
+        });
+
+        // Log audit event
+        await logAudit({
+          actorId: currentUser.sub,
+          actorEmail: currentUser.email,
+          action: "user.delete",
+          resourceType: AuditLogger.ResourceTypes.USER,
+          resourceId: userId,
+          result: "SUCCESS",
+          ip: request.ip,
+          userAgent: request.headers["user-agent"],
+          metadata: {
+            deletedUser: {
+              email: targetUser.email,
+              name: targetUser.name,
+              role: targetUser.isAdmin ? "admin" : "user",
+              wasEnabled: !targetUser.isSuspended,
+            },
+          },
+        });
+
+        return {
+          message: "User deleted successfully",
+        };
+      } catch (error) {
+        // Log audit failure
+        await logAudit({
+          actorId: currentUser.sub,
+          actorEmail: currentUser.email,
+          action: "user.delete",
+          resourceType: AuditLogger.ResourceTypes.USER,
+          resourceId: userId,
+          result: "FAILURE",
+          ip: request.ip,
+          userAgent: request.headers["user-agent"],
+          metadata: {
+            error: (error as Error)?.message || "Unknown error",
+          },
+        });
+
+        throw error;
+      }
+    },
+  );
+
+  // PATCH /admin/users/:id - General user updates (name, email, etc.)
+  fastify.patch(
+    "/admin/users/:id",
+    {
+      schema: {},
+    },
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: {
+          name?: string;
+          email?: string;
+          enabled?: boolean;
+          role?: "user" | "admin";
+        };
+      }>,
+      reply: FastifyReply,
+    ) => {
+      const { id: userId } = request.params;
+      let updateData = request.body;
+      const currentUser = request.user!;
+      let action = "user.update"; // Declare outside try block for error handling
 
       try {
         // Get the target user
@@ -58,43 +281,69 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
         });
 
         if (!targetUser) {
-          throw fastify.httpErrors.notFound("User not found");
+          return reply.status(404).send({
+            error: "Not Found",
+            message: "User not found",
+          });
         }
 
-        // Prepare update data
-        const dbUpdateData: any = {};
-        let action = "";
-        let metadata: any = { targetUser: targetUser.email };
+        // Determine audit action based on what's being updated
+        let metadata: any = {
+          targetUser: targetUser.email,
+          changedFields: {},
+        };
 
-        if (enabled !== undefined) {
-          const isSuspended = !enabled;
+        // Prepare data for Prisma update
+        let prismaData: any = {};
+
+        // Handle enabled/disabled status changes
+        if (updateData.enabled !== undefined) {
+          const isSuspended = !updateData.enabled;
           const previousStatus = targetUser.isSuspended
             ? "suspended"
             : "active";
-          dbUpdateData.isSuspended = isSuspended;
-          action = enabled ? "user.enable" : "user.disable";
+          action = updateData.enabled ? "user.enable" : "user.disable";
           metadata.previousStatus = previousStatus;
           metadata.newStatus = isSuspended ? "suspended" : "active";
+
+          prismaData.isSuspended = isSuspended;
         }
 
-        if (role !== undefined) {
+        // Handle role changes
+        if (updateData.role !== undefined) {
           const previousRole = targetUser.isAdmin ? "admin" : "user";
-          const newIsAdmin = role === "admin";
-          dbUpdateData.isAdmin = newIsAdmin;
           action = "user.role_change";
           metadata.previousRole = previousRole;
-          metadata.newRole = role;
+          metadata.newRole = updateData.role;
+
+          prismaData.isAdmin = updateData.role === "admin";
+        }
+
+        // Handle general field updates
+        if (updateData.name || updateData.email) {
+          if (updateData.name && updateData.name !== targetUser.name) {
+            metadata.changedFields.name = {
+              from: targetUser.name,
+              to: updateData.name,
+            };
+          }
+          if (updateData.email && updateData.email !== targetUser.email) {
+            metadata.changedFields.email = {
+              from: targetUser.email,
+              to: updateData.email,
+            };
+          }
         }
 
         // Update the user
         const updatedUser = await fastify.prisma.user.update({
           where: { id: userId },
-          data: dbUpdateData,
+          data: prismaData,
         });
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: action,
           resourceType: AuditLogger.ResourceTypes.USER,
@@ -116,204 +365,21 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
           },
         };
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
-          action:
-            enabled !== undefined
-              ? enabled
-                ? "user.enable"
-                : "user.disable"
-              : "user.role_change",
+          action: action || "user.update",
           resourceType: AuditLogger.ResourceTypes.USER,
           resourceId: userId,
           result: "FAILURE",
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
-            attemptedChanges: { enabled, role },
-          },
-        });
-
-        throw error;
-      }
-    },
-  );
-
-  // PUT /admin/users/:id/role - Update user role
-  fastify.put(
-    "/admin/users/:id/role",
-    {
-      schema: {
-        tags: ["Admin", "Users"],
-        summary: "Update user role",
-      },
-    },
-    async (
-      request: FastifyRequest<{
-        Params: { id: string };
-        Body: { role: "user" | "admin" };
-      }>,
-      reply: FastifyReply,
-    ) => {
-      const { id: userId } = request.params;
-      const { role } = request.body;
-      const currentUser = request.user!;
-
-      try {
-        // Get the target user
-        const targetUser = await fastify.prisma.user.findUnique({
-          where: { id: userId },
-        });
-
-        if (!targetUser) {
-          throw fastify.httpErrors.notFound("User not found");
-        }
-
-        const previousRole = targetUser.isAdmin ? "admin" : "user";
-        const newIsAdmin = role === "admin";
-
-        // Update the user role
-        const updatedUser = await fastify.prisma.user.update({
-          where: { id: userId },
-          data: { isAdmin: newIsAdmin },
-        });
-
-        // Log audit event
-        await logAudit({
-          actorId: currentUser.id,
-          actorEmail: currentUser.email,
-          action: AuditLogger.Actions.USER_ROLE_CHANGE,
-          resourceType: AuditLogger.ResourceTypes.USER,
-          resourceId: userId,
-          result: "SUCCESS",
-          ip: request.ip,
-          userAgent: request.headers["user-agent"],
-          metadata: {
-            targetUser: targetUser.email,
-            previousRole,
-            newRole: role,
-          },
-        });
-
-        return {
-          message: "User role updated successfully",
-          user: {
-            id: updatedUser.id,
-            email: updatedUser.email,
-            name: updatedUser.name,
-            isAdmin: updatedUser.isAdmin,
-          },
-        };
-      } catch (error) {
-        // Log audit failure
-        await logAudit({
-          actorId: currentUser.id,
-          actorEmail: currentUser.email,
-          action: AuditLogger.Actions.USER_ROLE_CHANGE,
-          resourceType: AuditLogger.ResourceTypes.USER,
-          resourceId: userId,
-          result: "FAILURE",
-          ip: request.ip,
-          userAgent: request.headers["user-agent"],
-          metadata: {
-            error: error.message,
-            targetRole: role,
-          },
-        });
-
-        throw error;
-      }
-    },
-  );
-
-  // PUT /admin/users/:id/status - Enable/suspend user
-  fastify.put(
-    "/admin/users/:id/status",
-    {
-      schema: {
-        tags: ["Admin", "Users"],
-        summary: "Enable or suspend user",
-      },
-    },
-    async (
-      request: FastifyRequest<{
-        Params: { id: string };
-        Body: { action: "enable" | "suspend" };
-      }>,
-      reply: FastifyReply,
-    ) => {
-      const { id: userId } = request.params;
-      const { action } = request.body;
-      const currentUser = request.user!;
-
-      try {
-        // Get the target user
-        const targetUser = await fastify.prisma.user.findUnique({
-          where: { id: userId },
-        });
-
-        if (!targetUser) {
-          throw fastify.httpErrors.notFound("User not found");
-        }
-
-        const isSuspended = action === "suspend";
-        const previousStatus = targetUser.isSuspended ? "suspended" : "active";
-
-        // Update the user status
-        const updatedUser = await fastify.prisma.user.update({
-          where: { id: userId },
-          data: { isSuspended },
-        });
-
-        // Log audit event
-        await logAudit({
-          actorId: currentUser.id,
-          actorEmail: currentUser.email,
-          action:
-            action === "enable"
-              ? AuditLogger.Actions.USER_ENABLE
-              : AuditLogger.Actions.USER_SUSPEND,
-          resourceType: AuditLogger.ResourceTypes.USER,
-          resourceId: userId,
-          result: "SUCCESS",
-          ip: request.ip,
-          userAgent: request.headers["user-agent"],
-          metadata: {
-            targetUser: targetUser.email,
-            previousStatus,
-            newStatus: isSuspended ? "suspended" : "active",
-          },
-        });
-
-        return {
-          message: `User ${action}d successfully`,
-          user: {
-            id: updatedUser.id,
-            email: updatedUser.email,
-            name: updatedUser.name,
-            isSuspended: updatedUser.isSuspended,
-          },
-        };
-      } catch (error) {
-        // Log audit failure
-        await logAudit({
-          actorId: currentUser.id,
-          actorEmail: currentUser.email,
-          action:
-            action === "enable"
-              ? AuditLogger.Actions.USER_ENABLE
-              : AuditLogger.Actions.USER_SUSPEND,
-          resourceType: AuditLogger.ResourceTypes.USER,
-          resourceId: userId,
-          result: "FAILURE",
-          ip: request.ip,
-          userAgent: request.headers["user-agent"],
-          metadata: {
-            error: error.message,
-            targetAction: action,
+            error: errorMessage,
+            attemptedChanges: updateData,
           },
         });
 
@@ -326,10 +392,7 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
   fastify.post(
     "/admin/users/:id/reset-password",
     {
-      schema: {
-        tags: ["Admin", "Users"],
-        summary: "Reset user password",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -349,7 +412,10 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
         });
 
         if (!targetUser) {
-          throw fastify.httpErrors.notFound("User not found");
+          return reply.status(404).send({
+            error: "Not Found",
+            message: "User not found",
+          });
         }
 
         // Hash the new password
@@ -363,7 +429,7 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "user.reset_password",
           resourceType: AuditLogger.ResourceTypes.USER,
@@ -383,7 +449,7 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "user.reset_password",
           resourceType: AuditLogger.ResourceTypes.USER,
@@ -392,7 +458,7 @@ export async function adminUserRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             resetMethod: "admin_initiated",
           },
         });

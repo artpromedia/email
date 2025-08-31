@@ -18,6 +18,9 @@ import { ComposeSheet } from "./ComposeSheet";
 import { ComposeView } from "./ComposeView";
 import { HelpPage } from "@/pages/help";
 import { SettingsPage } from "@/pages/settings";
+import { ChatPage } from "@/pages/chat";
+import { ContactsPage } from "@/pages/contacts";
+import { CalendarPage } from "@/pages/calendar";
 import { useMail } from "@/contexts/MailContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -171,6 +174,9 @@ export function MailShell() {
             <Route path="/" element={<Navigate to="/mail/inbox" replace />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route
               path="/compose/:messageId"
               element={

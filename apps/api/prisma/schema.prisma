@@ -17,6 +17,8 @@ model User {
   passwordHash  String?
   emailVerified Boolean   @default(false)
   mfaEnabled    Boolean   @default(false)
+  mfaEnrolledAt DateTime?
+  lastMfaAt     DateTime?
   mfaSecret     String?
   mfaVerifiedAt DateTime?
   isAdmin       Boolean   @default(false)
@@ -41,6 +43,11 @@ model User {
   ruleJobQueue      RuleJobQueue[]
   systemPolicies    SystemPolicy[] @relation("SystemPolicyCreatedBy")
   trustedSenders    TrustedSender[] @relation("TrustedSenderCreatedBy")
+  
+  // TOTP MFA relations
+  mfaTotp           UserMfaTotp?
+  mfaRecoveryCodes  UserMfaRecoveryCode[]
+  trustedDevices    TrustedDevice[]
 
   @@map("users")
 }
@@ -54,6 +61,8 @@ model Session {
   userAgent   String?
   expiresAt   DateTime
   isRevoked   Boolean   @default(false)
+  mfaLevel    MfaLevel  @default(NONE)
+  amr         String[]  @default([]) // Authentication Methods Reference: ["pwd"], ["pwd","otp"], ["pwd","passkey"]
   createdAt   DateTime  @default(now())
 
   // Relations
@@ -353,4 +362,73 @@ model TrustedSender {
   createdBy   User     @relation("TrustedSenderCreatedBy", fields: [createdById], references: [id])
 
   @@map("trusted_senders")
+}
+
+// TOTP MFA models
+model UserMfaTotp {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  secretCiphertext Bytes
+  secretNonce     Bytes
+  issuer          String   @default("CEERION")
+  label           String   // User's email
+  digits          Int      @default(6)
+  period          Int      @default(30)
+  algorithm       String   @default("SHA1")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_mfa_totp")
+}
+
+model UserMfaRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_mfa_recovery_codes")
+}
+
+model TrustedDevice {
+  id          String   @id @default(uuid())
+  userId      String
+  deviceHash  String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  userAgent   String?
+  ipAddress   String?
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceHash])
+  @@map("trusted_devices")
+}
+
+model OrgPolicy {
+  id                 String   @id @default(cuid())
+  requireMfa         Boolean  @default(false)
+  gracePeriodDays    Int      @default(0)
+  rememberDeviceDays Int      @default(30)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("org_policies")
+}
+
+// Enums
+enum MfaLevel {
+  NONE
+  OTP
+  PASSKEY
 }

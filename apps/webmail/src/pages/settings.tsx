@@ -1,12 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  useNavigate,
-  useLocation,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { useTheme } from "@/components/theme-provider";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";

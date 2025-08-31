@@ -52,10 +52,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.post(
     "/admin/policies",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Create new policy",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -70,7 +67,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
         // Create the policy
         const policy = await fastify.prisma.policy.create({
           data: {
-            userId: currentUser.id,
+            userId: currentUser.sub,
             type,
             value,
             action,
@@ -79,7 +76,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: AuditLogger.Actions.POLICY_CREATE,
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -107,7 +104,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: AuditLogger.Actions.POLICY_CREATE,
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -115,7 +112,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             policyType: type,
             policyValue: value,
             policyAction: action,
@@ -131,10 +128,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.put(
     "/admin/policies/:id",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Update policy",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -154,7 +148,10 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
         });
 
         if (!existingPolicy) {
-          throw fastify.httpErrors.notFound("Policy not found");
+          return reply.status(404).send({
+            error: "Not Found",
+            message: "Policy not found",
+          });
         }
 
         // Update the policy
@@ -165,7 +162,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
 
         // Log audit event with changes
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: AuditLogger.Actions.POLICY_SAVE,
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -190,13 +187,13 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
             type: updatedPolicy.type,
             value: updatedPolicy.value,
             action: updatedPolicy.action,
-            updatedAt: updatedPolicy.updatedAt.toISOString(),
+            createdAt: updatedPolicy.createdAt.toISOString(),
           },
         };
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: AuditLogger.Actions.POLICY_SAVE,
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -205,7 +202,12 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error:
+              error instanceof Error
+                ? error instanceof Error
+                  ? error.message
+                  : "Unknown error"
+                : "Unknown error",
             changes: updateData,
           },
         });
@@ -219,10 +221,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.delete(
     "/admin/policies/:id",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Delete policy",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -240,7 +239,10 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
         });
 
         if (!policy) {
-          throw fastify.httpErrors.notFound("Policy not found");
+          return reply.status(404).send({
+            error: "Not Found",
+            message: "Policy not found",
+          });
         }
 
         // Delete the policy
@@ -250,7 +252,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: AuditLogger.Actions.POLICY_DELETE,
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -273,7 +275,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: AuditLogger.Actions.POLICY_DELETE,
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -282,7 +284,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
           },
         });
 
@@ -295,10 +297,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.put(
     "/admin/policies/password",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Update password policy",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -317,13 +316,13 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           create: {
             type: "password",
             settings: policyData,
-            createdById: currentUser.id,
+            createdById: currentUser.sub,
           },
         });
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.password.save",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -346,7 +345,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.password.save",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -354,7 +353,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             attemptedSettings: policyData,
           },
         });
@@ -368,10 +367,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.put(
     "/admin/policies/mfa",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Update MFA policy",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -390,13 +386,13 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           create: {
             type: "mfa",
             settings: policyData,
-            createdById: currentUser.id,
+            createdById: currentUser.sub,
           },
         });
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.mfa.save",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -419,7 +415,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.mfa.save",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -427,7 +423,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             attemptedSettings: policyData,
           },
         });
@@ -441,10 +437,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.put(
     "/admin/policies/external-banner",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Update external banner policy",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -463,13 +456,13 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           create: {
             type: "external-banner",
             settings: policyData,
-            createdById: currentUser.id,
+            createdById: currentUser.sub,
           },
         });
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.banner.save",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -492,7 +485,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.banner.save",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -500,7 +493,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             attemptedSettings: policyData,
           },
         });
@@ -514,10 +507,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.post(
     "/admin/policies/trusted-senders",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Add trusted sender",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -534,13 +524,13 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           data: {
             email: senderData.email,
             domain: senderData.domain,
-            createdById: currentUser.id,
+            createdById: currentUser.sub,
           },
         });
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.trusted_senders.change",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -565,7 +555,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.trusted_senders.change",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -573,7 +563,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             operation: "add",
             attemptedData: senderData,
           },
@@ -588,10 +578,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
   fastify.delete(
     "/admin/policies/trusted-senders/:id",
     {
-      schema: {
-        tags: ["Admin", "Policies"],
-        summary: "Remove trusted sender",
-      },
+      schema: {},
     },
     async (
       request: FastifyRequest<{
@@ -609,7 +596,10 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
         });
 
         if (!trustedSender) {
-          throw fastify.httpErrors.notFound("Trusted sender not found");
+          return reply.status(404).send({
+            error: "Not Found",
+            message: "Trusted sender not found",
+          });
         }
 
         // Delete the trusted sender
@@ -619,7 +609,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
 
         // Log audit event
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.trusted_senders.change",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -642,7 +632,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Log audit failure
         await logAudit({
-          actorId: currentUser.id,
+          actorId: currentUser.sub,
           actorEmail: currentUser.email,
           action: "policy.trusted_senders.change",
           resourceType: AuditLogger.ResourceTypes.POLICY,
@@ -651,7 +641,7 @@ export async function adminPolicyRoutes(fastify: FastifyInstance) {
           ip: request.ip,
           userAgent: request.headers["user-agent"],
           metadata: {
-            error: error.message,
+            error: error instanceof Error ? error.message : "Unknown error",
             operation: "remove",
           },
         });

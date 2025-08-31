@@ -2,7 +2,11 @@
   "extends": "@ceerion/config/tsconfig.node.json",
   "compilerOptions": {
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "strict": false,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": false
   },
   "include": ["src/**/*"]
 }

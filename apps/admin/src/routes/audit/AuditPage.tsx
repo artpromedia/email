@@ -240,7 +240,7 @@ function AuditFilterBar({
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All actions</SelectItem>
+                <SelectItem value="all">All actions</SelectItem>
                 <SelectItem value="user.create">User Create</SelectItem>
                 <SelectItem value="user.update">User Update</SelectItem>
                 <SelectItem value="user.delete">User Delete</SelectItem>
@@ -288,7 +288,7 @@ function AuditFilterBar({
                 <SelectValue placeholder="All types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All types</SelectItem>
+                <SelectItem value="all">All types</SelectItem>
                 <SelectItem value="user">User</SelectItem>
                 <SelectItem value="policy">Policy</SelectItem>
                 <SelectItem value="quarantine">Quarantine</SelectItem>
@@ -323,7 +323,7 @@ function AuditFilterBar({
                 <SelectValue placeholder="All results" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All results</SelectItem>
+                <SelectItem value="all">All results</SelectItem>
                 <SelectItem value="SUCCESS">Success</SelectItem>
                 <SelectItem value="FAILURE">Failure</SelectItem>
               </SelectContent>

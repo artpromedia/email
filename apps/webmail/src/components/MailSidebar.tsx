@@ -20,6 +20,8 @@ import {
   Tag,
   Zap,
   Bookmark,
+  MessageCircle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +115,63 @@ export function MailSidebar({ onCompose }: MailSidebarProps) {
           <Plus className="mr-2 h-4 w-4" />
           Compose
         </Button>
+      </div>
+
+      {/* Apps Navigation */}
+      <div className="px-4 pb-2">
+        <div className="space-y-1">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+            Apps
+          </h3>
+          <Link
+            to="/mail/inbox"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              location.pathname.startsWith("/mail")
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted text-foreground",
+            )}
+          >
+            <Mail className="h-4 w-4" />
+            <span>Mail</span>
+          </Link>
+          <Link
+            to="/chat"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              location.pathname === "/chat"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted text-foreground",
+            )}
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span>Chat</span>
+          </Link>
+          <Link
+            to="/contacts"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              location.pathname === "/contacts"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted text-foreground",
+            )}
+          >
+            <Users className="h-4 w-4" />
+            <span>Contacts</span>
+          </Link>
+          <Link
+            to="/calendar"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              location.pathname === "/calendar"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted text-foreground",
+            )}
+          >
+            <Calendar className="h-4 w-4" />
+            <span>Calendar</span>
+          </Link>
+        </div>
       </div>
 
       {/* Navigation */}

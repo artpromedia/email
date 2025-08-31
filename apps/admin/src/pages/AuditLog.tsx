@@ -1,6 +1,11 @@
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../components/ui/card";
 
-export function AuditLog() {
+function AuditLog() {
   return (
     <div className="space-y-6">
       <div>
@@ -13,9 +18,13 @@ export function AuditLog() {
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-500">Audit logging functionality coming soon...</p>
+          <p className="text-gray-500">
+            Audit logging functionality coming soon...
+          </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
+
+export default AuditLog;

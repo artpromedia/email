@@ -1,0 +1,234 @@
+name: Admin No-Flicker & Performance CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "apps/admin/**"
+      - "packages/**"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "apps/admin/**"
+      - "packages/**"
+
+jobs:
+  lint-no-flicker:
+    name: Lint - No Static Buttons/Flicker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run no-flicker lint checks
+        run: |
+          chmod +x scripts/lint-no-flicker.sh
+          ./scripts/lint-no-flicker.sh
+
+      - name: Verify no href="#" patterns
+        run: |
+          echo "🔍 Final verification scan for href='#' patterns..."
+          if grep -r "href=[\"']#[\"']" apps/ packages/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js"; then
+            echo "❌ Found href='#' patterns - CI failed"
+            exit 1
+          fi
+          echo "✅ No href='#' patterns found"
+
+  test-no-flicker:
+    name: E2E Tests - No Flicker
+    runs-on: ubuntu-latest
+    needs: lint-no-flicker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build admin app
+        run: pnpm run build --filter=@ceerion/admin
+
+      - name: Start admin server
+        run: |
+          pnpm run dev --filter=@ceerion/admin &
+          sleep 10
+
+      - name: Wait for admin server
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3001; do sleep 1; done'
+
+      - name: Run no-flicker tests
+        run: pnpm run test:admin-noflicker --filter=@ceerion/e2e-tests
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-no-flicker-test-results
+          path: packages/e2e-tests/test-results/
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-no-flicker-report
+          path: packages/e2e-tests/playwright-report/
+
+  test-performance:
+    name: E2E Tests - Performance
+    runs-on: ubuntu-latest
+    needs: lint-no-flicker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build admin app
+        run: pnpm run build --filter=@ceerion/admin
+
+      - name: Start admin server
+        run: |
+          pnpm run dev --filter=@ceerion/admin &
+          sleep 10
+
+      - name: Wait for admin server
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3001; do sleep 1; done'
+
+      - name: Run performance tests
+        run: pnpm run test:admin-performance --filter=@ceerion/e2e-tests
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-performance-test-results
+          path: packages/e2e-tests/test-results/
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-performance-report
+          path: packages/e2e-tests/playwright-report/
+
+  verify-no-static-buttons:
+    name: Verify No Static Buttons
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for static button patterns
+        run: |
+          echo "🔍 Checking for potential static button patterns..."
+
+          # Check for anchor tags with onclick but no href
+          if grep -r "<a[^>]*onClick" apps/ packages/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" | grep -v "href="; then
+            echo "⚠️  Found anchor tags with onClick but no href - consider using buttons instead"
+          fi
+
+          # Check for anchor tags with href="#"
+          if grep -r "href=[\"']#[\"']" apps/ packages/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js"; then
+            echo "❌ Found anchor tags with href='#' - not allowed"
+            exit 1
+          fi
+
+          # Check for potential button elements that should be anchors
+          echo "✅ No static button patterns found"
+
+  accessibility-check:
+    name: Accessibility Check
+    runs-on: ubuntu-latest
+    needs: [test-no-flicker, test-performance]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build admin app
+        run: pnpm run build --filter=@ceerion/admin
+
+      - name: Start admin server
+        run: |
+          pnpm run dev --filter=@ceerion/admin &
+          sleep 10
+
+      - name: Wait for admin server
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3001; do sleep 1; done'
+
+      - name: Run accessibility tests
+        run: pnpm run test:a11y --filter=@ceerion/e2e-tests
+
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-accessibility-results
+          path: packages/e2e-tests/test-results/

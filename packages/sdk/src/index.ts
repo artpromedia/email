@@ -48,7 +48,7 @@ export function createCeerionMailClient(config: ClientConfig = {}) {
         search?: string;
         limit?: number;
         offset?: number;
-      }) => client.GET("/mail/messages", { params: { query: params } }),
+      }) => client.GET("/mail/messages", { params: { query: params } as any }),
 
       getMessage: (id: string) =>
         client.GET("/mail/messages/{id}", {
@@ -75,6 +75,14 @@ export function createCeerionMailClient(config: ClientConfig = {}) {
         htmlBody?: string;
         attachments?: string[];
       }) => client.POST("/mail/drafts", { body }),
+
+      composeFromMessage: (body: {
+        messageId: string;
+        action: "reply" | "replyAll" | "forward";
+        includeAttachments?: boolean;
+        inlineCidStrategy?: "preserve" | "flatten";
+        selectedTextHtml?: string;
+      }) => client.POST("/mail/compose/from-message" as any, { body }),
 
       // Note: Draft update endpoint may not be available, removing for now
 

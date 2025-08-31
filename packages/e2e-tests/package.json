@@ -9,13 +9,22 @@
     "test:debug": "playwright test --debug",
     "test:webmail": "playwright test --grep \"Webmail\"",
     "test:admin": "playwright test --grep \"Admin\"",
+    "test:admin-noflicker": "playwright test admin-no-flicker.spec.ts",
+    "test:admin-performance": "playwright test admin-performance.spec.ts",
     "test:smoke": "playwright test --grep \"@smoke\"",
+    "test:navigation": "playwright test webmail-navigation.spec.ts",
+    "test:workflows": "playwright test webmail-workflows.spec.ts",
+    "test:console": "playwright test webmail-console-validation.spec.ts",
+    "test:comprehensive": "playwright test webmail-navigation.spec.ts webmail-workflows.spec.ts webmail-console-validation.spec.ts",
+    "test:admin-comprehensive": "playwright test admin-no-flicker.spec.ts admin-performance.spec.ts",
     "test:lighthouse": "playwright test lighthouse.spec.ts",
     "test:a11y": "playwright test accessibility.spec.ts",
     "install": "playwright install",
     "report": "playwright show-report",
     "clean": "rm -rf test-results playwright-report",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ci": "npm run clean && npm run test:comprehensive --reporter=json --output-dir=./test-results",
+    "ci:admin": "npm run clean && npm run test:admin-comprehensive --reporter=json --output-dir=./test-results"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.8.5",

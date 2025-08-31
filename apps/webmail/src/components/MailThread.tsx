@@ -23,13 +23,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMail } from "@/contexts/MailContext";
+import { useMail as useMailContext } from "@/contexts/MailContext";
+import { useMail } from "@/hooks/useMail";
+import { ComposeSheet } from "@/components/ComposeSheet";
 import { cn } from "@/lib/utils";
 
 export function MailThread() {
   const [expandedMessages, setExpandedMessages] = useState<string[]>([]);
+  const [showCompose, setShowCompose] = useState(false);
+  const [composeDraft, setComposeDraft] = useState<any>(null);
   const { selectedThread, starThreads, archiveThreads, deleteThreads } =
-    useMail();
+    useMailContext();
+  const { reply, replyAll, forward } = useMail();
   const navigate = useNavigate();
 
   if (!selectedThread) {
@@ -52,6 +57,38 @@ export function MailThread() {
   const handleDelete = () => {
     deleteThreads([selectedThread.id]);
     navigate(-1);
+  };
+
+  const handleReply = async (messageId: string) => {
+    try {
+      console.log("Attempting to reply to message:", messageId);
+      const composeDraft = await reply(messageId);
+      console.log("Compose draft received:", composeDraft);
+      setComposeDraft(composeDraft);
+      setShowCompose(true);
+    } catch (error) {
+      console.error("Failed to compose reply:", error);
+    }
+  };
+
+  const handleReplyAll = async (messageId: string) => {
+    try {
+      const composeDraft = await replyAll(messageId);
+      setComposeDraft(composeDraft);
+      setShowCompose(true);
+    } catch (error) {
+      console.error("Failed to compose reply all:", error);
+    }
+  };
+
+  const handleForward = async (messageId: string) => {
+    try {
+      const composeDraft = await forward(messageId, true); // Include attachments
+      setComposeDraft(composeDraft);
+      setShowCompose(true);
+    } catch (error) {
+      console.error("Failed to compose forward:", error);
+    }
   };
 
   const toggleMessage = (messageId: string) => {
@@ -250,15 +287,27 @@ export function MailThread() {
                   {/* Actions */}
                   {isLast && (
                     <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleReply(message.id)}
+                      >
                         <Reply className="mr-2 h-4 w-4" />
                         Reply
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleReplyAll(message.id)}
+                      >
                         <ReplyAll className="mr-2 h-4 w-4" />
                         Reply all
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleForward(message.id)}
+                      >
                         <Forward className="mr-2 h-4 w-4" />
                         Forward
                       </Button>
@@ -270,6 +319,12 @@ export function MailThread() {
           );
         })}
       </div>
+
+      {/* Compose Sheet */}
+      <ComposeSheet
+        isOpen={showCompose}
+        onClose={() => setShowCompose(false)}
+      />
     </div>
   );
 }

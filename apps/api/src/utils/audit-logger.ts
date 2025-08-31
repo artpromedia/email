@@ -30,7 +30,7 @@ export class AuditLogger {
           result: params.result || "SUCCESS",
           ip: params.ip,
           userAgent: params.userAgent,
-          metadata: params.metadata || null,
+          metadata: params.metadata || undefined,
         },
       });
     } catch (error) {
@@ -78,6 +78,14 @@ export class AuditLogger {
     // DKIM management
     DKIM_ROTATE: "dkim.rotate",
 
+    // System management
+    SYSTEM_MAINTENANCE_ENABLE: "system.maintenance_enable",
+    SYSTEM_MAINTENANCE_DISABLE: "system.maintenance_disable",
+    SYSTEM_CONFIG_UPDATE: "system.config_update",
+    SYSTEM_BACKUP_TRIGGER: "system.backup_trigger",
+    SYSTEM_HEALTH_VIEW: "system.health_view",
+    SYSTEM_SECURITY_RESET_SESSIONS: "system.security_reset_sessions",
+
     // Authentication
     AUTH_LOGIN: "auth.login",
     AUTH_LOGOUT: "auth.logout",
@@ -94,6 +102,7 @@ export class AuditLogger {
     DELIVERABILITY: "deliverability",
     DKIM: "dkim",
     SESSION: "session",
+    SYSTEM: "system",
   } as const;
 }
 

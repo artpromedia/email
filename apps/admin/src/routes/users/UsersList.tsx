@@ -277,7 +277,7 @@ function UsersListContent() {
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All roles</SelectItem>
+                <SelectItem value="all">All roles</SelectItem>
                 <SelectItem value="user">User</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="support">Support</SelectItem>
@@ -291,7 +291,7 @@ function UsersListContent() {
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="suspended">Suspended</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
@@ -307,7 +307,7 @@ function UsersListContent() {
                 <SelectValue placeholder="MFA status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All MFA</SelectItem>
+                <SelectItem value="all">All MFA</SelectItem>
                 <SelectItem value="true">MFA Enabled</SelectItem>
                 <SelectItem value="false">MFA Disabled</SelectItem>
               </SelectContent>
