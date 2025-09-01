@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import {
   Plus,
   Search,
-  Filter,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -16,7 +15,6 @@ import {
   type UsersListParams,
   type AdminUser,
 } from "../../data/users-new";
-import { PendingButton } from "../../components/PendingButton";
 import { useAdminToast } from "../../hooks/useAdminToast";
 import { useConfirm } from "../../hooks/useConfirm";
 import { UserListSkeleton } from "../../components/UserSkeletons";
@@ -43,15 +41,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getSortedRowModel,
-  SortingState,
-} from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
 
 // Memoized UserRow component for performance
 const UserRow = React.memo(
@@ -183,7 +172,10 @@ function UsersListContent() {
   const { data: usersResponse } = useUsers(filters);
 
   // Memoized filtered users for performance
-  const users = useMemo(() => usersResponse?.users || [], [usersResponse]);
+  const users = useMemo(
+    () => (usersResponse as any)?.users || [],
+    [usersResponse],
+  );
 
   const handleEdit = React.useCallback(
     (user: AdminUser) => {
@@ -239,8 +231,8 @@ function UsersListContent() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>
           <p className="text-gray-600">
-            Manage user accounts and permissions ({usersResponse?.total || 0}{" "}
-            total)
+            Manage user accounts and permissions (
+            {(usersResponse as any)?.total || 0} total)
           </p>
         </div>
         <div className="flex space-x-2">
@@ -344,7 +336,7 @@ function UsersListContent() {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {users.map((user) => (
+              {users.map((user: AdminUser) => (
                 <UserRow
                   key={user.id}
                   user={user}
@@ -359,7 +351,7 @@ function UsersListContent() {
       </Card>
 
       {/* Pagination */}
-      {usersResponse?.hasNextPage && (
+      {(usersResponse as any)?.hasNextPage && (
         <div className="flex justify-center">
           <Button
             variant="outline"

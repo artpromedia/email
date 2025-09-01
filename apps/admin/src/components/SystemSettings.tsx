@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  getSystemSettings
-} from "../data/systemSettings";
+import { getSystemSettings } from "../data/systemSettings";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
 import {
@@ -14,14 +18,14 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 
-import { 
+import {
   Settings,
   Shield,
   Mail,
   HardDrive,
   Globe,
   CheckCircle,
-  XCircle
+  XCircle,
 } from "lucide-react";
 
 const SystemSettingsPage: React.FC = () => {
@@ -68,12 +72,18 @@ const SystemSettingsPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">System Settings</h1>
-          <p className="text-gray-600 mt-1">Configure system-wide settings and preferences</p>
+          <p className="text-gray-600 mt-1">
+            Configure system-wide settings and preferences
+          </p>
         </div>
       </div>
 
       {/* Settings Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general" className="flex items-center gap-1">
             <Settings className="h-4 w-4" />
@@ -101,24 +111,34 @@ const SystemSettingsPage: React.FC = () => {
                 <Globe className="h-5 w-5" />
                 General Configuration
               </CardTitle>
-              <CardDescription>Basic system settings and preferences</CardDescription>
+              <CardDescription>
+                Basic system settings and preferences
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">System Name</label>
+                  <label className="block text-sm font-medium mb-1">
+                    System Name
+                  </label>
                   <Input value={settings.general.systemName} readOnly />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Admin Email</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Admin Email
+                  </label>
                   <Input value={settings.general.adminEmail} readOnly />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Timezone</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Timezone
+                  </label>
                   <Input value={settings.general.timezone} readOnly />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Language</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Language
+                  </label>
                   <Input value={settings.general.language} readOnly />
                 </div>
               </div>
@@ -134,7 +154,9 @@ const SystemSettingsPage: React.FC = () => {
                 <Shield className="h-5 w-5" />
                 Security Configuration
               </CardTitle>
-              <CardDescription>Security policies and access control</CardDescription>
+              <CardDescription>
+                Security policies and access control
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
@@ -144,15 +166,21 @@ const SystemSettingsPage: React.FC = () => {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Min Length: {settings.security.passwordPolicy.minLength}</span>
+                      <span className="text-sm">
+                        Min Length: {settings.security.passwordPolicy.minLength}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Require Uppercase</span>
-                      {getStatusBadge(settings.security.passwordPolicy.requireUppercase)}
+                      {getStatusBadge(
+                        settings.security.passwordPolicy.requireUppercase,
+                      )}
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Require Numbers</span>
-                      {getStatusBadge(settings.security.passwordPolicy.requireNumbers)}
+                      {getStatusBadge(
+                        settings.security.passwordPolicy.requireNumbers,
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -164,11 +192,15 @@ const SystemSettingsPage: React.FC = () => {
                   <CardContent className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Enforce for Admins</span>
-                      {getStatusBadge(settings.security.mfaSettings.enforceForAdmins)}
+                      {getStatusBadge(
+                        settings.security.mfaSettings.enforceForAdmins,
+                      )}
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Enforce for All Users</span>
-                      {getStatusBadge(settings.security.mfaSettings.enforceForAllUsers)}
+                      {getStatusBadge(
+                        settings.security.mfaSettings.enforceForAllUsers,
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -180,11 +212,15 @@ const SystemSettingsPage: React.FC = () => {
                   <CardContent className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Geolocation Tracking</span>
-                      {getStatusBadge(settings.security.accessControl.geolocationTracking)}
+                      {getStatusBadge(
+                        settings.security.accessControl.geolocationTracking,
+                      )}
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Brute Force Protection</span>
-                      {getStatusBadge(settings.security.accessControl.bruteForceProtection)}
+                      {getStatusBadge(
+                        settings.security.accessControl.bruteForceProtection,
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -206,35 +242,58 @@ const SystemSettingsPage: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">SMTP Host</label>
+                  <label className="block text-sm font-medium mb-1">
+                    SMTP Host
+                  </label>
                   <Input value={settings.mail.smtpSettings.hostname} readOnly />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">SMTP Port</label>
-                  <Input value={settings.mail.smtpSettings.port.toString()} readOnly />
+                  <label className="block text-sm font-medium mb-1">
+                    SMTP Port
+                  </label>
+                  <Input
+                    value={settings.mail.smtpSettings.port.toString()}
+                    readOnly
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Max Message Size (MB)</label>
-                  <Input value={settings.mail.messageSettings.maxMessageSize.toString()} readOnly />
+                  <label className="block text-sm font-medium mb-1">
+                    Max Message Size (MB)
+                  </label>
+                  <Input
+                    value={settings.mail.messageSettings.maxMessageSize.toString()}
+                    readOnly
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Encryption</label>
-                  <Input value={settings.mail.smtpSettings.encryption} readOnly />
+                  <label className="block text-sm font-medium mb-1">
+                    Encryption
+                  </label>
+                  <Input
+                    value={settings.mail.smtpSettings.encryption}
+                    readOnly
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4 mt-6">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Spam Filter</span>
-                  {getStatusBadge(settings.mail.filterSettings.enableSpamFilter)}
+                  {getStatusBadge(
+                    settings.mail.filterSettings.enableSpamFilter,
+                  )}
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Virus Scanning</span>
-                  {getStatusBadge(settings.mail.filterSettings.enableVirusScanning)}
+                  {getStatusBadge(
+                    settings.mail.filterSettings.enableVirusScanning,
+                  )}
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Quarantine</span>
-                  {getStatusBadge(settings.mail.quarantineSettings.enableQuarantine)}
+                  {getStatusBadge(
+                    settings.mail.quarantineSettings.enableQuarantine,
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -249,24 +308,43 @@ const SystemSettingsPage: React.FC = () => {
                 <HardDrive className="h-5 w-5" />
                 Storage Configuration
               </CardTitle>
-              <CardDescription>Storage quotas and cleanup policies</CardDescription>
+              <CardDescription>
+                Storage quotas and cleanup policies
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Default Quota (GB)</label>
-                  <Input value={settings.storage.defaultQuota.toString()} readOnly />
+                  <label className="block text-sm font-medium mb-1">
+                    Default Quota (GB)
+                  </label>
+                  <Input
+                    value={settings.storage.defaultQuota.toString()}
+                    readOnly
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Max Quota (GB)</label>
-                  <Input value={settings.storage.maxQuota.toString()} readOnly />
+                  <label className="block text-sm font-medium mb-1">
+                    Max Quota (GB)
+                  </label>
+                  <Input
+                    value={settings.storage.maxQuota.toString()}
+                    readOnly
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Warning Threshold (%)</label>
-                  <Input value={settings.storage.warningThreshold.toString()} readOnly />
+                  <label className="block text-sm font-medium mb-1">
+                    Warning Threshold (%)
+                  </label>
+                  <Input
+                    value={settings.storage.warningThreshold.toString()}
+                    readOnly
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Storage Location</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Storage Location
+                  </label>
                   <Input value={settings.storage.storageLocation} readOnly />
                 </div>
               </div>
@@ -282,7 +360,9 @@ const SystemSettingsPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Auto Cleanup</span>
-                  {getStatusBadge(settings.storage.cleanupSettings.enableAutoCleanup)}
+                  {getStatusBadge(
+                    settings.storage.cleanupSettings.enableAutoCleanup,
+                  )}
                 </div>
               </div>
             </CardContent>

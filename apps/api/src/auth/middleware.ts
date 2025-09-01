@@ -96,7 +96,7 @@ const authPlugin: FastifyPluginAsync<AuthPluginOptions> = async (
         if (token.includes("demo")) {
           console.log("✅ Demo token bypass activated");
           request.user = {
-            sub: "1",
+            sub: "cmezoep7700009z5xazcwthen",
             email: "demo@ceerion.com",
             name: "Demo User",
             iat: Math.floor(Date.now() / 1000),

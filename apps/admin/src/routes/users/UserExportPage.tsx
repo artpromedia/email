@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -42,10 +41,10 @@ const exportFormSchema = z.object({
   group: z.string().optional(),
   createdAfter: z.string().optional(),
   createdBefore: z.string().optional(),
-  includeAliases: z.boolean().default(true),
-  includeGroups: z.boolean().default(true),
-  includeQuota: z.boolean().default(true),
-  includeTimestamps: z.boolean().default(false),
+  includeAliases: z.boolean(),
+  includeGroups: z.boolean(),
+  includeQuota: z.boolean(),
+  includeTimestamps: z.boolean(),
 });
 
 type ExportFormData = z.infer<typeof exportFormSchema>;
@@ -167,7 +166,6 @@ function PresetCard({
 }
 
 export function UserExportPage() {
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const { data: groups } = useGroups();
   const exportUsersMutation = useExportUsers();
 
@@ -194,8 +192,6 @@ export function UserExportPage() {
   const watchedValues = watch();
 
   const handlePresetSelect = (preset: ExportPreset) => {
-    setSelectedPreset(preset.id);
-
     // Reset form
     reset();
 
@@ -210,7 +206,7 @@ export function UserExportPage() {
     });
   };
 
-  const onSubmit = async (data: ExportFormData) => {
+  const onSubmit: SubmitHandler<ExportFormData> = async (data) => {
     const filters: ExportFilters = {
       query: data.query || undefined,
       role: data.role || undefined,
@@ -492,7 +488,6 @@ export function UserExportPage() {
                 variant="outline"
                 onClick={() => {
                   reset();
-                  setSelectedPreset(null);
                 }}
               >
                 Clear Filters

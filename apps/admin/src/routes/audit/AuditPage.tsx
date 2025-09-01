@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from "react";
+import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Search,
@@ -54,7 +53,7 @@ import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
-interface AuditEvent {
+interface AuditEventData {
   id: string;
   ts: string;
   actorId: string | null;
@@ -71,6 +70,31 @@ interface AuditEvent {
     email: string;
     name: string;
   } | null;
+}
+
+interface AuditEventData {
+  id: string;
+  ts: string;
+  actorId: string | null;
+  actorEmail: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  result: "SUCCESS" | "FAILURE";
+  ip: string | null;
+  userAgent: string | null;
+  metadata: Record<string, any> | null;
+  actor?: {
+    id: string;
+    email: string;
+    name: string;
+  } | null;
+}
+
+interface AuditResponse {
+  items: AuditEventData[];
+  totalApprox: number;
+  nextCursor: string | null;
 }
 
 interface AuditFilters {
@@ -442,6 +466,7 @@ function AuditDetailDrawer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { client } = useAdminAuth();
   const {
     data: auditDetail,
     isLoading,
@@ -653,17 +678,18 @@ function AuditDetailDrawer({
 
 // Main audit table component
 function AuditTable({ filters }: { filters: AuditFilters }) {
+  const { client } = useAdminAuth();
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery<AuditResponse>({
     queryKey: ["audit-events", filters],
     queryFn: async () => {
       const result = await client.adminAudit.getAuditEvents(filters);
       return result.data;
     },
     staleTime: 30_000,
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   });
 
   const handleRowClick = (auditId: string) => {
@@ -752,7 +778,7 @@ function AuditTable({ filters }: { filters: AuditFilters }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.items.map((event) => (
+                  {data.items.map((event: AuditEventData) => (
                     <TableRow
                       key={event.id}
                       className="cursor-pointer hover:bg-gray-50"
@@ -847,7 +873,6 @@ function AuditTable({ filters }: { filters: AuditFilters }) {
 
 // Main audit page component
 export function AuditPage() {
-  const { client } = useAdminAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters: AuditFilters = {

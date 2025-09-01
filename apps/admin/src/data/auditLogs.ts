@@ -16,18 +16,43 @@ export interface AuditLog {
   outcome: AuditOutcome;
 }
 
-export type AuditAction = 
-  | "user_created" | "user_updated" | "user_deleted" | "user_suspended" | "user_activated"
-  | "message_released" | "message_deleted" | "message_quarantined"
-  | "domain_whitelisted" | "domain_blacklisted" | "domain_removed"
-  | "policy_created" | "policy_updated" | "policy_deleted"
-  | "login_success" | "login_failed" | "logout"
-  | "password_changed" | "mfa_enabled" | "mfa_disabled"
-  | "settings_updated" | "backup_created" | "backup_restored"
-  | "admin_created" | "admin_deleted" | "permissions_changed";
+export type AuditAction =
+  | "user_created"
+  | "user_updated"
+  | "user_deleted"
+  | "user_suspended"
+  | "user_activated"
+  | "message_released"
+  | "message_deleted"
+  | "message_quarantined"
+  | "domain_whitelisted"
+  | "domain_blacklisted"
+  | "domain_removed"
+  | "policy_created"
+  | "policy_updated"
+  | "policy_deleted"
+  | "login_success"
+  | "login_failed"
+  | "logout"
+  | "password_changed"
+  | "mfa_enabled"
+  | "mfa_disabled"
+  | "settings_updated"
+  | "backup_created"
+  | "backup_restored"
+  | "admin_created"
+  | "admin_deleted"
+  | "permissions_changed";
 
-export type AuditResource = 
-  | "user" | "message" | "domain" | "policy" | "admin" | "system" | "auth" | "settings";
+export type AuditResource =
+  | "user"
+  | "message"
+  | "domain"
+  | "policy"
+  | "admin"
+  | "system"
+  | "auth"
+  | "settings";
 
 export type AuditSeverity = "low" | "medium" | "high" | "critical";
 
@@ -74,12 +99,12 @@ const mockAuditLogs: AuditLog[] = [
     metadata: {
       messageSubject: "Urgent: Your account has been compromised!",
       quarantineReason: "malware",
-      recipientEmail: "user1@ceerion.com"
+      recipientEmail: "user1@ceerion.com",
     },
     ipAddress: "192.168.1.100",
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     severity: "medium",
-    outcome: "success"
+    outcome: "success",
   },
   {
     id: "audit-002",
@@ -94,12 +119,12 @@ const mockAuditLogs: AuditLog[] = [
     metadata: {
       userEmail: "newuser@ceerion.com",
       userRole: "standard",
-      department: "Marketing"
+      department: "Marketing",
     },
     ipAddress: "192.168.1.100",
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     severity: "low",
-    outcome: "success"
+    outcome: "success",
   },
   {
     id: "audit-003",
@@ -113,12 +138,13 @@ const mockAuditLogs: AuditLog[] = [
     metadata: {
       attemptedEmail: "admin@ceerion.com",
       failureReason: "invalid_password",
-      consecutiveFailures: 3
+      consecutiveFailures: 3,
     },
     ipAddress: "203.0.113.45",
-    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     severity: "high",
-    outcome: "failure"
+    outcome: "failure",
   },
   {
     id: "audit-004",
@@ -134,12 +160,12 @@ const mockAuditLogs: AuditLog[] = [
       domain: "malware-site.com",
       reason: "malware_distribution",
       threatLevel: "high",
-      affectedMessages: 15
+      affectedMessages: 15,
     },
     ipAddress: "192.168.1.100",
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     severity: "high",
-    outcome: "success"
+    outcome: "success",
   },
   {
     id: "audit-005",
@@ -155,12 +181,12 @@ const mockAuditLogs: AuditLog[] = [
       userEmail: "violator@ceerion.com",
       suspensionReason: "policy_violation",
       duration: "7_days",
-      violationType: "spam_sending"
+      violationType: "spam_sending",
     },
     ipAddress: "192.168.1.105",
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     severity: "medium",
-    outcome: "success"
+    outcome: "success",
   },
   {
     id: "audit-006",
@@ -175,14 +201,14 @@ const mockAuditLogs: AuditLog[] = [
       settingGroup: "quarantine",
       changes: {
         spamThreshold: { from: 5, to: 7 },
-        virusAction: { from: "quarantine", to: "block" }
-      }
+        virusAction: { from: "quarantine", to: "block" },
+      },
     },
     ipAddress: "192.168.1.100",
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     severity: "medium",
-    outcome: "success"
-  }
+    outcome: "success",
+  },
 ];
 
 const mockAuditStats: AuditStats = {
@@ -191,9 +217,13 @@ const mockAuditStats: AuditStats = {
   criticalEvents: 3,
   failedActions: 8,
   topAdmins: [
-    { adminId: "admin-001", adminName: "System Administrator", actionCount: 156 },
+    {
+      adminId: "admin-001",
+      adminName: "System Administrator",
+      actionCount: 156,
+    },
     { adminId: "admin-002", adminName: "Security Admin", actionCount: 89 },
-    { adminId: "admin-003", adminName: "Support Admin", actionCount: 67 }
+    { adminId: "admin-003", adminName: "Support Admin", actionCount: 67 },
   ],
   actionBreakdown: {
     user_created: 45,
@@ -221,85 +251,104 @@ const mockAuditStats: AuditStats = {
     backup_restored: 2,
     admin_created: 5,
     admin_deleted: 1,
-    permissions_changed: 23
-  }
+    permissions_changed: 23,
+  },
 };
 
 // API Functions
-export const getAuditLogs = async (filters: AuditFilters = {}): Promise<AuditLog[]> => {
+export const getAuditLogs = async (
+  filters: AuditFilters = {},
+): Promise<AuditLog[]> => {
   // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   let filteredLogs = [...mockAuditLogs];
-  
+
   // Apply filters
   if (filters.startDate) {
     const startDate = new Date(filters.startDate);
-    filteredLogs = filteredLogs.filter(log => log.timestamp >= startDate);
+    filteredLogs = filteredLogs.filter((log) => log.timestamp >= startDate);
   }
-  
+
   if (filters.endDate) {
     const endDate = new Date(filters.endDate);
-    filteredLogs = filteredLogs.filter(log => log.timestamp <= endDate);
+    filteredLogs = filteredLogs.filter((log) => log.timestamp <= endDate);
   }
-  
+
   if (filters.adminId) {
-    filteredLogs = filteredLogs.filter(log => log.adminId === filters.adminId);
-  }
-  
-  if (filters.action) {
-    filteredLogs = filteredLogs.filter(log => log.action === filters.action);
-  }
-  
-  if (filters.resource) {
-    filteredLogs = filteredLogs.filter(log => log.resource === filters.resource);
-  }
-  
-  if (filters.severity) {
-    filteredLogs = filteredLogs.filter(log => log.severity === filters.severity);
-  }
-  
-  if (filters.outcome) {
-    filteredLogs = filteredLogs.filter(log => log.outcome === filters.outcome);
-  }
-  
-  if (filters.search) {
-    const searchLower = filters.search.toLowerCase();
-    filteredLogs = filteredLogs.filter(log => 
-      log.details.toLowerCase().includes(searchLower) ||
-      log.adminEmail.toLowerCase().includes(searchLower) ||
-      log.adminName.toLowerCase().includes(searchLower)
+    filteredLogs = filteredLogs.filter(
+      (log) => log.adminId === filters.adminId,
     );
   }
-  
+
+  if (filters.action) {
+    filteredLogs = filteredLogs.filter((log) => log.action === filters.action);
+  }
+
+  if (filters.resource) {
+    filteredLogs = filteredLogs.filter(
+      (log) => log.resource === filters.resource,
+    );
+  }
+
+  if (filters.severity) {
+    filteredLogs = filteredLogs.filter(
+      (log) => log.severity === filters.severity,
+    );
+  }
+
+  if (filters.outcome) {
+    filteredLogs = filteredLogs.filter(
+      (log) => log.outcome === filters.outcome,
+    );
+  }
+
+  if (filters.search) {
+    const searchLower = filters.search.toLowerCase();
+    filteredLogs = filteredLogs.filter(
+      (log) =>
+        log.details.toLowerCase().includes(searchLower) ||
+        log.adminEmail.toLowerCase().includes(searchLower) ||
+        log.adminName.toLowerCase().includes(searchLower),
+    );
+  }
+
   // Sort by timestamp (newest first)
   filteredLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  
+
   // Apply pagination
   const page = filters.page || 1;
   const limit = filters.limit || 50;
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
-  
+
   return filteredLogs.slice(startIndex, endIndex);
 };
 
 export const getAuditStats = async (): Promise<AuditStats> => {
   // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 200));
+  await new Promise((resolve) => setTimeout(resolve, 200));
   return mockAuditStats;
 };
 
-export const exportAuditLogs = async (filters: AuditFilters = {}): Promise<Blob> => {
+export const exportAuditLogs = async (
+  filters: AuditFilters = {},
+): Promise<Blob> => {
   const logs = await getAuditLogs(filters);
-  
+
   // Create CSV content
   const headers = [
-    "Timestamp", "Admin", "Action", "Resource", "Details", 
-    "Severity", "Outcome", "IP Address"
+    "Timestamp",
+    "Admin",
+    "Action",
+    "Resource",
+    "Details",
+    "Severity",
+    "Outcome",
+    "IP Address",
   ];
-  
-  const rows = logs.map(log => [
+
+  const rows = logs.map((log) => [
     log.timestamp.toISOString(),
     `${log.adminName} (${log.adminEmail})`,
     log.action,
@@ -307,13 +356,13 @@ export const exportAuditLogs = async (filters: AuditFilters = {}): Promise<Blob>
     log.details,
     log.severity,
     log.outcome,
-    log.ipAddress
+    log.ipAddress,
   ]);
-  
+
   const csvContent = [
     headers.join(","),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
   ].join("\n");
-  
+
   return new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 };

@@ -19,7 +19,9 @@ const QuarantineManagement = lazy(() => import("./pages/QuarantineManagement"));
 const AuditLogsManagement = lazy(() => import("./pages/AuditLogsManagement"));
 const PolicyManagement = lazy(() => import("./components/PolicyManagement"));
 const DomainManagement = lazy(() => import("./components/DomainManagement"));
-const AnalyticsDashboard = lazy(() => import("./components/AnalyticsDashboard"));
+const AnalyticsDashboard = lazy(
+  () => import("./components/AnalyticsDashboard"),
+);
 const SystemSettings = lazy(() => import("./components/SystemSettings"));
 
 // Create QueryClient instance

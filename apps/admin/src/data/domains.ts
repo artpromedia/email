@@ -17,9 +17,18 @@ export interface Domain {
   aliases: string[];
 }
 
-export type DomainStatus = "active" | "pending" | "suspended" | "failed" | "configuring";
+export type DomainStatus =
+  | "active"
+  | "pending"
+  | "suspended"
+  | "failed"
+  | "configuring";
 export type DomainType = "primary" | "alias" | "subdomain" | "external";
-export type VerificationStatus = "verified" | "pending" | "failed" | "not_started";
+export type VerificationStatus =
+  | "verified"
+  | "pending"
+  | "failed"
+  | "not_started";
 
 export interface DomainVerification {
   status: VerificationStatus;
@@ -42,7 +51,15 @@ export interface DnsRecord {
   required: boolean;
 }
 
-export type DnsRecordType = "MX" | "TXT" | "CNAME" | "A" | "AAAA" | "SPF" | "DKIM" | "DMARC";
+export type DnsRecordType =
+  | "MX"
+  | "TXT"
+  | "CNAME"
+  | "A"
+  | "AAAA"
+  | "SPF"
+  | "DKIM"
+  | "DMARC";
 
 export interface MailSettings {
   maxMessageSize: number; // in MB
@@ -110,7 +127,7 @@ const mockDomains: Domain[] = [
       token: "ceerion-verify-abc123",
       verifiedAt: new Date("2025-06-01T10:00:00Z"),
       lastChecked: new Date("2025-08-31T08:00:00Z"),
-      errors: []
+      errors: [],
     },
     dnsRecords: [
       {
@@ -122,7 +139,7 @@ const mockDomains: Domain[] = [
         priority: 10,
         status: "active",
         description: "Primary mail exchange record",
-        required: true
+        required: true,
       },
       {
         id: "dns-002",
@@ -132,7 +149,7 @@ const mockDomains: Domain[] = [
         ttl: 3600,
         status: "active",
         description: "SPF record for sender authentication",
-        required: true
+        required: true,
       },
       {
         id: "dns-003",
@@ -142,18 +159,19 @@ const mockDomains: Domain[] = [
         ttl: 3600,
         status: "active",
         description: "DMARC policy record",
-        required: true
+        required: true,
       },
       {
         id: "dns-004",
         type: "TXT",
         name: "default._domainkey.ceerion.com",
-        value: "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+        value:
+          "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
         ttl: 3600,
         status: "active",
         description: "DKIM public key",
-        required: true
-      }
+        required: true,
+      },
     ],
     mailSettings: {
       maxMessageSize: 25,
@@ -162,7 +180,7 @@ const mockDomains: Domain[] = [
       allowExternalForwarding: true,
       requireTls: true,
       enableSpamFilter: true,
-      customBounceMessage: "Message could not be delivered to this domain."
+      customBounceMessage: "Message could not be delivered to this domain.",
     },
     security: {
       spfPolicy: "fail",
@@ -171,7 +189,7 @@ const mockDomains: Domain[] = [
       mtaStsEnabled: true,
       tlsReportingEnabled: true,
       requireSecureAuth: true,
-      allowedIpRanges: ["192.168.1.0/24", "10.0.0.0/8"]
+      allowedIpRanges: ["192.168.1.0/24", "10.0.0.0/8"],
     },
     statistics: {
       totalUsers: 1250,
@@ -180,14 +198,14 @@ const mockDomains: Domain[] = [
       storageUsed: 45.7,
       lastActivity: new Date("2025-08-31T09:30:00Z"),
       bounceRate: 2.1,
-      spamRate: 0.8
+      spamRate: 0.8,
     },
     createdAt: new Date("2025-06-01T09:00:00Z"),
     updatedAt: new Date("2025-08-30T16:45:00Z"),
     createdBy: "admin@ceerion.com",
     lastModifiedBy: "admin@ceerion.com",
     isDefault: true,
-    aliases: ["mail.ceerion.com", "smtp.ceerion.com"]
+    aliases: ["mail.ceerion.com", "smtp.ceerion.com"],
   },
   {
     id: "domain-002",
@@ -200,7 +218,7 @@ const mockDomains: Domain[] = [
       token: "support-verify-def456",
       verifiedAt: new Date("2025-07-15T14:20:00Z"),
       lastChecked: new Date("2025-08-31T08:00:00Z"),
-      errors: []
+      errors: [],
     },
     dnsRecords: [
       {
@@ -211,8 +229,8 @@ const mockDomains: Domain[] = [
         ttl: 3600,
         status: "active",
         description: "Alias to primary mail server",
-        required: true
-      }
+        required: true,
+      },
     ],
     mailSettings: {
       maxMessageSize: 25,
@@ -220,7 +238,7 @@ const mockDomains: Domain[] = [
       quotaPerUser: 10,
       allowExternalForwarding: false,
       requireTls: true,
-      enableSpamFilter: true
+      enableSpamFilter: true,
     },
     security: {
       spfPolicy: "fail",
@@ -229,7 +247,7 @@ const mockDomains: Domain[] = [
       mtaStsEnabled: true,
       tlsReportingEnabled: false,
       requireSecureAuth: true,
-      allowedIpRanges: []
+      allowedIpRanges: [],
     },
     statistics: {
       totalUsers: 25,
@@ -238,14 +256,14 @@ const mockDomains: Domain[] = [
       storageUsed: 1.2,
       lastActivity: new Date("2025-08-31T07:15:00Z"),
       bounceRate: 1.5,
-      spamRate: 0.3
+      spamRate: 0.3,
     },
     createdAt: new Date("2025-07-15T13:00:00Z"),
     updatedAt: new Date("2025-08-28T11:30:00Z"),
     createdBy: "admin@ceerion.com",
     lastModifiedBy: "support@ceerion.com",
     isDefault: false,
-    aliases: []
+    aliases: [],
   },
   {
     id: "domain-003",
@@ -257,7 +275,7 @@ const mockDomains: Domain[] = [
       method: "dns",
       token: "marketing-verify-ghi789",
       lastChecked: new Date("2025-08-31T08:00:00Z"),
-      errors: ["DNS record not found", "TTL too low"]
+      errors: ["DNS record not found", "TTL too low"],
     },
     dnsRecords: [
       {
@@ -268,8 +286,8 @@ const mockDomains: Domain[] = [
         ttl: 3600,
         status: "pending",
         description: "Alias to primary mail server",
-        required: true
-      }
+        required: true,
+      },
     ],
     mailSettings: {
       maxMessageSize: 25,
@@ -277,7 +295,7 @@ const mockDomains: Domain[] = [
       quotaPerUser: 5,
       allowExternalForwarding: true,
       requireTls: true,
-      enableSpamFilter: true
+      enableSpamFilter: true,
     },
     security: {
       spfPolicy: "soft_fail",
@@ -286,7 +304,7 @@ const mockDomains: Domain[] = [
       mtaStsEnabled: false,
       tlsReportingEnabled: false,
       requireSecureAuth: true,
-      allowedIpRanges: []
+      allowedIpRanges: [],
     },
     statistics: {
       totalUsers: 0,
@@ -295,14 +313,14 @@ const mockDomains: Domain[] = [
       storageUsed: 0,
       lastActivity: new Date("2025-08-25T00:00:00Z"),
       bounceRate: 0,
-      spamRate: 0
+      spamRate: 0,
     },
     createdAt: new Date("2025-08-25T15:30:00Z"),
     updatedAt: new Date("2025-08-30T10:15:00Z"),
     createdBy: "marketing@ceerion.com",
     lastModifiedBy: "admin@ceerion.com",
     isDefault: false,
-    aliases: []
+    aliases: [],
   },
   {
     id: "domain-004",
@@ -315,7 +333,7 @@ const mockDomains: Domain[] = [
       token: "demo-verify-jkl012",
       verifiedAt: new Date("2025-08-01T09:00:00Z"),
       lastChecked: new Date("2025-08-31T08:00:00Z"),
-      errors: []
+      errors: [],
     },
     dnsRecords: [
       {
@@ -326,8 +344,8 @@ const mockDomains: Domain[] = [
         ttl: 3600,
         status: "active",
         description: "Alias to primary mail server",
-        required: true
-      }
+        required: true,
+      },
     ],
     mailSettings: {
       maxMessageSize: 10,
@@ -335,7 +353,7 @@ const mockDomains: Domain[] = [
       quotaPerUser: 1,
       allowExternalForwarding: false,
       requireTls: true,
-      enableSpamFilter: true
+      enableSpamFilter: true,
     },
     security: {
       spfPolicy: "soft_fail",
@@ -344,7 +362,7 @@ const mockDomains: Domain[] = [
       mtaStsEnabled: false,
       tlsReportingEnabled: false,
       requireSecureAuth: true,
-      allowedIpRanges: []
+      allowedIpRanges: [],
     },
     statistics: {
       totalUsers: 10,
@@ -353,15 +371,15 @@ const mockDomains: Domain[] = [
       storageUsed: 0.1,
       lastActivity: new Date("2025-08-20T16:30:00Z"),
       bounceRate: 5.2,
-      spamRate: 1.8
+      spamRate: 1.8,
     },
     createdAt: new Date("2025-08-01T08:00:00Z"),
     updatedAt: new Date("2025-08-29T14:20:00Z"),
     createdBy: "demo@ceerion.com",
     lastModifiedBy: "admin@ceerion.com",
     isDefault: false,
-    aliases: []
-  }
+    aliases: [],
+  },
 ];
 
 const mockDomainStats: DomainStats = {
@@ -374,35 +392,43 @@ const mockDomainStats: DomainStats = {
   topDomains: [
     { domain: "ceerion.com", users: 1250, messages: 8950 },
     { domain: "support.ceerion.com", users: 25, messages: 450 },
-    { domain: "demo.ceerion.com", users: 10, messages: 25 }
-  ]
+    { domain: "demo.ceerion.com", users: 10, messages: 25 },
+  ],
 };
 
 // API Functions
-export const getDomains = async (filters: DomainFilters = {}): Promise<Domain[]> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
+export const getDomains = async (
+  filters: DomainFilters = {},
+): Promise<Domain[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   let filteredDomains = [...mockDomains];
-  
+
   if (filters.status) {
-    filteredDomains = filteredDomains.filter(domain => domain.status === filters.status);
-  }
-  
-  if (filters.type) {
-    filteredDomains = filteredDomains.filter(domain => domain.type === filters.type);
-  }
-  
-  if (filters.verification) {
-    filteredDomains = filteredDomains.filter(domain => domain.verification.status === filters.verification);
-  }
-  
-  if (filters.search) {
-    const searchLower = filters.search.toLowerCase();
-    filteredDomains = filteredDomains.filter(domain => 
-      domain.name.toLowerCase().includes(searchLower)
+    filteredDomains = filteredDomains.filter(
+      (domain) => domain.status === filters.status,
     );
   }
-  
+
+  if (filters.type) {
+    filteredDomains = filteredDomains.filter(
+      (domain) => domain.type === filters.type,
+    );
+  }
+
+  if (filters.verification) {
+    filteredDomains = filteredDomains.filter(
+      (domain) => domain.verification.status === filters.verification,
+    );
+  }
+
+  if (filters.search) {
+    const searchLower = filters.search.toLowerCase();
+    filteredDomains = filteredDomains.filter((domain) =>
+      domain.name.toLowerCase().includes(searchLower),
+    );
+  }
+
   // Sort by default domain first, then by name
   filteredDomains.sort((a, b) => {
     if (a.isDefault !== b.isDefault) {
@@ -410,26 +436,26 @@ export const getDomains = async (filters: DomainFilters = {}): Promise<Domain[]>
     }
     return a.name.localeCompare(b.name);
   });
-  
+
   return filteredDomains;
 };
 
 export const getDomainStats = async (): Promise<DomainStats> => {
-  await new Promise(resolve => setTimeout(resolve, 200));
+  await new Promise((resolve) => setTimeout(resolve, 200));
   return mockDomainStats;
 };
 
 export const getDomain = async (id: string): Promise<Domain | null> => {
-  await new Promise(resolve => setTimeout(resolve, 200));
-  return mockDomains.find(domain => domain.id === id) || null;
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  return mockDomains.find((domain) => domain.id === id) || null;
 };
 
 export const verifyDomain = async (id: string): Promise<Domain> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const domain = mockDomains.find(d => d.id === id);
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  const domain = mockDomains.find((d) => d.id === id);
   if (!domain) throw new Error("Domain not found");
-  
+
   // Simulate verification process
   return {
     ...domain,
@@ -437,29 +463,32 @@ export const verifyDomain = async (id: string): Promise<Domain> => {
       ...domain.verification,
       status: "verified",
       verifiedAt: new Date(),
-      errors: []
+      errors: [],
     },
     status: "active",
     updatedAt: new Date(),
-    lastModifiedBy: "admin@ceerion.com"
+    lastModifiedBy: "admin@ceerion.com",
   };
 };
 
-export const updateDomainStatus = async (id: string, status: DomainStatus): Promise<Domain> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const domain = mockDomains.find(d => d.id === id);
+export const updateDomainStatus = async (
+  id: string,
+  status: DomainStatus,
+): Promise<Domain> => {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  const domain = mockDomains.find((d) => d.id === id);
   if (!domain) throw new Error("Domain not found");
-  
+
   return {
     ...domain,
     status,
     updatedAt: new Date(),
-    lastModifiedBy: "admin@ceerion.com"
+    lastModifiedBy: "admin@ceerion.com",
   };
 };
 
-export const deleteDomain = async (id: string): Promise<void> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
+export const deleteDomain = async (_id: string): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 300));
   // In real implementation, would delete from database
 };

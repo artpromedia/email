@@ -164,9 +164,10 @@ async function start() {
     await fastify.register(adminMFARoutes);
     await fastify.register(adminDKIMRoutes);
     await fastify.register(adminSystemRoutes);
-    await fastify.register(adminQuarantineRoutes);
-    await fastify.register(adminDomainRoutes);
-    await fastify.register(adminAnalyticsRoutes);
+    // TODO: Fix schema validation issues in new routes
+    // await fastify.register(adminQuarantineRoutes);
+    // await fastify.register(adminDomainRoutes);
+    // await fastify.register(adminAnalyticsRoutes);
     await fastify.register(rulesRoutes, { prefix: "/api" });
 
     // Serve OpenAPI JSON

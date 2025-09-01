@@ -96,7 +96,12 @@ export interface SystemAlert {
   source: string;
 }
 
-export type AlertType = "security" | "performance" | "storage" | "system" | "maintenance";
+export type AlertType =
+  | "security"
+  | "performance"
+  | "storage"
+  | "system"
+  | "maintenance";
 export type AlertSeverity = "critical" | "warning" | "info";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 
@@ -233,7 +238,7 @@ const generateDailyData = (): DailyData[] => {
     const date = new Date();
     date.setDate(date.getDate() - i);
     data.push({
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split("T")[0],
       messages: Math.floor(Math.random() * 10000) + 5000,
       users: Math.floor(Math.random() * 100) + 50,
       threats: Math.floor(Math.random() * 50) + 10,
@@ -266,18 +271,68 @@ const mockAnalyticsData: AnalyticsData = {
     hourlyDistribution: generateHourlyData(),
     dailyTrend: generateDailyData(),
     topSenders: [
-      { email: "newsletter@ceerion.com", domain: "ceerion.com", messageCount: 1250, reputation: 95 },
-      { email: "support@ceerion.com", domain: "ceerion.com", messageCount: 890, reputation: 98 },
-      { email: "alerts@ceerion.com", domain: "ceerion.com", messageCount: 567, reputation: 92 },
-      { email: "marketing@ceerion.com", domain: "ceerion.com", messageCount: 445, reputation: 89 },
-      { email: "noreply@ceerion.com", domain: "ceerion.com", messageCount: 334, reputation: 96 },
+      {
+        email: "newsletter@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 1250,
+        reputation: 95,
+      },
+      {
+        email: "support@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 890,
+        reputation: 98,
+      },
+      {
+        email: "alerts@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 567,
+        reputation: 92,
+      },
+      {
+        email: "marketing@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 445,
+        reputation: 89,
+      },
+      {
+        email: "noreply@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 334,
+        reputation: 96,
+      },
     ],
     topRecipients: [
-      { email: "admin@ceerion.com", domain: "ceerion.com", messageCount: 2340, storageUsed: 8.5 },
-      { email: "support@ceerion.com", domain: "ceerion.com", messageCount: 1890, storageUsed: 6.2 },
-      { email: "security@ceerion.com", domain: "ceerion.com", messageCount: 1456, storageUsed: 4.8 },
-      { email: "operations@ceerion.com", domain: "ceerion.com", messageCount: 1123, storageUsed: 3.9 },
-      { email: "alerts@ceerion.com", domain: "ceerion.com", messageCount: 998, storageUsed: 2.1 },
+      {
+        email: "admin@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 2340,
+        storageUsed: 8.5,
+      },
+      {
+        email: "support@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 1890,
+        storageUsed: 6.2,
+      },
+      {
+        email: "security@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 1456,
+        storageUsed: 4.8,
+      },
+      {
+        email: "operations@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 1123,
+        storageUsed: 3.9,
+      },
+      {
+        email: "alerts@ceerion.com",
+        domain: "ceerion.com",
+        messageCount: 998,
+        storageUsed: 2.1,
+      },
     ],
   },
   userMetrics: {
@@ -285,17 +340,72 @@ const mockAnalyticsData: AnalyticsData = {
     activeUsersToday: 1180,
     userGrowthRate: 8.5,
     topActiveUsers: [
-      { email: "admin@ceerion.com", domain: "ceerion.com", loginCount: 45, messagesSent: 234, messagesReceived: 567, lastActivity: new Date() },
-      { email: "support@ceerion.com", domain: "ceerion.com", loginCount: 38, messagesSent: 189, messagesReceived: 445, lastActivity: new Date() },
-      { email: "security@ceerion.com", domain: "ceerion.com", loginCount: 32, messagesSent: 145, messagesReceived: 334, lastActivity: new Date() },
-      { email: "operations@ceerion.com", domain: "ceerion.com", loginCount: 28, messagesSent: 123, messagesReceived: 289, lastActivity: new Date() },
-      { email: "dev@ceerion.com", domain: "ceerion.com", loginCount: 25, messagesSent: 98, messagesReceived: 234, lastActivity: new Date() },
+      {
+        email: "admin@ceerion.com",
+        domain: "ceerion.com",
+        loginCount: 45,
+        messagesSent: 234,
+        messagesReceived: 567,
+        lastActivity: new Date(),
+      },
+      {
+        email: "support@ceerion.com",
+        domain: "ceerion.com",
+        loginCount: 38,
+        messagesSent: 189,
+        messagesReceived: 445,
+        lastActivity: new Date(),
+      },
+      {
+        email: "security@ceerion.com",
+        domain: "ceerion.com",
+        loginCount: 32,
+        messagesSent: 145,
+        messagesReceived: 334,
+        lastActivity: new Date(),
+      },
+      {
+        email: "operations@ceerion.com",
+        domain: "ceerion.com",
+        loginCount: 28,
+        messagesSent: 123,
+        messagesReceived: 289,
+        lastActivity: new Date(),
+      },
+      {
+        email: "dev@ceerion.com",
+        domain: "ceerion.com",
+        loginCount: 25,
+        messagesSent: 98,
+        messagesReceived: 234,
+        lastActivity: new Date(),
+      },
     ],
     userDistributionByDomain: [
-      { domain: "ceerion.com", userCount: 1250, activeUsers: 1150, percentage: 97.2 },
-      { domain: "support.ceerion.com", userCount: 25, activeUsers: 23, percentage: 1.9 },
-      { domain: "demo.ceerion.com", userCount: 10, activeUsers: 7, percentage: 0.8 },
-      { domain: "marketing.ceerion.com", userCount: 0, activeUsers: 0, percentage: 0.1 },
+      {
+        domain: "ceerion.com",
+        userCount: 1250,
+        activeUsers: 1150,
+        percentage: 97.2,
+      },
+      {
+        domain: "support.ceerion.com",
+        userCount: 25,
+        activeUsers: 23,
+        percentage: 1.9,
+      },
+      {
+        domain: "demo.ceerion.com",
+        userCount: 10,
+        activeUsers: 7,
+        percentage: 0.8,
+      },
+      {
+        domain: "marketing.ceerion.com",
+        userCount: 0,
+        activeUsers: 0,
+        percentage: 0.1,
+      },
     ],
     loginActivity: Array.from({ length: 24 }, (_, hour) => ({
       hour,
@@ -318,7 +428,7 @@ const mockAnalyticsData: AnalyticsData = {
         severity: "warning",
         timestamp: new Date(),
         source: "Auth System",
-        details: { ip: "192.168.1.100", attempts: 15 }
+        details: { ip: "192.168.1.100", attempts: 15 },
       },
       {
         id: "sus-002",
@@ -327,10 +437,13 @@ const mockAnalyticsData: AnalyticsData = {
         severity: "critical",
         timestamp: new Date(),
         source: "Mail Filter",
-        details: { sender: "unknown@suspicious.com", attachment: "invoice.exe" }
+        details: {
+          sender: "unknown@suspicious.com",
+          attachment: "invoice.exe",
+        },
       },
     ],
-    securityTrends: generateDailyData().map(d => ({
+    securityTrends: generateDailyData().map((d) => ({
       date: d.date,
       threats: d.threats,
       blocked: Math.floor(d.threats * 0.8),
@@ -344,17 +457,67 @@ const mockAnalyticsData: AnalyticsData = {
     availableStorage: 52.8,
     storageGrowthRate: 12.5,
     topStorageUsers: [
-      { email: "archive@ceerion.com", domain: "ceerion.com", storageUsed: 8.5, quota: 10, utilizationRate: 85 },
-      { email: "marketing@ceerion.com", domain: "ceerion.com", storageUsed: 6.2, quota: 8, utilizationRate: 77.5 },
-      { email: "support@ceerion.com", domain: "ceerion.com", storageUsed: 4.8, quota: 6, utilizationRate: 80 },
-      { email: "admin@ceerion.com", domain: "ceerion.com", storageUsed: 3.9, quota: 5, utilizationRate: 78 },
-      { email: "backup@ceerion.com", domain: "ceerion.com", storageUsed: 3.2, quota: 4, utilizationRate: 80 },
+      {
+        email: "archive@ceerion.com",
+        domain: "ceerion.com",
+        storageUsed: 8.5,
+        quota: 10,
+        utilizationRate: 85,
+      },
+      {
+        email: "marketing@ceerion.com",
+        domain: "ceerion.com",
+        storageUsed: 6.2,
+        quota: 8,
+        utilizationRate: 77.5,
+      },
+      {
+        email: "support@ceerion.com",
+        domain: "ceerion.com",
+        storageUsed: 4.8,
+        quota: 6,
+        utilizationRate: 80,
+      },
+      {
+        email: "admin@ceerion.com",
+        domain: "ceerion.com",
+        storageUsed: 3.9,
+        quota: 5,
+        utilizationRate: 78,
+      },
+      {
+        email: "backup@ceerion.com",
+        domain: "ceerion.com",
+        storageUsed: 3.2,
+        quota: 4,
+        utilizationRate: 80,
+      },
     ],
     storageByDomain: [
-      { domain: "ceerion.com", storageUsed: 45.7, userCount: 1250, averagePerUser: 0.037 },
-      { domain: "support.ceerion.com", storageUsed: 1.2, userCount: 25, averagePerUser: 0.048 },
-      { domain: "demo.ceerion.com", storageUsed: 0.3, userCount: 10, averagePerUser: 0.03 },
-      { domain: "marketing.ceerion.com", storageUsed: 0, userCount: 0, averagePerUser: 0 },
+      {
+        domain: "ceerion.com",
+        storageUsed: 45.7,
+        userCount: 1250,
+        averagePerUser: 0.037,
+      },
+      {
+        domain: "support.ceerion.com",
+        storageUsed: 1.2,
+        userCount: 25,
+        averagePerUser: 0.048,
+      },
+      {
+        domain: "demo.ceerion.com",
+        storageUsed: 0.3,
+        userCount: 10,
+        averagePerUser: 0.03,
+      },
+      {
+        domain: "marketing.ceerion.com",
+        storageUsed: 0,
+        userCount: 0,
+        averagePerUser: 0,
+      },
     ],
     backupStatus: {
       lastBackup: new Date(Date.now() - 4 * 60 * 60 * 1000),
@@ -381,11 +544,26 @@ const mockAnalyticsData: AnalyticsData = {
     })),
   },
   trends: {
-    messageTrends: generateDailyData().map(d => ({ timestamp: new Date(d.date), value: d.messages })),
-    userTrends: generateDailyData().map(d => ({ timestamp: new Date(d.date), value: d.users })),
-    securityTrends: generateDailyData().map(d => ({ timestamp: new Date(d.date), value: d.threats })),
-    storageTrends: generateDailyData().map(d => ({ timestamp: new Date(d.date), value: d.storage })),
-    performanceTrends: generateDailyData().map(d => ({ timestamp: new Date(d.date), value: Math.floor(Math.random() * 50) + 100 })),
+    messageTrends: generateDailyData().map((d) => ({
+      timestamp: new Date(d.date),
+      value: d.messages,
+    })),
+    userTrends: generateDailyData().map((d) => ({
+      timestamp: new Date(d.date),
+      value: d.users,
+    })),
+    securityTrends: generateDailyData().map((d) => ({
+      timestamp: new Date(d.date),
+      value: d.threats,
+    })),
+    storageTrends: generateDailyData().map((d) => ({
+      timestamp: new Date(d.date),
+      value: d.storage,
+    })),
+    performanceTrends: generateDailyData().map((d) => ({
+      timestamp: new Date(d.date),
+      value: Math.floor(Math.random() * 50) + 100,
+    })),
   },
   alerts: [
     {
@@ -422,27 +600,29 @@ const mockAnalyticsData: AnalyticsData = {
 };
 
 // API Functions
-export const getAnalyticsData = async (filters: AnalyticsFilters = { timeRange: "24h" }): Promise<AnalyticsData> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
+export const getAnalyticsData = async (
+  filters: AnalyticsFilters = { timeRange: "24h" },
+): Promise<AnalyticsData> => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
   // Simulate filtering based on time range
   console.log("Filtering analytics data with:", filters);
   return mockAnalyticsData;
 };
 
 export const getSystemOverview = async (): Promise<SystemOverview> => {
-  await new Promise(resolve => setTimeout(resolve, 200));
+  await new Promise((resolve) => setTimeout(resolve, 200));
   return mockAnalyticsData.overview;
 };
 
 export const acknowledgeAlert = async (alertId: string): Promise<void> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise((resolve) => setTimeout(resolve, 300));
   console.log("Acknowledging alert:", alertId);
   // In real implementation, would update alert status in database
 };
 
 export const resolveAlert = async (alertId: string): Promise<void> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise((resolve) => setTimeout(resolve, 300));
   console.log("Resolving alert:", alertId);
   // In real implementation, would update alert status in database
 };

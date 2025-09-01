@@ -30,6 +30,7 @@ model User {
   // Relations
   sessions          Session[]
   messages          Message[]
+  folders           Folder[]
   labels            Label[]
   policies          Policy[]
   auditEvents       AuditEvent[] @relation("AuditActor")
@@ -76,6 +77,7 @@ model Message {
   messageId   String    @unique // RFC 2822 Message-ID
   threadId    String?
   userId      String
+  folderId    String?
   from        String
   to          String[]
   cc          String[]  @default([])
@@ -84,7 +86,7 @@ model Message {
   body        String
   htmlBody    String?
   flags       String[]  @default([])
-  folder      String    @default("inbox")
+  folder      String    @default("inbox") // Keep for backward compatibility
   priority    String    @default("normal")
   sentAt      DateTime?
   receivedAt  DateTime?
@@ -94,6 +96,7 @@ model Message {
 
   // Relations
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderRef   Folder?     @relation(fields: [folderId], references: [id], onDelete: SetNull)
   attachments Attachment[]
   messageLabels MessageLabel[]
   ruleExecutions RuleExecution[]
@@ -424,6 +427,24 @@ model OrgPolicy {
   updatedAt          DateTime @updatedAt
 
   @@map("org_policies")
+}
+
+model Folder {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  type        String    @default("custom") // inbox, sent, drafts, trash, spam, custom
+  messageCount Int      @default(0)
+  unreadCount Int      @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@unique([userId, name])
+  @@map("folders")
 }
 
 // Enums

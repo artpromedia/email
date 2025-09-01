@@ -1,149 +1,248 @@
-import { useState, ReactNode, useEffect } from 'react'
-import { X, Send, Paperclip, Smile, Bold, Italic, Underline, Link2, Clock, ChevronDown } from 'lucide-react'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Badge } from './ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
-import { useMail } from '../hooks/useMail'
-import { useI18n } from '../contexts/I18nContext'
-import { toast } from 'react-hot-toast'
+import { useState, ReactNode, useEffect } from "react";
+import {
+  X,
+  Send,
+  Paperclip,
+  Smile,
+  Bold,
+  Italic,
+  Underline,
+  Link2,
+  Clock,
+  ChevronDown,
+} from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
+import { useMail } from "../hooks/useMail";
+import { useI18n } from "../contexts/I18nContext";
+import { toast } from "react-hot-toast";
 
 interface ComposeSheetProps {
-  isOpen: boolean
-  onClose: () => void
-  children?: ReactNode
+  isOpen: boolean;
+  onClose: () => void;
+  children?: ReactNode;
+  draftData?: {
+    draftId?: string;
+    to?: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject?: string;
+    bodyHtml?: string;
+    headers?: {
+      "In-Reply-To"?: string;
+      References?: string[];
+    };
+    attachmentsSizeExceeded?: boolean;
+  };
 }
 
 interface Contact {
-  name: string
-  email: string
+  name: string;
+  email: string;
 }
 
 const suggestions: Contact[] = [
-  { name: 'Sarah Chen', email: 'sarah@acme.com' },
-  { name: 'Alex Rodriguez', email: 'alex@techcorp.io' },
-  { name: 'Maria Santos', email: 'maria@designstudio.com' },
-  { name: 'David Kim', email: 'david@startup.co' },
-  { name: 'Lisa Wang', email: 'lisa@agency.com' },
-]
+  { name: "Sarah Chen", email: "sarah@acme.com" },
+  { name: "Alex Rodriguez", email: "alex@techcorp.io" },
+  { name: "Maria Santos", email: "maria@designstudio.com" },
+  { name: "David Kim", email: "david@startup.co" },
+  { name: "Lisa Wang", email: "lisa@agency.com" },
+];
 
-export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
-  const [toContacts, setToContacts] = useState<Contact[]>([])
-  const [ccContacts, setCcContacts] = useState<Contact[]>([])
-  const [bccContacts, setBccContacts] = useState<Contact[]>([])
-  const [showCc, setShowCc] = useState(false)
-  const [showBcc, setShowBcc] = useState(false)
-  const [toInput, setToInput] = useState('')
-  const [ccInput, setCcInput] = useState('')
-  const [bccInput, setBccInput] = useState('')
-  const [subject, setSubject] = useState('')
-  const [content, setContent] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [activeSuggestions, setActiveSuggestions] = useState<Contact[]>([])
-  const [isSending, setIsSending] = useState(false)
-  const [priority, setPriority] = useState<'low' | 'normal' | 'high'>('normal')
-  
-  const { sendMessage, saveDraft } = useMail()
-  const { t } = useI18n()
+export function ComposeSheet({
+  isOpen,
+  onClose,
+  children,
+  draftData,
+}: ComposeSheetProps) {
+  const [toContacts, setToContacts] = useState<Contact[]>([]);
+  const [ccContacts, setCcContacts] = useState<Contact[]>([]);
+  const [bccContacts, setBccContacts] = useState<Contact[]>([]);
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
+  const [toInput, setToInput] = useState("");
+  const [ccInput, setCcInput] = useState("");
+  const [bccInput, setBccInput] = useState("");
+  const [subject, setSubject] = useState("");
+  const [content, setContent] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestions, setActiveSuggestions] = useState<Contact[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [priority, setPriority] = useState<"low" | "normal" | "high">("normal");
+
+  const { sendMessage, saveDraft } = useMail();
+  const { t } = useI18n();
+
+  // Initialize with draft data when provided
+  useEffect(() => {
+    if (draftData && isOpen) {
+      // Set recipients
+      if (draftData.to) {
+        setToContacts(
+          draftData.to.map((email) => ({ name: email.split("@")[0], email })),
+        );
+      }
+      if (draftData.cc && draftData.cc.length > 0) {
+        setCcContacts(
+          draftData.cc.map((email) => ({ name: email.split("@")[0], email })),
+        );
+        setShowCc(true);
+      }
+      if (draftData.bcc && draftData.bcc.length > 0) {
+        setBccContacts(
+          draftData.bcc.map((email) => ({ name: email.split("@")[0], email })),
+        );
+        setShowBcc(true);
+      }
+
+      // Set subject
+      if (draftData.subject) {
+        setSubject(draftData.subject);
+      }
+
+      // Set content
+      if (draftData.bodyHtml) {
+        setContent(draftData.bodyHtml);
+      }
+
+      // Show attachment size warning if needed
+      if (draftData.attachmentsSizeExceeded) {
+        toast.error(
+          "Some attachments were excluded due to size limits (25MB max)",
+        );
+      }
+    }
+  }, [draftData, isOpen]);
+
+  // Reset form when closing
+  useEffect(() => {
+    if (!isOpen) {
+      setToContacts([]);
+      setCcContacts([]);
+      setBccContacts([]);
+      setShowCc(false);
+      setShowBcc(false);
+      setToInput("");
+      setCcInput("");
+      setBccInput("");
+      setSubject("");
+      setContent("");
+    }
+  }, [isOpen]);
 
   // Auto-save draft every 30 seconds
   useEffect(() => {
-    if (!isOpen || (!subject && !content)) return
+    if (!isOpen || (!subject && !content)) return;
 
     const interval = setInterval(() => {
       if (toContacts.length > 0 || subject || content) {
-        handleSaveDraft()
+        handleSaveDraft();
       }
-    }, 30000) // 30 seconds
+    }, 30000); // 30 seconds
 
-    return () => clearInterval(interval)
-  }, [isOpen, toContacts, subject, content])
+    return () => clearInterval(interval);
+  }, [isOpen, toContacts, subject, content]);
 
   const handleSaveDraft = async () => {
     try {
       await saveDraft({
-        to: toContacts.map(c => c.email),
-        cc: ccContacts.map(c => c.email),
-        bcc: bccContacts.map(c => c.email),
+        to: toContacts.map((c) => c.email),
+        cc: ccContacts.map((c) => c.email),
+        bcc: bccContacts.map((c) => c.email),
         subject,
         body: content,
-      })
+      });
     } catch (error) {
       // Silent fail for auto-save
-      console.error('Auto-save failed:', error)
+      console.error("Auto-save failed:", error);
     }
-  }
+  };
 
   const handleToInputChange = (value: string) => {
-    setToInput(value)
+    setToInput(value);
     if (value.length > 0) {
       const filtered = suggestions.filter(
-        s => s.name.toLowerCase().includes(value.toLowerCase()) ||
-             s.email.toLowerCase().includes(value.toLowerCase())
-      )
-      setActiveSuggestions(filtered)
-      setShowSuggestions(filtered.length > 0)
+        (s) =>
+          s.name.toLowerCase().includes(value.toLowerCase()) ||
+          s.email.toLowerCase().includes(value.toLowerCase()),
+      );
+      setActiveSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
     } else {
-      setShowSuggestions(false)
+      setShowSuggestions(false);
     }
-  }
+  };
 
-  const addContact = (contact: Contact, type: 'to' | 'cc' | 'bcc') => {
-    if (type === 'to') {
-      setToContacts([...toContacts, contact])
-      setToInput('')
-    } else if (type === 'cc') {
-      setCcContacts([...ccContacts, contact])
-      setCcInput('')
+  const addContact = (contact: Contact, type: "to" | "cc" | "bcc") => {
+    if (type === "to") {
+      setToContacts([...toContacts, contact]);
+      setToInput("");
+    } else if (type === "cc") {
+      setCcContacts([...ccContacts, contact]);
+      setCcInput("");
     } else {
-      setBccContacts([...bccContacts, contact])
-      setBccInput('')
+      setBccContacts([...bccContacts, contact]);
+      setBccInput("");
     }
-    setShowSuggestions(false)
-  }
+    setShowSuggestions(false);
+  };
 
-  const removeContact = (index: number, type: 'to' | 'cc' | 'bcc') => {
-    if (type === 'to') {
-      setToContacts(toContacts.filter((_, i) => i !== index))
-    } else if (type === 'cc') {
-      setCcContacts(ccContacts.filter((_, i) => i !== index))
+  const removeContact = (index: number, type: "to" | "cc" | "bcc") => {
+    if (type === "to") {
+      setToContacts(toContacts.filter((_, i) => i !== index));
+    } else if (type === "cc") {
+      setCcContacts(ccContacts.filter((_, i) => i !== index));
     } else {
-      setBccContacts(bccContacts.filter((_, i) => i !== index))
+      setBccContacts(bccContacts.filter((_, i) => i !== index));
     }
-  }
+  };
 
   const handleSend = async () => {
-    if (!toContacts.length || !subject.trim()) return
-    
-    setIsSending(true)
+    if (!toContacts.length || !subject.trim()) return;
+
+    setIsSending(true);
     try {
       await sendMessage({
-        to: toContacts.map(c => c.email),
-        cc: ccContacts.map(c => c.email),
-        bcc: bccContacts.map(c => c.email),
+        to: toContacts.map((c) => c.email),
+        cc: ccContacts.map((c) => c.email),
+        bcc: bccContacts.map((c) => c.email),
         subject,
         body: content,
         priority,
-      })
-      
-      // Clear form and close
-      setToContacts([])
-      setCcContacts([])
-      setBccContacts([])
-      setSubject('')
-      setContent('')
-      setPriority('normal')
-      onClose()
-      
-      toast.success(t('mail.sent'))
-    } catch (error) {
-      toast.error(t('errors.sendFailed'))
-    } finally {
-      setIsSending(false)
-    }
-  }
+      });
 
-  const ContactChip = ({ contact, onRemove }: { contact: Contact; onRemove: () => void }) => (
+      // Clear form and close
+      setToContacts([]);
+      setCcContacts([]);
+      setBccContacts([]);
+      setSubject("");
+      setContent("");
+      setPriority("normal");
+      onClose();
+
+      toast.success(t("mail.sent"));
+    } catch (error) {
+      toast.error(t("errors.sendFailed"));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const ContactChip = ({
+    contact,
+    onRemove,
+  }: {
+    contact: Contact;
+    onRemove: () => void;
+  }) => (
     <Badge variant="secondary" className="flex items-center gap-1 pr-1">
       <span className="truncate max-w-32">{contact.name}</span>
       <Button
@@ -155,22 +254,22 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
         <X className="h-3 w-3" />
       </Button>
     </Badge>
-  )
+  );
 
-  const ContactInput = ({ 
-    value, 
-    onChange, 
-    placeholder, 
-    contacts, 
-    onRemoveContact, 
-    type 
+  const ContactInput = ({
+    value,
+    onChange,
+    placeholder,
+    contacts,
+    onRemoveContact,
+    type,
   }: {
-    value: string
-    onChange: (value: string) => void
-    placeholder: string
-    contacts: Contact[]
-    onRemoveContact: (index: number) => void
-    type: 'to' | 'cc' | 'bcc'
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    contacts: Contact[];
+    onRemoveContact: (index: number) => void;
+    type: "to" | "cc" | "bcc";
   }) => (
     <div className="flex flex-wrap items-center gap-1 p-2 border rounded-md min-h-10">
       {contacts.map((contact, index) => (
@@ -183,35 +282,33 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
       <Input
         value={value}
         onChange={(e) => {
-          onChange(e.target.value)
-          if (type === 'to') handleToInputChange(e.target.value)
+          onChange(e.target.value);
+          if (type === "to") handleToInputChange(e.target.value);
         }}
-        placeholder={contacts.length === 0 ? placeholder : ''}
+        placeholder={contacts.length === 0 ? placeholder : ""}
         className="border-0 shadow-none flex-1 min-w-32 p-0 h-6"
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && value.includes('@')) {
-            e.preventDefault()
-            const email = value.trim()
-            const contact = { name: email.split('@')[0], email }
-            addContact(contact, type)
+          if (e.key === "Enter" && value.includes("@")) {
+            e.preventDefault();
+            const email = value.trim();
+            const contact = { name: email.split("@")[0], email };
+            addContact(contact, type);
           }
         }}
       />
     </div>
-  )
+  );
 
-  if (!isOpen) return <>{children}</>
+  if (!isOpen) return <>{children}</>;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-4xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Compose</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex-1 flex flex-col gap-4 overflow-hidden">
           {/* Recipients */}
           <div className="space-y-3">
@@ -223,7 +320,7 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
                   onChange={setToInput}
                   placeholder="Enter email addresses"
                   contacts={toContacts}
-                  onRemoveContact={(index) => removeContact(index, 'to')}
+                  onRemoveContact={(index) => removeContact(index, "to")}
                   type="to"
                 />
                 {showSuggestions && activeSuggestions.length > 0 && (
@@ -232,10 +329,12 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
                       <div
                         key={index}
                         className="p-2 hover:bg-muted cursor-pointer"
-                        onClick={() => addContact(contact, 'to')}
+                        onClick={() => addContact(contact, "to")}
                       >
                         <div className="font-medium">{contact.name}</div>
-                        <div className="text-sm text-muted-foreground">{contact.email}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {contact.email}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -269,7 +368,7 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
                   onChange={setCcInput}
                   placeholder="Carbon copy"
                   contacts={ccContacts}
-                  onRemoveContact={(index) => removeContact(index, 'cc')}
+                  onRemoveContact={(index) => removeContact(index, "cc")}
                   type="cc"
                 />
               </div>
@@ -283,7 +382,7 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
                   onChange={setBccInput}
                   placeholder="Blind carbon copy"
                   contacts={bccContacts}
-                  onRemoveContact={(index) => removeContact(index, 'bcc')}
+                  onRemoveContact={(index) => removeContact(index, "bcc")}
                   type="bcc"
                 />
               </div>
@@ -347,14 +446,19 @@ export function ComposeSheet({ isOpen, onClose, children }: ComposeSheetProps) {
               <Button variant="outline" onClick={onClose}>
                 Save Draft
               </Button>
-              <Button onClick={handleSend} disabled={isSending || toContacts.length === 0 || !subject.trim()}>
+              <Button
+                onClick={handleSend}
+                disabled={
+                  isSending || toContacts.length === 0 || !subject.trim()
+                }
+              >
                 <Send className="h-4 w-4 mr-2" />
-                {isSending ? 'Sending...' : 'Send'}
+                {isSending ? "Sending..." : "Send"}
               </Button>
             </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

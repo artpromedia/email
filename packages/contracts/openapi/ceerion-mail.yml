@@ -563,6 +563,35 @@ paths:
           description: Draft deleted
         "404":
           $ref: "#/components/responses/NotFound"
+  /mail/compose/from-message:
+    post:
+      summary: Compose reply, reply-all, or forward from existing message
+      operationId: composeFromMessage
+      tags:
+        - Mail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComposeFromMessageRequest"
+      responses:
+        "200":
+          description: Draft created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComposeFromMessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: Payload too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /mail/scheduled:
     get:
       summary: List scheduled messages
@@ -1286,7 +1315,7 @@ paths:
   /security/sessions/revoke-all:
     post:
       summary: Revoke all user sessions except current
-      operationId: revokeAllSessions
+      operationId: revokeAllUserSessions
       tags:
         - Security
       responses:
@@ -2051,6 +2080,91 @@ components:
           items:
             type: string
             format: uuid
+    ComposeFromMessageRequest:
+      type: object
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: ID of the original message to reply to or forward
+        action:
+          type: string
+          enum:
+            - reply
+            - replyAll
+            - forward
+          description: Type of composition action
+        includeAttachments:
+          type: boolean
+          default: true
+          description: Whether to include attachments (forward only)
+        inlineCidStrategy:
+          type: string
+          enum:
+            - preserve
+            - flatten
+          default: preserve
+          description: How to handle inline CID references (forward only)
+        selectedTextHtml:
+          type: string
+          description: Optional selected text to quote instead of full message
+      required:
+        - messageId
+        - action
+    ComposeFromMessageResponse:
+      type: object
+      properties:
+        draftId:
+          type: string
+          format: uuid
+          description: ID of the created draft
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Pre-filled recipient addresses
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Pre-filled CC addresses
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Pre-filled BCC addresses
+        subject:
+          type: string
+          description: Pre-filled subject line
+        headers:
+          type: object
+          properties:
+            In-Reply-To:
+              type: string
+              description: Message-ID of the original message
+            References:
+              type: array
+              items:
+                type: string
+              description: Message threading references
+          description: Email headers for threading
+        bodyHtml:
+          type: string
+          description: Pre-filled HTML body with quoted content
+        attachmentsSizeExceeded:
+          type: boolean
+          description: True if attachments were excluded due to size limits
+      required:
+        - draftId
+        - to
+        - cc
+        - bcc
+        - subject
+        - headers
+        - bodyHtml
     MarkMessagesRequest:
       type: object
       properties:

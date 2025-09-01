@@ -27,7 +27,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     name: "Admin User",
     permissions: ["all"],
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const isLoading = false; // Simple context doesn't need loading state
 
   const login = async (email: string, password: string): Promise<boolean> => {
     if (email === "admin@ceerion.com" && password === "admin123") {

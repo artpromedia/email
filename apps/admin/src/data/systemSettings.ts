@@ -175,7 +175,12 @@ export interface FilterRule {
   value: string;
 }
 
-export type FilterAction = "block" | "quarantine" | "tag" | "forward" | "delete";
+export type FilterAction =
+  | "block"
+  | "quarantine"
+  | "tag"
+  | "forward"
+  | "delete";
 
 export interface QuarantineSettings {
   enableQuarantine: boolean;
@@ -296,7 +301,12 @@ export interface ReportingSettings {
   reportFormat: "pdf" | "html" | "csv" | "json";
 }
 
-export type ReportType = "system_health" | "security_summary" | "user_activity" | "performance" | "storage";
+export type ReportType =
+  | "system_health"
+  | "security_summary"
+  | "user_activity"
+  | "performance"
+  | "storage";
 
 export interface HealthCheckSettings {
   enableHealthChecks: boolean;
@@ -473,9 +483,10 @@ const mockSystemSettings: SystemSettings = {
     sessionTimeout: 480, // 8 hours
     maxConcurrentSessions: 5,
     enableMaintenanceMode: false,
-    maintenanceMessage: "System is currently under maintenance. Please try again later.",
+    maintenanceMessage:
+      "System is currently under maintenance. Please try again later.",
     lastUpdated: new Date(),
-    updatedBy: "admin@ceerion.com"
+    updatedBy: "admin@ceerion.com",
   },
   security: {
     passwordPolicy: {
@@ -487,14 +498,14 @@ const mockSystemSettings: SystemSettings = {
       maxAge: 90,
       preventReuse: 5,
       lockoutAttempts: 5,
-      lockoutDuration: 30
+      lockoutDuration: 30,
     },
     mfaSettings: {
       enforceForAllUsers: false,
       enforceForAdmins: true,
       allowedMethods: ["totp", "email"],
       backupCodes: true,
-      sessionRememberDuration: 30
+      sessionRememberDuration: 30,
     },
     accessControl: {
       ipWhitelist: ["192.168.1.0/24", "10.0.0.0/8"],
@@ -504,7 +515,7 @@ const mockSystemSettings: SystemSettings = {
       geolocationTracking: true,
       deviceTracking: true,
       maxFailedLogins: 5,
-      bruteForceProtection: true
+      bruteForceProtection: true,
     },
     auditSettings: {
       enableAuditLogging: true,
@@ -514,7 +525,7 @@ const mockSystemSettings: SystemSettings = {
       logSystemEvents: true,
       logSecurityEvents: true,
       exportFormat: ["json", "csv"],
-      alertOnSuspiciousActivity: true
+      alertOnSuspiciousActivity: true,
     },
     encryptionSettings: {
       encryptionAtRest: true,
@@ -525,8 +536,8 @@ const mockSystemSettings: SystemSettings = {
         provider: "internal",
         autoRotation: true,
         backupKeys: true,
-        keyDerivationFunction: "PBKDF2"
-      }
+        keyDerivationFunction: "PBKDF2",
+      },
     },
     rateLimiting: {
       enableRateLimit: true,
@@ -534,8 +545,8 @@ const mockSystemSettings: SystemSettings = {
       requestsPerHour: 1000,
       requestsPerDay: 10000,
       bypassWhitelist: ["192.168.1.100"],
-      blockDuration: 15
-    }
+      blockDuration: 15,
+    },
   },
   mail: {
     smtpSettings: {
@@ -547,12 +558,21 @@ const mockSystemSettings: SystemSettings = {
       password: "••••••••",
       connectionPoolSize: 10,
       timeout: 30,
-      retryAttempts: 3
+      retryAttempts: 3,
     },
     messageSettings: {
       maxMessageSize: 25,
       maxAttachmentSize: 20,
-      allowedAttachmentTypes: [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".jpg", ".png"],
+      allowedAttachmentTypes: [
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".txt",
+        ".jpg",
+        ".png",
+      ],
       blockedAttachmentTypes: [".exe", ".bat", ".scr", ".com", ".pif"],
       enableReadReceipts: true,
       enableDeliveryReceipts: true,
@@ -562,8 +582,8 @@ const mockSystemSettings: SystemSettings = {
         archiveAfterDays: 365,
         compressionEnabled: true,
         encryptArchives: true,
-        archiveLocation: "/var/mail/archive"
-      }
+        archiveLocation: "/var/mail/archive",
+      },
     },
     deliverySettings: {
       maxRetryAttempts: 5,
@@ -571,7 +591,7 @@ const mockSystemSettings: SystemSettings = {
       enableBounceHandling: true,
       bounceThreshold: 5,
       enableDsnReports: true,
-      queueProcessingInterval: 10
+      queueProcessingInterval: 10,
     },
     filterSettings: {
       enableSpamFilter: true,
@@ -579,7 +599,7 @@ const mockSystemSettings: SystemSettings = {
       enableVirusScanning: true,
       enablePhishingProtection: true,
       enableContentFilter: true,
-      customFilters: []
+      customFilters: [],
     },
     quarantineSettings: {
       enableQuarantine: true,
@@ -588,8 +608,8 @@ const mockSystemSettings: SystemSettings = {
       allowUserAccess: true,
       notifyUsers: true,
       adminNotifications: true,
-      quarantineReports: true
-    }
+      quarantineReports: true,
+    },
   },
   storage: {
     defaultQuota: 50,
@@ -603,15 +623,15 @@ const mockSystemSettings: SystemSettings = {
       deleteOldMessagesAfter: 2555,
       deleteEmptyFoldersAfter: 30,
       compressOldMessages: true,
-      cleanupSchedule: "0 2 * * 0" // Weekly at 2 AM
+      cleanupSchedule: "0 2 * * 0", // Weekly at 2 AM
     },
     storageMonitoring: {
       enableMonitoring: true,
       checkInterval: 60,
       alertThreshold: 85,
       alertRecipients: ["admin@ceerion.com"],
-      generateReports: true
-    }
+      generateReports: true,
+    },
   },
   backup: {
     enableAutoBackup: true,
@@ -627,8 +647,8 @@ const mockSystemSettings: SystemSettings = {
       provider: "aws_s3",
       endpoint: "",
       credentials: {},
-      syncSchedule: "0 4 * * *"
-    }
+      syncSchedule: "0 4 * * *",
+    },
   },
   monitoring: {
     enableMonitoring: true,
@@ -641,8 +661,8 @@ const mockSystemSettings: SystemSettings = {
         enabled: false,
         format: "prometheus",
         endpoint: "",
-        interval: 60
-      }
+        interval: 60,
+      },
     },
     alerting: {
       enableAlerts: true,
@@ -652,8 +672,8 @@ const mockSystemSettings: SystemSettings = {
           type: "email",
           name: "Admin Email",
           configuration: { recipients: ["admin@ceerion.com"] },
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       alertThresholds: [
         {
@@ -661,17 +681,17 @@ const mockSystemSettings: SystemSettings = {
           operator: ">",
           value: 80,
           severity: "high",
-          duration: 300
-        }
+          duration: 300,
+        },
       ],
-      escalationRules: []
+      escalationRules: [],
     },
     reporting: {
       enableReports: true,
       reportSchedule: "0 6 * * 1", // Weekly on Monday at 6 AM
       reportTypes: ["system_health", "security_summary"],
       recipients: ["admin@ceerion.com"],
-      reportFormat: "pdf"
+      reportFormat: "pdf",
     },
     healthChecks: {
       enableHealthChecks: true,
@@ -683,12 +703,12 @@ const mockSystemSettings: SystemSettings = {
           type: "http",
           target: "http://localhost:3004/health",
           timeout: 10,
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       failureThreshold: 3,
-      recoveryThreshold: 2
-    }
+      recoveryThreshold: 2,
+    },
   },
   integrations: {
     ldapIntegration: {
@@ -700,7 +720,7 @@ const mockSystemSettings: SystemSettings = {
       userFilter: "",
       groupFilter: "",
       attributeMapping: {},
-      syncSchedule: "0 1 * * *"
+      syncSchedule: "0 1 * * *",
     },
     ssoIntegration: {
       enabled: false,
@@ -708,7 +728,7 @@ const mockSystemSettings: SystemSettings = {
       configuration: {},
       autoProvisioning: false,
       defaultRole: "user",
-      attributeMapping: {}
+      attributeMapping: {},
     },
     apiSettings: {
       enableApi: true,
@@ -718,8 +738,8 @@ const mockSystemSettings: SystemSettings = {
           name: "Admin API Key",
           key: "sk_live_••••••••••••••••",
           permissions: ["read", "write", "admin"],
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       rateLimiting: {
         enableRateLimit: true,
@@ -727,41 +747,41 @@ const mockSystemSettings: SystemSettings = {
         requestsPerHour: 5000,
         requestsPerDay: 50000,
         bypassWhitelist: [],
-        blockDuration: 10
+        blockDuration: 10,
       },
       allowedOrigins: ["https://admin.ceerion.com"],
       enableCors: true,
-      apiVersion: "v1"
+      apiVersion: "v1",
     },
     webhooks: {
       enabled: false,
       webhooks: [],
       retryAttempts: 3,
       timeout: 30,
-      verifySignatures: true
+      verifySignatures: true,
     },
     externalServices: {
       dnsProvider: {
         enabled: false,
         provider: "cloudflare",
         apiCredentials: {},
-        autoManagement: false
+        autoManagement: false,
       },
       certificateProvider: {
         enabled: true,
         provider: "letsencrypt",
         autoRenewal: true,
         renewalThreshold: 30,
-        notificationEmails: ["admin@ceerion.com"]
+        notificationEmails: ["admin@ceerion.com"],
       },
       analyticsProvider: {
         enabled: false,
         provider: "google_analytics",
         trackingId: "",
         anonymizeIp: true,
-        customEvents: []
-      }
-    }
+        customEvents: [],
+      },
+    },
   },
   maintenance: {
     maintenanceWindows: [
@@ -777,16 +797,16 @@ const mockSystemSettings: SystemSettings = {
             id: "task-1",
             name: "Database Optimization",
             type: "optimization",
-            enabled: true
+            enabled: true,
           },
           {
             id: "task-2",
             name: "Log Cleanup",
             type: "cleanup",
-            enabled: true
-          }
-        ]
-      }
+            enabled: true,
+          },
+        ],
+      },
     ],
     systemUpdates: {
       autoUpdates: false,
@@ -794,7 +814,7 @@ const mockSystemSettings: SystemSettings = {
       updateChannel: "stable",
       backupBeforeUpdate: true,
       rollbackOnFailure: true,
-      notificationEmails: ["admin@ceerion.com"]
+      notificationEmails: ["admin@ceerion.com"],
     },
     databaseMaintenance: {
       enableMaintenance: true,
@@ -802,7 +822,7 @@ const mockSystemSettings: SystemSettings = {
       rebuildIndexes: true,
       analyzeStatistics: true,
       maintenanceSchedule: "0 3 * * 0", // Weekly on Sunday at 3 AM
-      maxMaintenanceDuration: 60
+      maxMaintenanceDuration: 60,
     },
     logRotation: {
       enabled: true,
@@ -810,36 +830,45 @@ const mockSystemSettings: SystemSettings = {
       maxFiles: 10,
       compressionEnabled: true,
       rotationSchedule: "0 0 * * *", // Daily at midnight
-      cleanupAfterDays: 30
-    }
-  }
+      cleanupAfterDays: 30,
+    },
+  },
 };
 
 // API Functions
 export const getSystemSettings = async (): Promise<SystemSettings> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise((resolve) => setTimeout(resolve, 300));
   return mockSystemSettings;
 };
 
-export const updateSystemSettings = async (settings: Partial<SystemSettings>): Promise<SystemSettings> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
+export const updateSystemSettings = async (
+  settings: Partial<SystemSettings>,
+): Promise<SystemSettings> => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
   console.log("Updating system settings:", settings);
   return { ...mockSystemSettings, ...settings };
 };
 
-export const testSmtpConnection = async (smtpSettings: SmtpSettings): Promise<{ success: boolean; message: string }> => {
-  await new Promise(resolve => setTimeout(resolve, 2000));
+export const testSmtpConnection = async (
+  smtpSettings: SmtpSettings,
+): Promise<{ success: boolean; message: string }> => {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   console.log("Testing SMTP connection:", smtpSettings);
   return { success: true, message: "SMTP connection successful" };
 };
 
-export const testDatabaseConnection = async (): Promise<{ success: boolean; message: string }> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+export const testDatabaseConnection = async (): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   return { success: true, message: "Database connection successful" };
 };
 
-export const runMaintenanceTask = async (taskId: string): Promise<{ success: boolean; message: string }> => {
-  await new Promise(resolve => setTimeout(resolve, 3000));
+export const runMaintenanceTask = async (
+  taskId: string,
+): Promise<{ success: boolean; message: string }> => {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   console.log("Running maintenance task:", taskId);
   return { success: true, message: "Maintenance task completed successfully" };
 };

@@ -1,0 +1,59 @@
+name: ThreadView Tests
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "apps/webmail/**"
+      - "packages/**"
+      - "apps/api/**"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "apps/webmail/**"
+      - "packages/**"
+      - "apps/api/**"
+
+env:
+  NODE_VERSION: "20.x"
+  PNPM_VERSION: "9.0.0"
+
+jobs:
+  threadview-tests:
+    name: ThreadView Component Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run ThreadView tests
+        run: pnpm test:threadview
+        working-directory: apps/webmail
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: threadview-test-results
+          path: |
+            apps/webmail/coverage/
+            apps/webmail/test-results/
+          retention-days: 30

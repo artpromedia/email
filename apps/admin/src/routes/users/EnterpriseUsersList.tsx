@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useCallback, Suspense } from "react";
+import React, { useState, useCallback, Suspense } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
   Search,
-  Filter,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -15,8 +14,6 @@ import {
   Download,
   Upload,
   RefreshCw,
-  CheckSquare,
-  Square,
   Users,
 } from "lucide-react";
 import {
@@ -28,8 +25,8 @@ import {
   useDeleteUser,
   useBulkUpdate,
   type AdminUser,
+  type UsersListResponse,
 } from "../../data/users-enterprise";
-import { PendingButton } from "../../components/PendingButton";
 import { useConfirm } from "../../hooks/useConfirm";
 import { UserListSkeleton } from "../../components/UserSkeletons";
 import { Button } from "../../components/ui/button";
@@ -42,12 +39,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import { Card, CardContent, CardHeader } from "../../components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -544,7 +536,8 @@ const UserRow = React.memo(
 
 // Main Users List Content
 const UsersListContent = () => {
-  const { data: usersResponse } = useUsers();
+  const { data } = useUsers();
+  const usersResponse = data as UsersListResponse;
   const { params, updateParams } = useUsersParams();
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [pendingUsers, setPendingUsers] = useState<Set<string>>(new Set());
@@ -580,7 +573,7 @@ const UsersListContent = () => {
   }, []);
 
   const handleUserAction = useCallback(
-    async (userId: string, action: () => Promise<any>, actionName: string) => {
+    async (userId: string, action: () => Promise<any>) => {
       setPendingUsers((prev) => new Set(prev).add(userId));
       try {
         await action();
@@ -605,11 +598,11 @@ const UsersListContent = () => {
           : action === "disable"
             ? "disable"
             : "delete";
-      const confirmed = await confirm({
+      const confirmed = await confirm.show({
         title: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Users`,
-        description: `Are you sure you want to ${actionText} ${selectedUsers.size} selected user(s)? This action cannot be undone.`,
+        message: `Are you sure you want to ${actionText} ${selectedUsers.size} selected user(s)? This action cannot be undone.`,
         confirmText: actionText.charAt(0).toUpperCase() + actionText.slice(1),
-        variant: action === "delete" ? "destructive" : "default",
+        confirmVariant: action === "delete" ? "destructive" : "default",
       });
 
       if (confirmed) {
@@ -650,7 +643,12 @@ const UsersListContent = () => {
                   <Checkbox
                     checked={isAllSelected}
                     ref={(el) => {
-                      if (el) el.indeterminate = isIndeterminate;
+                      if (el) {
+                        const input = el.querySelector(
+                          "input",
+                        ) as HTMLInputElement;
+                        if (input) input.indeterminate = isIndeterminate;
+                      }
                     }}
                     onCheckedChange={handleSelectAll}
                   />
@@ -689,40 +687,31 @@ const UsersListContent = () => {
                   isSelected={selectedUsers.has(user.id)}
                   onSelect={(checked) => handleSelectUser(user.id, checked)}
                   onToggleEnabled={(enabled) =>
-                    handleUserAction(
-                      user.id,
-                      () =>
-                        toggleEnabled.mutateAsync({ userId: user.id, enabled }),
-                      enabled ? "enable" : "disable",
+                    handleUserAction(user.id, () =>
+                      toggleEnabled.mutateAsync({ userId: user.id, enabled }),
                     )
                   }
                   onToggleRole={(role) =>
-                    handleUserAction(
-                      user.id,
-                      () => toggleRole.mutateAsync({ userId: user.id, role }),
-                      "update role",
+                    handleUserAction(user.id, () =>
+                      toggleRole.mutateAsync({ userId: user.id, role }),
                     )
                   }
                   onResetPassword={() =>
-                    handleUserAction(
-                      user.id,
-                      () => resetPassword.mutateAsync(user.id),
-                      "reset password",
+                    handleUserAction(user.id, () =>
+                      resetPassword.mutateAsync(user.id),
                     )
                   }
                   onDelete={async () => {
-                    const confirmed = await confirm({
+                    const confirmed = await confirm.show({
                       title: "Delete User",
-                      description: `Are you sure you want to delete ${user.name}? This action cannot be undone.`,
+                      message: `Are you sure you want to delete ${user.name}? This action cannot be undone.`,
                       confirmText: "Delete",
-                      variant: "destructive",
+                      confirmVariant: "destructive",
                     });
 
                     if (confirmed) {
-                      handleUserAction(
-                        user.id,
-                        () => deleteUser.mutateAsync(user.id),
-                        "delete",
+                      handleUserAction(user.id, () =>
+                        deleteUser.mutateAsync(user.id),
                       );
                     }
                   }}
@@ -743,11 +732,13 @@ const UsersListContent = () => {
               </p>
 
               <div className="flex items-center space-x-2">
-                {params.page > 1 && (
+                {(params.page ?? 1) > 1 && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => updateParams({ page: params.page - 1 })}
+                    onClick={() =>
+                      updateParams({ page: (params.page ?? 1) - 1 })
+                    }
                   >
                     Previous
                   </Button>
@@ -757,7 +748,9 @@ const UsersListContent = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => updateParams({ page: params.page + 1 })}
+                    onClick={() =>
+                      updateParams({ page: (params.page ?? 1) + 1 })
+                    }
                   >
                     Next
                   </Button>

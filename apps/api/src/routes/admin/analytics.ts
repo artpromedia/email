@@ -88,18 +88,22 @@ const detailedAnalyticsSchema = z.object({
   }),
   performance: performanceMetricsSchema,
   resources: systemResourcesSchema,
-  topDomains: z.array(z.object({
-    domain: z.string(),
-    emails: z.number(),
-    users: z.number(),
-    bounceRate: z.number(),
-  })),
-  recentActivity: z.array(z.object({
-    timestamp: z.string().datetime(),
-    action: z.string(),
-    user: z.string(),
-    details: z.string(),
-  })),
+  topDomains: z.array(
+    z.object({
+      domain: z.string(),
+      emails: z.number(),
+      users: z.number(),
+      bounceRate: z.number(),
+    }),
+  ),
+  recentActivity: z.array(
+    z.object({
+      timestamp: z.string().datetime(),
+      action: z.string(),
+      user: z.string(),
+      details: z.string(),
+    }),
+  ),
 });
 
 export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
@@ -131,12 +135,23 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
 
       try {
         // Generate mock time series data
-        const generateTimeSeries = (baseValue: number, variance: number, points: number) => {
+        const generateTimeSeries = (
+          baseValue: number,
+          variance: number,
+          points: number,
+        ) => {
           const now = new Date();
-          const interval = timeRange === "1h" ? 60000 : timeRange === "24h" ? 3600000 : 86400000;
-          
+          const interval =
+            timeRange === "1h"
+              ? 60000
+              : timeRange === "24h"
+                ? 3600000
+                : 86400000;
+
           return Array.from({ length: points }, (_, i) => ({
-            timestamp: new Date(now.getTime() - (points - i - 1) * interval).toISOString(),
+            timestamp: new Date(
+              now.getTime() - (points - i - 1) * interval,
+            ).toISOString(),
             value: Math.max(0, baseValue + (Math.random() - 0.5) * variance),
           }));
         };
@@ -182,9 +197,24 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
             },
           },
           topDomains: [
-            { domain: "ceerion.com", emails: 7245, users: 1180, bounceRate: 1.8 },
-            { domain: "support.ceerion.com", emails: 1456, users: 45, bounceRate: 3.2 },
-            { domain: "demo.ceerion.com", emails: 246, users: 22, bounceRate: 0.9 },
+            {
+              domain: "ceerion.com",
+              emails: 7245,
+              users: 1180,
+              bounceRate: 1.8,
+            },
+            {
+              domain: "support.ceerion.com",
+              emails: 1456,
+              users: 45,
+              bounceRate: 3.2,
+            },
+            {
+              domain: "demo.ceerion.com",
+              emails: 246,
+              users: 22,
+              bounceRate: 0.9,
+            },
           ],
           recentActivity: [
             {
@@ -223,7 +253,9 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
         return analytics;
       } catch (error: unknown) {
         console.error("Analytics error:", error);
-        throw fastify.httpErrors.internalServerError("Failed to fetch analytics overview");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to fetch analytics overview",
+        );
       }
     },
   );
@@ -275,7 +307,9 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
         return realTimeStats;
       } catch (error: unknown) {
         console.error("Analytics error:", error);
-        throw fastify.httpErrors.internalServerError("Failed to fetch real-time statistics");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to fetch real-time statistics",
+        );
       }
     },
   );
@@ -323,7 +357,8 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
           {
             id: "alert-001",
             title: "High CPU Usage",
-            description: "System CPU usage has exceeded 80% for the last 10 minutes",
+            description:
+              "System CPU usage has exceeded 80% for the last 10 minutes",
             severity: "high" as const,
             status: "active" as const,
             triggeredAt: new Date(Date.now() - 600000).toISOString(),
@@ -341,7 +376,8 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
           {
             id: "alert-002",
             title: "Bounce Rate Spike",
-            description: "Email bounce rate has increased to 15% in the last hour",
+            description:
+              "Email bounce rate has increased to 15% in the last hour",
             severity: "medium" as const,
             status: "acknowledged" as const,
             triggeredAt: new Date(Date.now() - 3600000).toISOString(),
@@ -422,7 +458,7 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
 
       try {
         // TODO: Implement actual alert acknowledgment
-        
+
         // Log audit event
         await logAudit({
           actorId: currentUser.sub,
@@ -447,7 +483,9 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
         };
       } catch (error: unknown) {
         console.error("Analytics error:", error);
-        throw fastify.httpErrors.internalServerError("Failed to acknowledge alert");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to acknowledge alert",
+        );
       }
     },
   );
@@ -488,7 +526,7 @@ export async function adminAnalyticsRoutes(fastify: FastifyInstance) {
 
       try {
         // TODO: Implement actual alert resolution
-        
+
         // Log audit event
         await logAudit({
           actorId: currentUser.sub,

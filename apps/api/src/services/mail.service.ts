@@ -2,6 +2,7 @@ import {
   EmailMessage,
   EmailFolder,
   EmailFlag,
+  EmailAttachment,
   SendMailRequest,
   MailSearchRequest,
   MailSearchResponse,
@@ -49,8 +50,8 @@ export class MailService {
       const query = `
         SELECT m.*, f.name as folder_name
         FROM messages m
-        JOIN folders f ON m.folder_id = f.id
-        WHERE m.id = $1 AND m.user_id = $2
+        LEFT JOIN folders f ON m."folderId" = f.id
+        WHERE m.id = $1 AND m."userId" = $2
       `;
 
       const result = await this.db.query(query, [messageId, userId]);
@@ -186,34 +187,58 @@ export class MailService {
       inlineCidStrategy?: "preserve" | "flatten";
       selectedTextHtml?: string;
     } = {},
-  ): Promise<any> {
+  ): Promise<{
+    draftId: string;
+    to: string[];
+    cc: string[];
+    bcc: string[];
+    subject: string;
+    headers: {
+      "In-Reply-To"?: string;
+      References?: string[];
+    };
+    bodyHtml: string;
+    attachmentsSizeExceeded: boolean;
+  }> {
     return this.telemetry.withSpan("mail.composeFromMessage", async (span) => {
-      // Get the original message
+      // Security: Validate message access
       const originalMessage = await this.getMessage(userId, messageId);
       if (!originalMessage) {
         throw new Error("Original message not found");
       }
 
-      const composeDraft: any = {
-        to: [],
-        cc: [],
-        bcc: [],
+      // Get user's email for reply-all filtering
+      const userEmail = await this.getUserEmail(userId);
+      const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024; // 25MB total limit
+      let attachmentsSizeExceeded = false;
+      let attachments: string[] = [];
+
+      // Audit logging
+      await this.auditLog(userId, `compose_from_message_${action}`, {
+        originalMessageId: messageId,
+        action,
+        includeAttachments: options.includeAttachments,
+      });
+
+      const composeDraft = {
+        to: [] as string[],
+        cc: [] as string[],
+        bcc: [] as string[],
         subject: "",
-        body: "",
-        htmlBody: "",
-        attachments: [],
-        inReplyTo: null,
-        references: [],
+        headers: {} as { "In-Reply-To"?: string; References?: string[] },
+        bodyHtml: "",
+        attachmentsSizeExceeded: false,
       };
 
+      // Recipients logic
       switch (action) {
         case "reply":
           composeDraft.to = [originalMessage.from];
           composeDraft.subject = this.buildReplySubject(
             originalMessage.subject,
           );
-          composeDraft.inReplyTo = originalMessage.messageId;
-          composeDraft.references = [
+          composeDraft.headers["In-Reply-To"] = originalMessage.messageId;
+          composeDraft.headers.References = [
             ...(originalMessage.references || []),
             originalMessage.messageId,
           ];
@@ -221,21 +246,20 @@ export class MailService {
 
         case "replyAll":
           composeDraft.to = [originalMessage.from];
-          // Add original to/cc recipients except the current user
+          // Add original recipients except current user
           const allRecipients = [
             ...originalMessage.to,
             ...(originalMessage.cc || []),
           ];
-          const userEmail = await this.getUserEmail(userId);
           const otherRecipients = allRecipients.filter(
-            (email) => email !== userEmail,
+            (email) => email.toLowerCase() !== userEmail.toLowerCase(),
           );
-          composeDraft.cc = otherRecipients;
+          composeDraft.cc = this.deduplicateEmails(otherRecipients);
           composeDraft.subject = this.buildReplySubject(
             originalMessage.subject,
           );
-          composeDraft.inReplyTo = originalMessage.messageId;
-          composeDraft.references = [
+          composeDraft.headers["In-Reply-To"] = originalMessage.messageId;
+          composeDraft.headers.References = [
             ...(originalMessage.references || []),
             originalMessage.messageId,
           ];
@@ -245,22 +269,159 @@ export class MailService {
           composeDraft.subject = this.buildForwardSubject(
             originalMessage.subject,
           );
-          if (options.includeAttachments && originalMessage.attachments) {
-            composeDraft.attachments = [...originalMessage.attachments];
+
+          // Handle attachments for forward
+          if (
+            options.includeAttachments &&
+            originalMessage.attachments?.length > 0
+          ) {
+            const totalSize = await this.calculateAttachmentSize(
+              originalMessage.attachments,
+            );
+            if (totalSize > MAX_ATTACHMENT_SIZE) {
+              attachmentsSizeExceeded = true;
+            } else {
+              attachments = await this.processForwardAttachments(
+                originalMessage.attachments,
+                options.inlineCidStrategy || "preserve",
+              );
+            }
           }
           break;
       }
 
-      // Build the quoted body
-      composeDraft.htmlBody = this.buildQuotedBody(
+      // Security & sanitization - Build quoted body with HTML sanitization
+      composeDraft.bodyHtml = await this.buildSanitizedQuotedBody(
         originalMessage,
         action,
         options.selectedTextHtml,
       );
-      composeDraft.body = this.stripHtml(composeDraft.htmlBody);
 
-      return composeDraft;
+      // Create draft in database
+      const draftId = await this.createDraft(userId, {
+        ...composeDraft,
+        attachments,
+      });
+
+      return {
+        draftId,
+        ...composeDraft,
+        attachmentsSizeExceeded,
+      };
     });
+  }
+
+  private async auditLog(
+    userId: string,
+    action: string,
+    details: any,
+  ): Promise<void> {
+    // Log to audit system - simplified for demo
+    console.log(
+      `AUDIT [${new Date().toISOString()}] User ${userId}: ${action}`,
+      details,
+    );
+  }
+
+  private async calculateAttachmentSize(
+    attachments: EmailAttachment[],
+  ): Promise<number> {
+    // Calculate total size of all attachments
+    return attachments.reduce(
+      (total, attachment) => total + attachment.size,
+      0,
+    );
+  }
+
+  private async processForwardAttachments(
+    attachments: EmailAttachment[],
+    cidStrategy: "preserve" | "flatten",
+  ): Promise<string[]> {
+    // In real implementation, process CID references based on strategy
+    // For preserve: maintain inline images as CID references
+    // For flatten: convert inline images to regular attachments
+    // Return attachment IDs for the draft
+    return attachments.map((att) => att.id);
+  }
+
+  private deduplicateEmails(emails: string[]): string[] {
+    const seen = new Set<string>();
+    return emails.filter((email) => {
+      const normalized = email.toLowerCase().trim();
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  }
+
+  private async createDraft(userId: string, draftData: any): Promise<string> {
+    // Create draft in database - simplified for demo
+    const draftId = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // In real implementation, save to drafts table
+    console.log(`Draft created: ${draftId} for user ${userId}`);
+
+    return draftId;
+  }
+
+  private async buildSanitizedQuotedBody(
+    originalMessage: EmailMessage,
+    action: string,
+    selectedTextHtml?: string,
+  ): Promise<string> {
+    const dateStr = originalMessage.date.toLocaleString();
+    const fromStr = this.sanitizeHtml(originalMessage.from);
+    const subjectStr = this.sanitizeHtml(originalMessage.subject);
+
+    let quotedContent =
+      selectedTextHtml ||
+      originalMessage.htmlBody ||
+      originalMessage.body ||
+      "";
+
+    // Sanitize HTML content
+    quotedContent = this.sanitizeHtml(quotedContent);
+
+    if (action === "forward") {
+      const toStr = originalMessage.to
+        .map((email) => this.sanitizeHtml(email))
+        .join(", ");
+      return `
+        <br><br>
+        <div style="border-top: 1px solid #ccc; padding-top: 10px;">
+        <strong>---------- Forwarded message ----------</strong><br>
+        <strong>From:</strong> ${fromStr}<br>
+        <strong>Date:</strong> ${dateStr}<br>
+        <strong>Subject:</strong> ${subjectStr}<br>
+        <strong>To:</strong> ${toStr}<br>
+        <br>
+        ${quotedContent}
+        </div>
+      `.trim();
+    } else {
+      return `
+        <br><br>
+        <div style="border-left: 3px solid #ccc; padding-left: 15px; margin-left: 10px;">
+        <p><strong>On ${dateStr}, ${fromStr} wrote:</strong></p>
+        <blockquote style="margin: 0; padding: 0; color: #666;">
+          ${quotedContent}
+        </blockquote>
+        </div>
+      `.trim();
+    }
+  }
+
+  private sanitizeHtml(input: string): string {
+    if (!input) return "";
+
+    // Basic HTML sanitization - in production use a proper library like DOMPurify
+    return input
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;")
+      .replace(/\//g, "&#x2F;");
   }
 
   private async getUserEmail(userId: string): Promise<string> {
@@ -330,23 +491,35 @@ export class MailService {
   }
 
   private mapRowToMessage(row: any): EmailMessage {
+    // Helper function to safely parse JSON or return the value if it's already parsed
+    const safeJsonParse = (value: any, defaultValue: any = []) => {
+      if (typeof value === "string") {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return defaultValue;
+        }
+      }
+      return value || defaultValue;
+    };
+
     return {
       id: row.id,
-      from: row.from_address,
-      to: JSON.parse(row.to_addresses || "[]"),
-      cc: JSON.parse(row.cc_addresses || "[]"),
-      bcc: JSON.parse(row.bcc_addresses || "[]"),
+      from: row.from,
+      to: safeJsonParse(row.to, []),
+      cc: safeJsonParse(row.cc, []),
+      bcc: safeJsonParse(row.bcc, []),
       subject: row.subject,
       body: row.body,
-      htmlBody: row.html_body,
-      attachments: JSON.parse(row.attachments || "[]"),
-      messageId: row.message_id,
-      inReplyTo: row.in_reply_to,
-      references: JSON.parse(row.references || "[]"),
-      date: new Date(row.date),
-      flags: JSON.parse(row.flags || "[]"),
-      labels: JSON.parse(row.labels || "[]"),
-      folderId: row.folder_id,
+      htmlBody: row.htmlBody,
+      attachments: safeJsonParse(row.attachments, []),
+      messageId: row.messageId,
+      inReplyTo: row.inReplyTo,
+      references: safeJsonParse(row.references, []),
+      date: new Date(row.sentAt || row.date),
+      flags: safeJsonParse(row.flags, []),
+      labels: safeJsonParse(row.labels, []),
+      folderId: row.folderId,
     };
   }
 

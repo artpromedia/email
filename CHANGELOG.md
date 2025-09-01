@@ -18,7 +18,7 @@
 - **User Interface**: Refined typography and spacing throughout the application
 - **Accessibility**: Improved keyboard navigation and screen reader support
 
-### 🐛 Bug Fixes
+### 🐛 Bug Fixes (v2.1.0)
 
 - Fixed calendar sync issues with external providers
 - Resolved attachment download problems for large files
@@ -49,7 +49,7 @@
 - Optimized database queries for better response times
 - Improved cache management strategies
 
-### 🐛 Bug Fixes
+### 🐛 Bug Fixes (v2.0.1)
 
 - Fixed intermittent connection issues
 - Resolved email threading display problems

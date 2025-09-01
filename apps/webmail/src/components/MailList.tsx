@@ -35,6 +35,7 @@ export function MailList() {
     currentView,
     currentCategory,
     currentLabel,
+    labels,
     selectThread,
     toggleThreadSelection,
     archiveThreads,
@@ -567,9 +568,7 @@ export function MailList() {
                       )}
 
                       {thread.labels.map((labelId) => {
-                        const label = useMail().labels.find(
-                          (l) => l.id === labelId,
-                        );
+                        const label = labels.find((l) => l.id === labelId);
                         return label ? (
                           <Badge
                             key={labelId}

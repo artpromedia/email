@@ -1,19 +1,25 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  getDomains, 
-  getDomainStats, 
+import {
+  getDomains,
+  getDomainStats,
   verifyDomain,
   updateDomainStatus,
   deleteDomain,
-  type Domain, 
+  type Domain,
   type DomainFilters,
   type DomainStatus,
   type DomainType,
-  type VerificationStatus
+  type VerificationStatus,
 } from "../data/domains";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
@@ -39,12 +45,12 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 
-import { 
-  Search, 
-  Plus, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
   MoreVertical,
   Globe,
   Shield,
@@ -56,10 +62,9 @@ import {
   Users,
   Mail,
   HardDrive,
-  TrendingUp,
   Settings,
   Verified,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 const DomainManagement: React.FC = () => {
@@ -68,7 +73,11 @@ const DomainManagement: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const { data: domains = [], isLoading: isDomainsLoading, refetch: refetchDomains } = useQuery({
+  const {
+    data: domains = [],
+    isLoading: isDomainsLoading,
+    refetch: refetchDomains,
+  } = useQuery({
     queryKey: ["domains", filters],
     queryFn: () => getDomains(filters),
   });
@@ -79,13 +88,13 @@ const DomainManagement: React.FC = () => {
   });
 
   const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value }));
+    setFilters((prev) => ({ ...prev, search: value }));
   };
 
   const handleFilterChange = (key: keyof DomainFilters, value: string) => {
-    setFilters(prev => ({ 
-      ...prev, 
-      [key]: value === "all" ? undefined : value 
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value === "all" ? undefined : value,
     }));
   };
 
@@ -112,8 +121,10 @@ const DomainManagement: React.FC = () => {
       alert("Cannot delete the default domain");
       return;
     }
-    
-    if (window.confirm(`Are you sure you want to delete domain "${domain.name}"?`)) {
+
+    if (
+      window.confirm(`Are you sure you want to delete domain "${domain.name}"?`)
+    ) {
       try {
         await deleteDomain(domain.id);
         refetchDomains();
@@ -125,11 +136,31 @@ const DomainManagement: React.FC = () => {
 
   const getDomainStatusBadge = (status: DomainStatus) => {
     const statusConfig = {
-      active: { variant: "default" as const, icon: CheckCircle, color: "text-green-600" },
-      pending: { variant: "outline" as const, icon: Clock, color: "text-yellow-600" },
-      suspended: { variant: "destructive" as const, icon: XCircle, color: "text-red-600" },
-      failed: { variant: "destructive" as const, icon: AlertTriangle, color: "text-red-600" },
-      configuring: { variant: "secondary" as const, icon: Settings, color: "text-blue-600" }
+      active: {
+        variant: "default" as const,
+        icon: CheckCircle,
+        color: "text-green-600",
+      },
+      pending: {
+        variant: "outline" as const,
+        icon: Clock,
+        color: "text-yellow-600",
+      },
+      suspended: {
+        variant: "destructive" as const,
+        icon: XCircle,
+        color: "text-red-600",
+      },
+      failed: {
+        variant: "destructive" as const,
+        icon: AlertTriangle,
+        color: "text-red-600",
+      },
+      configuring: {
+        variant: "secondary" as const,
+        icon: Settings,
+        color: "text-blue-600",
+      },
     };
 
     const config = statusConfig[status];
@@ -145,10 +176,26 @@ const DomainManagement: React.FC = () => {
 
   const getVerificationBadge = (status: VerificationStatus) => {
     const verificationConfig = {
-      verified: { variant: "default" as const, icon: Verified, color: "text-green-600" },
-      pending: { variant: "outline" as const, icon: Clock, color: "text-yellow-600" },
-      failed: { variant: "destructive" as const, icon: AlertCircle, color: "text-red-600" },
-      not_started: { variant: "secondary" as const, icon: AlertTriangle, color: "text-gray-600" }
+      verified: {
+        variant: "default" as const,
+        icon: Verified,
+        color: "text-green-600",
+      },
+      pending: {
+        variant: "outline" as const,
+        icon: Clock,
+        color: "text-yellow-600",
+      },
+      failed: {
+        variant: "destructive" as const,
+        icon: AlertCircle,
+        color: "text-red-600",
+      },
+      not_started: {
+        variant: "secondary" as const,
+        icon: AlertTriangle,
+        color: "text-gray-600",
+      },
     };
 
     const config = verificationConfig[status];
@@ -157,7 +204,7 @@ const DomainManagement: React.FC = () => {
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <Icon className={`h-3 w-3 ${config.color}`} />
-        {status.replace(/_/g, ' ')}
+        {status.replace(/_/g, " ")}
       </Badge>
     );
   };
@@ -189,33 +236,68 @@ const DomainManagement: React.FC = () => {
           Domain configuration and statistics
         </DialogDescription>
       </DialogHeader>
-      
+
       <div className="space-y-6">
         {/* Basic Information */}
         <div className="grid grid-cols-2 gap-6">
           <div>
             <h4 className="font-semibold mb-3">Domain Information</h4>
             <div className="space-y-2 text-sm">
-              <div><span className="font-medium">Type:</span> {domain.type}</div>
-              <div><span className="font-medium">Status:</span> {getDomainStatusBadge(domain.status)}</div>
-              <div><span className="font-medium">Verification:</span> {getVerificationBadge(domain.verification.status)}</div>
-              <div><span className="font-medium">Created:</span> {domain.createdAt.toLocaleDateString()}</div>
-              <div><span className="font-medium">Updated:</span> {domain.updatedAt.toLocaleDateString()}</div>
+              <div>
+                <span className="font-medium">Type:</span> {domain.type}
+              </div>
+              <div>
+                <span className="font-medium">Status:</span>{" "}
+                {getDomainStatusBadge(domain.status)}
+              </div>
+              <div>
+                <span className="font-medium">Verification:</span>{" "}
+                {getVerificationBadge(domain.verification.status)}
+              </div>
+              <div>
+                <span className="font-medium">Created:</span>{" "}
+                {domain.createdAt.toLocaleDateString()}
+              </div>
+              <div>
+                <span className="font-medium">Updated:</span>{" "}
+                {domain.updatedAt.toLocaleDateString()}
+              </div>
               {domain.aliases.length > 0 && (
-                <div><span className="font-medium">Aliases:</span> {domain.aliases.join(", ")}</div>
+                <div>
+                  <span className="font-medium">Aliases:</span>{" "}
+                  {domain.aliases.join(", ")}
+                </div>
               )}
             </div>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-3">Statistics</h4>
             <div className="space-y-2 text-sm">
-              <div><span className="font-medium">Total Users:</span> {domain.statistics.totalUsers.toLocaleString()}</div>
-              <div><span className="font-medium">Active Users:</span> {domain.statistics.activeUsers.toLocaleString()}</div>
-              <div><span className="font-medium">Messages/Day:</span> {domain.statistics.messagesPerDay.toLocaleString()}</div>
-              <div><span className="font-medium">Storage Used:</span> {domain.statistics.storageUsed} GB</div>
-              <div><span className="font-medium">Bounce Rate:</span> {domain.statistics.bounceRate}%</div>
-              <div><span className="font-medium">Spam Rate:</span> {domain.statistics.spamRate}%</div>
+              <div>
+                <span className="font-medium">Total Users:</span>{" "}
+                {domain.statistics.totalUsers.toLocaleString()}
+              </div>
+              <div>
+                <span className="font-medium">Active Users:</span>{" "}
+                {domain.statistics.activeUsers.toLocaleString()}
+              </div>
+              <div>
+                <span className="font-medium">Messages/Day:</span>{" "}
+                {domain.statistics.messagesPerDay.toLocaleString()}
+              </div>
+              <div>
+                <span className="font-medium">Storage Used:</span>{" "}
+                {domain.statistics.storageUsed} GB
+              </div>
+              <div>
+                <span className="font-medium">Bounce Rate:</span>{" "}
+                {domain.statistics.bounceRate}%
+              </div>
+              <div>
+                <span className="font-medium">Spam Rate:</span>{" "}
+                {domain.statistics.spamRate}%
+              </div>
             </div>
           </div>
         </div>
@@ -231,16 +313,32 @@ const DomainManagement: React.FC = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline">{record.type}</Badge>
                       <span className="font-medium">{record.name}</span>
-                      {record.required && <Badge variant="secondary" className="text-xs">Required</Badge>}
+                      {record.required && (
+                        <Badge variant="secondary" className="text-xs">
+                          Required
+                        </Badge>
+                      )}
                     </div>
-                    <div className="text-sm text-gray-600 mb-1">{record.description}</div>
-                    <div className="font-mono text-xs bg-gray-100 p-2 rounded">{record.value}</div>
-                    <div className="text-xs text-gray-500 mt-1">TTL: {record.ttl}s</div>
+                    <div className="text-sm text-gray-600 mb-1">
+                      {record.description}
+                    </div>
+                    <div className="font-mono text-xs bg-gray-100 p-2 rounded">
+                      {record.value}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      TTL: {record.ttl}s
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {record.status === "active" && <CheckCircle className="h-4 w-4 text-green-600" />}
-                    {record.status === "pending" && <Clock className="h-4 w-4 text-yellow-600" />}
-                    {record.status === "error" && <AlertTriangle className="h-4 w-4 text-red-600" />}
+                    {record.status === "active" && (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    )}
+                    {record.status === "pending" && (
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                    )}
+                    {record.status === "error" && (
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                    )}
                   </div>
                 </div>
               </div>
@@ -253,24 +351,62 @@ const DomainManagement: React.FC = () => {
           <div>
             <h4 className="font-semibold mb-3">Mail Settings</h4>
             <div className="space-y-2 text-sm">
-              <div><span className="font-medium">Max Message Size:</span> {domain.mailSettings.maxMessageSize} MB</div>
-              <div><span className="font-medium">Retention Days:</span> {domain.mailSettings.retentionDays}</div>
-              <div><span className="font-medium">Quota Per User:</span> {domain.mailSettings.quotaPerUser} GB</div>
-              <div><span className="font-medium">External Forwarding:</span> {domain.mailSettings.allowExternalForwarding ? "Allowed" : "Blocked"}</div>
-              <div><span className="font-medium">Require TLS:</span> {domain.mailSettings.requireTls ? "Yes" : "No"}</div>
-              <div><span className="font-medium">Spam Filter:</span> {domain.mailSettings.enableSpamFilter ? "Enabled" : "Disabled"}</div>
+              <div>
+                <span className="font-medium">Max Message Size:</span>{" "}
+                {domain.mailSettings.maxMessageSize} MB
+              </div>
+              <div>
+                <span className="font-medium">Retention Days:</span>{" "}
+                {domain.mailSettings.retentionDays}
+              </div>
+              <div>
+                <span className="font-medium">Quota Per User:</span>{" "}
+                {domain.mailSettings.quotaPerUser} GB
+              </div>
+              <div>
+                <span className="font-medium">External Forwarding:</span>{" "}
+                {domain.mailSettings.allowExternalForwarding
+                  ? "Allowed"
+                  : "Blocked"}
+              </div>
+              <div>
+                <span className="font-medium">Require TLS:</span>{" "}
+                {domain.mailSettings.requireTls ? "Yes" : "No"}
+              </div>
+              <div>
+                <span className="font-medium">Spam Filter:</span>{" "}
+                {domain.mailSettings.enableSpamFilter ? "Enabled" : "Disabled"}
+              </div>
             </div>
           </div>
 
           <div>
             <h4 className="font-semibold mb-3">Security Settings</h4>
             <div className="space-y-2 text-sm">
-              <div><span className="font-medium">SPF Policy:</span> {domain.security.spfPolicy.replace(/_/g, ' ')}</div>
-              <div><span className="font-medium">DKIM:</span> {domain.security.dkimEnabled ? "Enabled" : "Disabled"}</div>
-              <div><span className="font-medium">DMARC Policy:</span> {domain.security.dmarcPolicy}</div>
-              <div><span className="font-medium">MTA-STS:</span> {domain.security.mtaStsEnabled ? "Enabled" : "Disabled"}</div>
-              <div><span className="font-medium">TLS Reporting:</span> {domain.security.tlsReportingEnabled ? "Enabled" : "Disabled"}</div>
-              <div><span className="font-medium">Secure Auth:</span> {domain.security.requireSecureAuth ? "Required" : "Optional"}</div>
+              <div>
+                <span className="font-medium">SPF Policy:</span>{" "}
+                {domain.security.spfPolicy.replace(/_/g, " ")}
+              </div>
+              <div>
+                <span className="font-medium">DKIM:</span>{" "}
+                {domain.security.dkimEnabled ? "Enabled" : "Disabled"}
+              </div>
+              <div>
+                <span className="font-medium">DMARC Policy:</span>{" "}
+                {domain.security.dmarcPolicy}
+              </div>
+              <div>
+                <span className="font-medium">MTA-STS:</span>{" "}
+                {domain.security.mtaStsEnabled ? "Enabled" : "Disabled"}
+              </div>
+              <div>
+                <span className="font-medium">TLS Reporting:</span>{" "}
+                {domain.security.tlsReportingEnabled ? "Enabled" : "Disabled"}
+              </div>
+              <div>
+                <span className="font-medium">Secure Auth:</span>{" "}
+                {domain.security.requireSecureAuth ? "Required" : "Optional"}
+              </div>
             </div>
           </div>
         </div>
@@ -278,10 +414,15 @@ const DomainManagement: React.FC = () => {
         {/* Verification Errors */}
         {domain.verification.errors.length > 0 && (
           <div>
-            <h4 className="font-semibold mb-3 text-red-600">Verification Errors</h4>
+            <h4 className="font-semibold mb-3 text-red-600">
+              Verification Errors
+            </h4>
             <div className="space-y-1">
               {domain.verification.errors.map((error, index) => (
-                <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                <div
+                  key={index}
+                  className="text-sm text-red-600 bg-red-50 p-2 rounded"
+                >
                   {error}
                 </div>
               ))}
@@ -300,15 +441,17 @@ const DomainManagement: React.FC = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       if (!formData.name || !formData.type) {
         alert("Please fill in all required fields");
         return;
       }
 
       console.log("Creating new domain:", formData);
-      alert(`Domain "${formData.name}" created successfully! (This is a demo - domain would be saved to database)`);
-      
+      alert(
+        `Domain "${formData.name}" created successfully! (This is a demo - domain would be saved to database)`,
+      );
+
       setFormData({ name: "", type: "" as DomainType | "" });
       setShowCreateModal(false);
       refetchDomains();
@@ -325,21 +468,32 @@ const DomainManagement: React.FC = () => {
             Add a new domain to your mail system
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Domain Name *</label>
+            <label className="block text-sm font-medium mb-1">
+              Domain Name *
+            </label>
             <Input
               placeholder="example.com"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Domain Type *</label>
-            <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as DomainType }))}>
+            <label className="block text-sm font-medium mb-1">
+              Domain Type *
+            </label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, type: value as DomainType }))
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -353,12 +507,14 @@ const DomainManagement: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              Add Domain
-            </Button>
+            <Button type="submit">Add Domain</Button>
           </div>
         </form>
       </DialogContent>
@@ -386,8 +542,12 @@ const DomainManagement: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Domain Management</h1>
-          <p className="text-gray-600 mt-1">Manage email domains, DNS settings, and verification status</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Domain Management
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Manage email domains, DNS settings, and verification status
+          </p>
         </div>
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogTrigger asChild>
@@ -421,23 +581,25 @@ const DomainManagement: React.FC = () => {
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats?.totalUsers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all domains
-            </p>
+            <div className="text-2xl font-bold text-blue-600">
+              {stats?.totalUsers.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Across all domains</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Daily Messages</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Daily Messages
+            </CardTitle>
             <Mail className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats?.dailyMessages.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Messages per day
-            </p>
+            <div className="text-2xl font-bold text-green-600">
+              {stats?.dailyMessages.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Messages per day</p>
           </CardContent>
         </Card>
 
@@ -447,10 +609,10 @@ const DomainManagement: React.FC = () => {
             <HardDrive className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats?.storageUsed} GB</div>
-            <p className="text-xs text-muted-foreground">
-              Total storage
-            </p>
+            <div className="text-2xl font-bold text-purple-600">
+              {stats?.storageUsed} GB
+            </div>
+            <p className="text-xs text-muted-foreground">Total storage</p>
           </CardContent>
         </Card>
       </div>
@@ -472,8 +634,10 @@ const DomainManagement: React.FC = () => {
                 />
               </div>
             </div>
-            
-            <Select onValueChange={(value) => handleFilterChange("status", value)}>
+
+            <Select
+              onValueChange={(value) => handleFilterChange("status", value)}
+            >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -487,7 +651,9 @@ const DomainManagement: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(value) => handleFilterChange("type", value)}>
+            <Select
+              onValueChange={(value) => handleFilterChange("type", value)}
+            >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
@@ -500,7 +666,11 @@ const DomainManagement: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(value) => handleFilterChange("verification", value)}>
+            <Select
+              onValueChange={(value) =>
+                handleFilterChange("verification", value)
+              }
+            >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Verification" />
               </SelectTrigger>
@@ -527,29 +697,38 @@ const DomainManagement: React.FC = () => {
         <CardContent>
           <div className="space-y-4">
             {domains.map((domain) => (
-              <div key={domain.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+              <div
+                key={domain.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+              >
                 <div className="flex items-center space-x-4">
                   <div className="flex-shrink-0">
                     {getDomainTypeIcon(domain.type)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{domain.name}</h3>
-                      {domain.isDefault && <Badge variant="outline">Default</Badge>}
+                      <h3 className="font-semibold text-gray-900">
+                        {domain.name}
+                      </h3>
+                      {domain.isDefault && (
+                        <Badge variant="outline">Default</Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       {getDomainStatusBadge(domain.status)}
                       {getVerificationBadge(domain.verification.status)}
                       <span className="text-xs text-gray-500">
-                        {domain.statistics.totalUsers} users • {domain.statistics.messagesPerDay} msgs/day
+                        {domain.statistics.totalUsers} users •{" "}
+                        {domain.statistics.messagesPerDay} msgs/day
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {domain.type} • Updated {domain.updatedAt.toLocaleDateString()}
+                      {domain.type} • Updated{" "}
+                      {domain.updatedAt.toLocaleDateString()}
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {domain.verification.status === "pending" && (
                     <Button
@@ -562,8 +741,11 @@ const DomainManagement: React.FC = () => {
                       Verify
                     </Button>
                   )}
-                  
-                  <Dialog open={showDetailsModal && selectedDomain?.id === domain.id} onOpenChange={setShowDetailsModal}>
+
+                  <Dialog
+                    open={showDetailsModal && selectedDomain?.id === domain.id}
+                    onOpenChange={setShowDetailsModal}
+                  >
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
@@ -573,7 +755,9 @@ const DomainManagement: React.FC = () => {
                         <Eye className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
-                    {selectedDomain && <DomainDetailsModal domain={selectedDomain} />}
+                    {selectedDomain && (
+                      <DomainDetailsModal domain={selectedDomain} />
+                    )}
                   </Dialog>
 
                   <DropdownMenu>
@@ -588,17 +772,23 @@ const DomainManagement: React.FC = () => {
                         Edit Domain
                       </DropdownMenuItem>
                       {domain.status === "active" ? (
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(domain, "suspended")}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleUpdateStatus(domain, "suspended")
+                          }
+                        >
                           <XCircle className="h-4 w-4 mr-2" />
                           Suspend Domain
                         </DropdownMenuItem>
                       ) : (
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(domain, "active")}>
+                        <DropdownMenuItem
+                          onClick={() => handleUpdateStatus(domain, "active")}
+                        >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Activate Domain
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-red-600"
                         onClick={() => handleDeleteDomain(domain)}
                         disabled={domain.isDefault}

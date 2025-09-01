@@ -277,17 +277,15 @@ export function MailSidebar({ onCompose }: MailSidebarProps) {
             <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 hover:text-foreground">
               <span>Labels</span>
               <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 p-0"
+                <div
+                  className="h-4 w-4 p-0 rounded hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCreateLabel(true);
                   }}
                 >
                   <Plus className="h-3 w-3" />
-                </Button>
+                </div>
                 {labelsOpen ? (
                   <ChevronDown className="h-3 w-3" />
                 ) : (

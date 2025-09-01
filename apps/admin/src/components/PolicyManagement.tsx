@@ -1,21 +1,27 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  getEmailPolicies, 
-  getEmailPolicyStats, 
+import {
+  getEmailPolicies,
+  getEmailPolicyStats,
   toggleEmailPolicyStatus,
   deleteEmailPolicy,
-  type EmailPolicy, 
+  type EmailPolicy,
   type EmailPolicyFilters,
   type EmailPolicyType,
   type PolicyCategory,
   type PolicyStatus,
   type ConditionField,
   type ConditionOperator,
-  type ActionType
+  type ActionType,
 } from "../data/emailPolicies";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
@@ -41,12 +47,12 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 
-import { 
-  Search, 
-  Plus, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
   MoreVertical,
   Shield,
   FileText,
@@ -57,16 +63,22 @@ import {
   XCircle,
   Clock,
   TrendingUp,
-  Activity
+  Activity,
 } from "lucide-react";
 
 const PolicyManagement: React.FC = () => {
   const [filters, setFilters] = useState<EmailPolicyFilters>({});
-  const [selectedPolicy, setSelectedPolicy] = useState<EmailPolicy | null>(null);
+  const [selectedPolicy, setSelectedPolicy] = useState<EmailPolicy | null>(
+    null,
+  );
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const { data: policies = [], isLoading: isPoliciesLoading, refetch: refetchPolicies } = useQuery({
+  const {
+    data: policies = [],
+    isLoading: isPoliciesLoading,
+    refetch: refetchPolicies,
+  } = useQuery({
     queryKey: ["emailPolicies", filters],
     queryFn: () => getEmailPolicies(filters),
   });
@@ -77,13 +89,13 @@ const PolicyManagement: React.FC = () => {
   });
 
   const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value }));
+    setFilters((prev) => ({ ...prev, search: value }));
   };
 
   const handleFilterChange = (key: keyof EmailPolicyFilters, value: string) => {
-    setFilters(prev => ({ 
-      ...prev, 
-      [key]: value === "all" ? undefined : value 
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value === "all" ? undefined : value,
     }));
   };
 
@@ -97,7 +109,9 @@ const PolicyManagement: React.FC = () => {
   };
 
   const handleDeletePolicy = async (policy: EmailPolicy) => {
-    if (window.confirm(`Are you sure you want to delete policy "${policy.name}"?`)) {
+    if (
+      window.confirm(`Are you sure you want to delete policy "${policy.name}"?`)
+    ) {
       try {
         await deleteEmailPolicy(policy.id);
         refetchPolicies();
@@ -124,10 +138,26 @@ const PolicyManagement: React.FC = () => {
 
   const getPolicyStatusBadge = (status: PolicyStatus) => {
     const statusConfig = {
-      active: { variant: "default" as const, icon: CheckCircle, color: "text-green-600" },
-      inactive: { variant: "secondary" as const, icon: XCircle, color: "text-gray-600" },
-      draft: { variant: "outline" as const, icon: Clock, color: "text-yellow-600" },
-      archived: { variant: "destructive" as const, icon: AlertTriangle, color: "text-red-600" }
+      active: {
+        variant: "default" as const,
+        icon: CheckCircle,
+        color: "text-green-600",
+      },
+      inactive: {
+        variant: "secondary" as const,
+        icon: XCircle,
+        color: "text-gray-600",
+      },
+      draft: {
+        variant: "outline" as const,
+        icon: Clock,
+        color: "text-yellow-600",
+      },
+      archived: {
+        variant: "destructive" as const,
+        icon: AlertTriangle,
+        color: "text-red-600",
+      },
     };
 
     const config = statusConfig[status];
@@ -147,14 +177,16 @@ const PolicyManagement: React.FC = () => {
       compliance: { color: "bg-blue-100 text-blue-800", icon: FileText },
       content: { color: "bg-yellow-100 text-yellow-800", icon: Eye },
       routing: { color: "bg-green-100 text-green-800", icon: Activity },
-      storage: { color: "bg-purple-100 text-purple-800", icon: Database }
+      storage: { color: "bg-purple-100 text-purple-800", icon: Database },
     };
 
     const config = categoryConfig[category];
     const Icon = config.icon;
 
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
         <Icon className="h-3 w-3" />
         {category.charAt(0).toUpperCase() + category.slice(1)}
       </span>
@@ -170,28 +202,57 @@ const PolicyManagement: React.FC = () => {
         </DialogTitle>
         <DialogDescription>{policy.description}</DialogDescription>
       </DialogHeader>
-      
+
       <div className="space-y-6">
         {/* Policy Information */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h4 className="font-semibold mb-2">Basic Information</h4>
             <div className="space-y-2 text-sm">
-              <div><span className="font-medium">Type:</span> {policy.type.replace(/_/g, ' ')}</div>
-              <div><span className="font-medium">Category:</span> {getCategoryBadge(policy.category)}</div>
-              <div><span className="font-medium">Status:</span> {getPolicyStatusBadge(policy.status)}</div>
-              <div><span className="font-medium">Priority:</span> {policy.priority}</div>
-              <div><span className="font-medium">Applied Count:</span> {policy.appliedCount.toLocaleString()}</div>
+              <div>
+                <span className="font-medium">Type:</span>{" "}
+                {policy.type.replace(/_/g, " ")}
+              </div>
+              <div>
+                <span className="font-medium">Category:</span>{" "}
+                {getCategoryBadge(policy.category)}
+              </div>
+              <div>
+                <span className="font-medium">Status:</span>{" "}
+                {getPolicyStatusBadge(policy.status)}
+              </div>
+              <div>
+                <span className="font-medium">Priority:</span> {policy.priority}
+              </div>
+              <div>
+                <span className="font-medium">Applied Count:</span>{" "}
+                {policy.appliedCount.toLocaleString()}
+              </div>
             </div>
           </div>
           <div>
             <h4 className="font-semibold mb-2">Metadata</h4>
             <div className="space-y-2 text-sm">
-              <div><span className="font-medium">Created:</span> {policy.createdAt.toLocaleDateString()}</div>
-              <div><span className="font-medium">Updated:</span> {policy.updatedAt.toLocaleDateString()}</div>
-              <div><span className="font-medium">Created By:</span> {policy.createdBy}</div>
-              <div><span className="font-medium">Modified By:</span> {policy.lastModifiedBy}</div>
-              <div><span className="font-medium">System Policy:</span> {policy.isSystemPolicy ? "Yes" : "No"}</div>
+              <div>
+                <span className="font-medium">Created:</span>{" "}
+                {policy.createdAt.toLocaleDateString()}
+              </div>
+              <div>
+                <span className="font-medium">Updated:</span>{" "}
+                {policy.updatedAt.toLocaleDateString()}
+              </div>
+              <div>
+                <span className="font-medium">Created By:</span>{" "}
+                {policy.createdBy}
+              </div>
+              <div>
+                <span className="font-medium">Modified By:</span>{" "}
+                {policy.lastModifiedBy}
+              </div>
+              <div>
+                <span className="font-medium">System Policy:</span>{" "}
+                {policy.isSystemPolicy ? "Yes" : "No"}
+              </div>
             </div>
           </div>
         </div>
@@ -203,10 +264,16 @@ const PolicyManagement: React.FC = () => {
             {policy.conditions.map((condition) => (
               <div key={condition.id} className="p-3 bg-gray-50 rounded-lg">
                 <div className="text-sm">
-                  <span className="font-medium">{condition.field.replace(/_/g, ' ')}</span>
-                  <span className="mx-2 text-gray-600">{condition.operator.replace(/_/g, ' ')}</span>
+                  <span className="font-medium">
+                    {condition.field.replace(/_/g, " ")}
+                  </span>
+                  <span className="mx-2 text-gray-600">
+                    {condition.operator.replace(/_/g, " ")}
+                  </span>
                   <span className="font-mono bg-gray-200 px-2 py-1 rounded">
-                    {Array.isArray(condition.value) ? condition.value.join(', ') : String(condition.value)}
+                    {Array.isArray(condition.value)
+                      ? condition.value.join(", ")
+                      : String(condition.value)}
                   </span>
                 </div>
               </div>
@@ -221,7 +288,9 @@ const PolicyManagement: React.FC = () => {
             {policy.actions.map((action) => (
               <div key={action.id} className="p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm">
-                  <span className="font-medium">{action.type.replace(/_/g, ' ')}</span>
+                  <span className="font-medium">
+                    {action.type.replace(/_/g, " ")}
+                  </span>
                   {Object.keys(action.parameters).length > 0 && (
                     <div className="mt-1 text-xs text-gray-600">
                       {JSON.stringify(action.parameters, null, 2)}
@@ -263,8 +332,14 @@ const PolicyManagement: React.FC = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      
-      if (!formData.name || !formData.type || !formData.category || !formData.conditionField || !formData.actionType) {
+
+      if (
+        !formData.name ||
+        !formData.type ||
+        !formData.category ||
+        !formData.conditionField ||
+        !formData.actionType
+      ) {
         alert("Please fill in all required fields");
         return;
       }
@@ -282,9 +357,10 @@ const PolicyManagement: React.FC = () => {
           {
             id: `cond-${Date.now()}`,
             field: formData.conditionField as ConditionField,
-            operator: formData.conditionOperator as ConditionOperator || "equals",
+            operator:
+              (formData.conditionOperator as ConditionOperator) || "equals",
             value: formData.conditionValue,
-          }
+          },
         ],
         actions: [
           {
@@ -292,7 +368,7 @@ const PolicyManagement: React.FC = () => {
             type: formData.actionType as ActionType,
             parameters: {},
             order: 1,
-          }
+          },
         ],
         metadata: {},
         createdAt: new Date(),
@@ -304,8 +380,10 @@ const PolicyManagement: React.FC = () => {
       };
 
       console.log("Creating new policy:", newPolicy);
-      alert(`Policy "${formData.name}" created successfully! (This is a demo - policy would be saved to database)`);
-      
+      alert(
+        `Policy "${formData.name}" created successfully! (This is a demo - policy would be saved to database)`,
+      );
+
       // Reset form and close modal
       setFormData({
         name: "",
@@ -330,59 +408,101 @@ const PolicyManagement: React.FC = () => {
             Create New Email Policy
           </DialogTitle>
           <DialogDescription>
-            Configure a new email filtering or security policy for your organization
+            Configure a new email filtering or security policy for your
+            organization
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <h4 className="font-semibold">Basic Information</h4>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Policy Name *</label>
+              <label className="block text-sm font-medium mb-1">
+                Policy Name *
+              </label>
               <Input
                 placeholder="Enter policy name..."
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1">
+                Description
+              </label>
               <Input
                 placeholder="Describe what this policy does..."
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Policy Type *</label>
-                <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as EmailPolicyType }))}>
+                <label className="block text-sm font-medium mb-1">
+                  Policy Type *
+                </label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      type: value as EmailPolicyType,
+                    }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="content_filter">Content Filter</SelectItem>
+                    <SelectItem value="content_filter">
+                      Content Filter
+                    </SelectItem>
                     <SelectItem value="spam_filter">Spam Filter</SelectItem>
                     <SelectItem value="virus_filter">Virus Filter</SelectItem>
-                    <SelectItem value="attachment_filter">Attachment Filter</SelectItem>
+                    <SelectItem value="attachment_filter">
+                      Attachment Filter
+                    </SelectItem>
                     <SelectItem value="sender_filter">Sender Filter</SelectItem>
-                    <SelectItem value="recipient_filter">Recipient Filter</SelectItem>
+                    <SelectItem value="recipient_filter">
+                      Recipient Filter
+                    </SelectItem>
                     <SelectItem value="domain_filter">Domain Filter</SelectItem>
-                    <SelectItem value="quarantine_rule">Quarantine Rule</SelectItem>
+                    <SelectItem value="quarantine_rule">
+                      Quarantine Rule
+                    </SelectItem>
                     <SelectItem value="delivery_rule">Delivery Rule</SelectItem>
-                    <SelectItem value="retention_rule">Retention Rule</SelectItem>
+                    <SelectItem value="retention_rule">
+                      Retention Rule
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Category *</label>
-                <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value as PolicyCategory }))}>
+                <label className="block text-sm font-medium mb-1">
+                  Category *
+                </label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      category: value as PolicyCategory,
+                    }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -398,13 +518,20 @@ const PolicyManagement: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Priority (1-10, lower = higher priority)</label>
+              <label className="block text-sm font-medium mb-1">
+                Priority (1-10, lower = higher priority)
+              </label>
               <Input
                 type="number"
                 min="1"
                 max="10"
                 value={formData.priority}
-                onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 5 }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    priority: parseInt(e.target.value) || 5,
+                  }))
+                }
               />
             </div>
           </div>
@@ -412,34 +539,66 @@ const PolicyManagement: React.FC = () => {
           {/* Condition */}
           <div className="space-y-4">
             <h4 className="font-semibold">Condition</h4>
-            
+
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Field *</label>
-                <Select value={formData.conditionField} onValueChange={(value) => setFormData(prev => ({ ...prev, conditionField: value as ConditionField }))}>
+                <label className="block text-sm font-medium mb-1">
+                  Field *
+                </label>
+                <Select
+                  value={formData.conditionField}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      conditionField: value as ConditionField,
+                    }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select field" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sender_email">Sender Email</SelectItem>
                     <SelectItem value="sender_domain">Sender Domain</SelectItem>
-                    <SelectItem value="recipient_email">Recipient Email</SelectItem>
-                    <SelectItem value="recipient_domain">Recipient Domain</SelectItem>
+                    <SelectItem value="recipient_email">
+                      Recipient Email
+                    </SelectItem>
+                    <SelectItem value="recipient_domain">
+                      Recipient Domain
+                    </SelectItem>
                     <SelectItem value="subject">Subject</SelectItem>
                     <SelectItem value="body">Body</SelectItem>
-                    <SelectItem value="attachment_name">Attachment Name</SelectItem>
-                    <SelectItem value="attachment_type">Attachment Type</SelectItem>
+                    <SelectItem value="attachment_name">
+                      Attachment Name
+                    </SelectItem>
+                    <SelectItem value="attachment_type">
+                      Attachment Type
+                    </SelectItem>
                     <SelectItem value="message_size">Message Size</SelectItem>
                     <SelectItem value="spam_score">Spam Score</SelectItem>
-                    <SelectItem value="virus_scan_result">Virus Scan Result</SelectItem>
-                    <SelectItem value="sender_reputation">Sender Reputation</SelectItem>
+                    <SelectItem value="virus_scan_result">
+                      Virus Scan Result
+                    </SelectItem>
+                    <SelectItem value="sender_reputation">
+                      Sender Reputation
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Operator</label>
-                <Select value={formData.conditionOperator} onValueChange={(value) => setFormData(prev => ({ ...prev, conditionOperator: value as ConditionOperator }))}>
+                <label className="block text-sm font-medium mb-1">
+                  Operator
+                </label>
+                <Select
+                  value={formData.conditionOperator}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      conditionOperator: value as ConditionOperator,
+                    }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="equals" />
                   </SelectTrigger>
@@ -463,7 +622,12 @@ const PolicyManagement: React.FC = () => {
                 <Input
                   placeholder="Enter value..."
                   value={formData.conditionValue}
-                  onChange={(e) => setFormData(prev => ({ ...prev, conditionValue: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      conditionValue: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -472,10 +636,20 @@ const PolicyManagement: React.FC = () => {
           {/* Action */}
           <div className="space-y-4">
             <h4 className="font-semibold">Action</h4>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Action Type *</label>
-              <Select value={formData.actionType} onValueChange={(value) => setFormData(prev => ({ ...prev, actionType: value as ActionType }))}>
+              <label className="block text-sm font-medium mb-1">
+                Action Type *
+              </label>
+              <Select
+                value={formData.actionType}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    actionType: value as ActionType,
+                  }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select action" />
                 </SelectTrigger>
@@ -492,23 +666,23 @@ const PolicyManagement: React.FC = () => {
                   <SelectItem value="notify_admin">Notify Admin</SelectItem>
                   <SelectItem value="log_event">Log Event</SelectItem>
                   <SelectItem value="delay_delivery">Delay Delivery</SelectItem>
-                  <SelectItem value="require_approval">Require Approval</SelectItem>
+                  <SelectItem value="require_approval">
+                    Require Approval
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setShowCreateModal(false)}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              Create Policy
-            </Button>
+            <Button type="submit">Create Policy</Button>
           </div>
         </form>
       </DialogContent>
@@ -536,8 +710,12 @@ const PolicyManagement: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Email Policy Management</h1>
-          <p className="text-gray-600 mt-1">Configure and manage email filtering and security policies</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Email Policy Management
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Configure and manage email filtering and security policies
+          </p>
         </div>
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogTrigger asChild>
@@ -554,7 +732,9 @@ const PolicyManagement: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Policies</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Policies
+            </CardTitle>
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -567,33 +747,39 @@ const PolicyManagement: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Policies</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Policies
+            </CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats?.activePolicies}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently enforced
-            </p>
+            <div className="text-2xl font-bold text-green-600">
+              {stats?.activePolicies}
+            </div>
+            <p className="text-xs text-muted-foreground">Currently enforced</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recently Modified</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Recently Modified
+            </CardTitle>
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats?.recentlyModified}</div>
-            <p className="text-xs text-muted-foreground">
-              In the last 30 days
-            </p>
+            <div className="text-2xl font-bold text-orange-600">
+              {stats?.recentlyModified}
+            </div>
+            <p className="text-xs text-muted-foreground">In the last 30 days</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Applications</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Top Applications
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
@@ -624,8 +810,10 @@ const PolicyManagement: React.FC = () => {
                 />
               </div>
             </div>
-            
-            <Select onValueChange={(value) => handleFilterChange("type", value)}>
+
+            <Select
+              onValueChange={(value) => handleFilterChange("type", value)}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Policy Type" />
               </SelectTrigger>
@@ -634,9 +822,13 @@ const PolicyManagement: React.FC = () => {
                 <SelectItem value="content_filter">Content Filter</SelectItem>
                 <SelectItem value="spam_filter">Spam Filter</SelectItem>
                 <SelectItem value="virus_filter">Virus Filter</SelectItem>
-                <SelectItem value="attachment_filter">Attachment Filter</SelectItem>
+                <SelectItem value="attachment_filter">
+                  Attachment Filter
+                </SelectItem>
                 <SelectItem value="sender_filter">Sender Filter</SelectItem>
-                <SelectItem value="recipient_filter">Recipient Filter</SelectItem>
+                <SelectItem value="recipient_filter">
+                  Recipient Filter
+                </SelectItem>
                 <SelectItem value="domain_filter">Domain Filter</SelectItem>
                 <SelectItem value="quarantine_rule">Quarantine Rule</SelectItem>
                 <SelectItem value="delivery_rule">Delivery Rule</SelectItem>
@@ -644,7 +836,9 @@ const PolicyManagement: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(value) => handleFilterChange("category", value)}>
+            <Select
+              onValueChange={(value) => handleFilterChange("category", value)}
+            >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -658,7 +852,9 @@ const PolicyManagement: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(value) => handleFilterChange("status", value)}>
+            <Select
+              onValueChange={(value) => handleFilterChange("status", value)}
+            >
               <SelectTrigger className="w-[130px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -677,7 +873,9 @@ const PolicyManagement: React.FC = () => {
       {/* Policies List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Email Policies ({policies.length})</CardTitle>
+          <CardTitle className="text-lg">
+            Email Policies ({policies.length})
+          </CardTitle>
           <CardDescription>
             Manage email filtering and security policies for your organization
           </CardDescription>
@@ -685,20 +883,31 @@ const PolicyManagement: React.FC = () => {
         <CardContent>
           <div className="space-y-4">
             {policies.map((policy) => (
-              <div key={policy.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+              <div
+                key={policy.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+              >
                 <div className="flex items-center space-x-4">
                   <div className="flex-shrink-0">
                     {getPolicyTypeIcon(policy.type)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{policy.name}</h3>
+                      <h3 className="font-semibold text-gray-900">
+                        {policy.name}
+                      </h3>
                       {policy.isSystemPolicy && (
-                        <Badge variant="outline" className="text-xs">System</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          System
+                        </Badge>
                       )}
-                      <span className="text-xs text-gray-500">Priority: {policy.priority}</span>
+                      <span className="text-xs text-gray-500">
+                        Priority: {policy.priority}
+                      </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{policy.description}</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {policy.description}
+                    </p>
                     <div className="flex items-center gap-2">
                       {getCategoryBadge(policy.category)}
                       {getPolicyStatusBadge(policy.status)}
@@ -708,18 +917,25 @@ const PolicyManagement: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleToggleStatus(policy)}
-                    className={policy.status === "active" ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
+                    className={
+                      policy.status === "active"
+                        ? "text-red-600 hover:text-red-700"
+                        : "text-green-600 hover:text-green-700"
+                    }
                   >
                     {policy.status === "active" ? "Deactivate" : "Activate"}
                   </Button>
-                  
-                  <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+
+                  <Dialog
+                    open={showDetailsModal}
+                    onOpenChange={setShowDetailsModal}
+                  >
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
@@ -729,7 +945,9 @@ const PolicyManagement: React.FC = () => {
                         <Eye className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
-                    {selectedPolicy && <PolicyDetailsModal policy={selectedPolicy} />}
+                    {selectedPolicy && (
+                      <PolicyDetailsModal policy={selectedPolicy} />
+                    )}
                   </Dialog>
 
                   <DropdownMenu>
@@ -747,7 +965,7 @@ const PolicyManagement: React.FC = () => {
                         <FileText className="h-4 w-4 mr-2" />
                         Duplicate Policy
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-red-600"
                         onClick={() => handleDeletePolicy(policy)}
                       >

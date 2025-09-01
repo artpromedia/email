@@ -33,6 +33,61 @@ const createCeerionMailClient = () => ({
     logout: async () => ({ success: true }),
     getCurrentUser: async () => null,
   },
+  adminAudit: {
+    getAuditEvents: async (_filters: any) => {
+      // Mock audit events data
+      return {
+        data: {
+          items: [
+            {
+              id: "audit-1",
+              ts: new Date().toISOString(),
+              actorId: "user-1",
+              actorEmail: "admin@ceerion.com",
+              action: "user:login",
+              resourceType: "user",
+              resourceId: "user-1",
+              result: "SUCCESS" as const,
+              ip: "192.168.1.1",
+              userAgent: "Mozilla/5.0...",
+              metadata: { source: "web" },
+            },
+          ],
+          totalApprox: 1,
+          nextCursor: null,
+        },
+      };
+    },
+    getAuditById: async (id: string) => {
+      // Mock single audit event
+      return {
+        data: {
+          id,
+          ts: new Date().toISOString(),
+          actorId: "user-1",
+          actorEmail: "admin@ceerion.com",
+          action: "user:login",
+          resourceType: "user",
+          resourceId: "user-1",
+          result: "SUCCESS" as const,
+          ip: "192.168.1.1",
+          userAgent: "Mozilla/5.0...",
+          metadata: { source: "web" },
+          actor: {
+            id: "user-1",
+            email: "admin@ceerion.com",
+            name: "Admin User",
+          },
+        },
+      };
+    },
+    exportAuditCsv: async (_filters: any) => {
+      // Mock CSV export
+      return {
+        data: "timestamp,actor,action,result\n2025-01-01T00:00:00Z,admin@ceerion.com,user:login,SUCCESS\n",
+      };
+    },
+  },
 });
 
 interface AdminUser {

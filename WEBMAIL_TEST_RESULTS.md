@@ -3,7 +3,7 @@
 ## Test Environment
 
 - **Date**: August 30, 2025
-- **Webmail URL**: http://localhost:3003/
+- **Webmail URL**: <http://localhost:3003/>
 - **API Status**: Starting (has rate limiter issues)
 
 ## Current Status
@@ -57,7 +57,7 @@ Based on code review of `ComposeSheet.tsx`:
 
 #### **Manual Testing Available:**
 
-1. **Access**: Navigate to http://localhost:3003/
+1. **Access**: Navigate to <http://localhost:3003/>
 2. **Authentication**: Login interface available
 3. **Compose Access**: Via "Compose" button in mail interface
 4. **Functionality**: Can test email composition, recipients, sending
@@ -93,7 +93,7 @@ Based on code review of `ComposeSheet.tsx`:
 
 ### 🎯 **Priority 1: Manual Functional Testing**
 
-1. Open http://localhost:3003/
+1. Open <http://localhost:3003/>
 2. Navigate through authentication
 3. Click "Compose" button
 4. Test email composition:

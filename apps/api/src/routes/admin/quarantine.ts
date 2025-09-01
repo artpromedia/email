@@ -40,11 +40,13 @@ const quarantineMessageSchema = z.object({
   status: z.enum(["quarantined", "released", "deleted"]),
   size: z.number(),
   contentPreview: z.string(),
-  attachments: z.array(z.object({
-    name: z.string(),
-    size: z.number(),
-    type: z.string(),
-  })),
+  attachments: z.array(
+    z.object({
+      name: z.string(),
+      size: z.number(),
+      type: z.string(),
+    }),
+  ),
   headers: z.record(z.string()),
   ruleMatches: z.array(z.string()),
 });
@@ -67,38 +69,14 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
   // GET /admin/quarantine - List quarantined messages
   fastify.get(
     "/admin/quarantine",
-    {
-      schema: {
-        querystring: quarantineQuerySchema,
-        response: {
-          200: {
-            type: "object",
-            properties: {
-              items: { type: "array", items: quarantineMessageSchema },
-              pagination: {
-                type: "object",
-                properties: {
-                  page: { type: "number" },
-                  limit: { type: "number" },
-                  total: { type: "number" },
-                  totalPages: { type: "number" },
-                },
-              },
-            },
-          },
-        },
-        tags: ["Admin", "Quarantine"],
-        summary: "List quarantined messages",
-        description: "Retrieve quarantined messages with filtering and pagination",
-      },
-    },
     async (
       request: FastifyRequest<{
         Querystring: z.infer<typeof quarantineQuerySchema>;
       }>,
       reply: FastifyReply,
     ) => {
-      const { q, from, to, reason, status, severity, page, limit } = request.query;
+      const { q, from, to, reason, status, severity, page, limit } =
+        request.query;
       const currentUser = request.user!;
 
       try {
@@ -116,7 +94,8 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
             quarantinedAt: new Date().toISOString(),
             status: "quarantined" as const,
             size: 2048,
-            contentPreview: "This is a suspicious email asking for account verification...",
+            contentPreview:
+              "This is a suspicious email asking for account verification...",
             attachments: [],
             headers: {
               "Return-Path": "suspicious@badsite.com",
@@ -157,7 +136,9 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
         };
       } catch (error: unknown) {
         console.error("Failed to fetch quarantine messages:", error);
-        throw fastify.httpErrors.internalServerError("Failed to fetch quarantine messages");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to fetch quarantine messages",
+        );
       }
     },
   );
@@ -209,7 +190,9 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
         return stats;
       } catch (error: unknown) {
         console.error("Failed to fetch quarantine statistics:", error);
-        throw fastify.httpErrors.internalServerError("Failed to fetch quarantine statistics");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to fetch quarantine statistics",
+        );
       }
     },
   );
@@ -231,7 +214,8 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
         },
         tags: ["Admin", "Quarantine"],
         summary: "Get quarantine message details",
-        description: "Retrieve detailed information about a quarantined message",
+        description:
+          "Retrieve detailed information about a quarantined message",
       },
     },
     async (
@@ -257,14 +241,19 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
           quarantinedAt: new Date().toISOString(),
           status: "quarantined" as const,
           size: 2048,
-          contentPreview: "Full email content with suspicious links and phishing attempts...",
+          contentPreview:
+            "Full email content with suspicious links and phishing attempts...",
           attachments: [],
           headers: {
             "Return-Path": "suspicious@badsite.com",
             "X-Spam-Score": "8.5",
             "X-Originating-IP": "192.168.1.100",
           },
-          ruleMatches: ["suspicious_domain", "phishing_keywords", "high_spam_score"],
+          ruleMatches: [
+            "suspicious_domain",
+            "phishing_keywords",
+            "high_spam_score",
+          ],
         };
 
         // Log audit event
@@ -307,7 +296,8 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
         body: quarantineActionSchema,
         tags: ["Admin", "Quarantine"],
         summary: "Take action on quarantined message",
-        description: "Release, delete, or block sender for a quarantined message",
+        description:
+          "Release, delete, or block sender for a quarantined message",
       },
     },
     async (
@@ -324,7 +314,7 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
       try {
         // TODO: Implement actual quarantine action
         let actionResult;
-        
+
         switch (action) {
           case "release":
             actionResult = "Message released to recipient inbox";
@@ -362,7 +352,9 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
         };
       } catch (error: unknown) {
         console.error("Failed to process quarantine action:", error);
-        throw fastify.httpErrors.internalServerError("Failed to process quarantine action");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to process quarantine action",
+        );
       }
     },
   );
@@ -408,11 +400,16 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
 
       try {
         // TODO: Implement actual bulk processing
-        const success = messageIds.slice(0, Math.floor(messageIds.length * 0.9)); // 90% success rate
-        const failed = messageIds.slice(Math.floor(messageIds.length * 0.9)).map(id => ({
-          id,
-          error: "Processing failed - message not found",
-        }));
+        const success = messageIds.slice(
+          0,
+          Math.floor(messageIds.length * 0.9),
+        ); // 90% success rate
+        const failed = messageIds
+          .slice(Math.floor(messageIds.length * 0.9))
+          .map((id) => ({
+            id,
+            error: "Processing failed - message not found",
+          }));
 
         // Log audit event
         await logAudit({
@@ -441,7 +438,9 @@ export async function adminQuarantineRoutes(fastify: FastifyInstance) {
         };
       } catch (error: unknown) {
         console.error("Failed to process bulk quarantine action:", error);
-        throw fastify.httpErrors.internalServerError("Failed to process bulk quarantine action");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to process bulk quarantine action",
+        );
       }
     },
   );

@@ -498,7 +498,7 @@ export function MailProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       const mockThreads: Thread[] = [
         {
-          id: "1",
+          id: "cmezoep9l000e9z5xjmrles4z",
           subject: "Welcome to CEERION Mail",
           participants: ["support@ceerion.com"],
           lastMessageDate: new Date(),
@@ -509,8 +509,8 @@ export function MailProvider({ children }: { children: React.ReactNode }) {
           folder: "inbox",
           messages: [
             {
-              id: "1",
-              threadId: "1",
+              id: "cmezoep9l000e9z5xjmrles4z",
+              threadId: "cmezoep9l000e9z5xjmrles4z",
               from: "support@ceerion.com",
               to: ["user@ceerion.com"],
               subject: "Welcome to CEERION Mail",

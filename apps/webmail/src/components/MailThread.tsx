@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Paperclip,
   Download,
   Clock,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +28,13 @@ import { useMail as useMailContext } from "@/contexts/MailContext";
 import { useMail } from "@/hooks/useMail";
 import { ComposeSheet } from "@/components/ComposeSheet";
 import { cn } from "@/lib/utils";
+import { toast } from "react-hot-toast";
 
 export function MailThread() {
   const [expandedMessages, setExpandedMessages] = useState<string[]>([]);
   const [showCompose, setShowCompose] = useState(false);
   const [composeDraft, setComposeDraft] = useState<any>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const { selectedThread, starThreads, archiveThreads, deleteThreads } =
     useMailContext();
   const { reply, replyAll, forward } = useMail();
@@ -40,6 +43,60 @@ export function MailThread() {
   if (!selectedThread) {
     return null;
   }
+
+  const sortedMessages = [...selectedThread.messages].sort(
+    (a, b) => a.date.getTime() - b.date.getTime(),
+  );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when compose is not open and no pending actions
+      if (showCompose || pendingAction) return;
+
+      // Don't trigger when user is typing in an input
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const lastMessage = sortedMessages[sortedMessages.length - 1];
+      if (!lastMessage) return;
+
+      switch (event.key.toLowerCase()) {
+        case "r":
+          event.preventDefault();
+          handleReply(lastMessage.id);
+          break;
+        case "a":
+          event.preventDefault();
+          handleReplyAll(lastMessage.id);
+          break;
+        case "f":
+          event.preventDefault();
+          handleForward(lastMessage.id);
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showCompose, pendingAction, sortedMessages]);
+
+  // Get selected text from the page
+  const getSelectedText = (): string | undefined => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      // Convert selection to HTML if possible
+      const range = selection.getRangeAt(0);
+      const div = document.createElement("div");
+      div.appendChild(range.cloneContents());
+      return div.innerHTML;
+    }
+    return undefined;
+  };
 
   const handleBack = () => {
     navigate(-1);
@@ -61,33 +118,73 @@ export function MailThread() {
 
   const handleReply = async (messageId: string) => {
     try {
+      setPendingAction("reply");
       console.log("Attempting to reply to message:", messageId);
-      const composeDraft = await reply(messageId);
+
+      const selectedTextHtml = getSelectedText();
+      const composeDraft = await reply(messageId, selectedTextHtml);
+
       console.log("Compose draft received:", composeDraft);
       setComposeDraft(composeDraft);
       setShowCompose(true);
+
+      if (selectedTextHtml) {
+        toast.success("Selected text will be quoted in reply");
+      }
     } catch (error) {
       console.error("Failed to compose reply:", error);
+      toast.error("Failed to create reply");
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleReplyAll = async (messageId: string) => {
     try {
-      const composeDraft = await replyAll(messageId);
+      setPendingAction("replyAll");
+
+      const selectedTextHtml = getSelectedText();
+      const composeDraft = await replyAll(messageId, selectedTextHtml);
+
       setComposeDraft(composeDraft);
       setShowCompose(true);
+
+      if (selectedTextHtml) {
+        toast.success("Selected text will be quoted in reply to all");
+      }
     } catch (error) {
       console.error("Failed to compose reply all:", error);
+      toast.error("Failed to create reply to all");
+    } finally {
+      setPendingAction(null);
     }
   };
 
-  const handleForward = async (messageId: string) => {
+  const handleForward = async (
+    messageId: string,
+    includeAttachments = true,
+  ) => {
     try {
-      const composeDraft = await forward(messageId, true); // Include attachments
+      setPendingAction("forward");
+
+      const selectedTextHtml = getSelectedText();
+      const composeDraft = await forward(
+        messageId,
+        includeAttachments,
+        selectedTextHtml,
+      );
+
       setComposeDraft(composeDraft);
       setShowCompose(true);
+
+      if (selectedTextHtml) {
+        toast.success("Selected text will be quoted in forward");
+      }
     } catch (error) {
       console.error("Failed to compose forward:", error);
+      toast.error("Failed to create forward");
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -113,10 +210,6 @@ export function MailThread() {
   const getInitials = (email: string) => {
     return email.split("@")[0].charAt(0).toUpperCase();
   };
-
-  const sortedMessages = [...selectedThread.messages].sort(
-    (a, b) => a.date.getTime() - b.date.getTime(),
-  );
 
   // Expand the last message by default
   if (expandedMessages.length === 0 && sortedMessages.length > 0) {
@@ -291,24 +384,42 @@ export function MailThread() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleReply(message.id)}
+                        disabled={pendingAction !== null}
+                        title="Reply (R)"
                       >
-                        <Reply className="mr-2 h-4 w-4" />
+                        {pendingAction === "reply" ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Reply className="mr-2 h-4 w-4" />
+                        )}
                         Reply
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleReplyAll(message.id)}
+                        disabled={pendingAction !== null}
+                        title="Reply All (A)"
                       >
-                        <ReplyAll className="mr-2 h-4 w-4" />
+                        {pendingAction === "replyAll" ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <ReplyAll className="mr-2 h-4 w-4" />
+                        )}
                         Reply all
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleForward(message.id)}
+                        disabled={pendingAction !== null}
+                        title="Forward (F)"
                       >
-                        <Forward className="mr-2 h-4 w-4" />
+                        {pendingAction === "forward" ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Forward className="mr-2 h-4 w-4" />
+                        )}
                         Forward
                       </Button>
                     </div>
@@ -323,7 +434,11 @@ export function MailThread() {
       {/* Compose Sheet */}
       <ComposeSheet
         isOpen={showCompose}
-        onClose={() => setShowCompose(false)}
+        onClose={() => {
+          setShowCompose(false);
+          setComposeDraft(null);
+        }}
+        draftData={composeDraft}
       />
     </div>
   );

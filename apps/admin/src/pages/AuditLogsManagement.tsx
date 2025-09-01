@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   FileText,
   Search,
@@ -18,7 +18,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import {
   Select,
   SelectContent,
@@ -39,7 +44,6 @@ import {
   type AuditLog,
   type AuditFilters,
   type AuditAction,
-  type AuditResource,
   type AuditSeverity,
   type AuditOutcome,
 } from "../data/auditLogs";
@@ -51,7 +55,7 @@ export default function AuditLogsManagement() {
   const [isExporting, setIsExporting] = useState(false);
 
   // Fetch audit data
-  const { data: logs = [], refetch: refetchLogs, isLoading } = useQuery({
+  const { data: logs = [], isLoading } = useQuery({
     queryKey: ["auditLogs", filters],
     queryFn: () => getAuditLogs(filters),
   });
@@ -79,7 +83,7 @@ export default function AuditLogsManagement() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `audit-logs-${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -129,7 +133,8 @@ export default function AuditLogsManagement() {
   const getActionIcon = (action: AuditAction) => {
     if (action.includes("user")) return <User className="h-4 w-4" />;
     if (action.includes("message")) return <FileText className="h-4 w-4" />;
-    if (action.includes("login") || action.includes("logout")) return <Shield className="h-4 w-4" />;
+    if (action.includes("login") || action.includes("logout"))
+      return <Shield className="h-4 w-4" />;
     return <Activity className="h-4 w-4" />;
   };
 
@@ -140,9 +145,10 @@ export default function AuditLogsManagement() {
 
   // Format action name for display
   const formatAction = (action: AuditAction) => {
-    return action.split("_").map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(" ");
+    return action
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   return (
@@ -170,20 +176,26 @@ export default function AuditLogsManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Logs</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalLogs}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Logs
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.totalLogs}
+                  </p>
                 </div>
                 <FileText className="h-8 w-8 text-gray-400" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Today</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.todayLogs}</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {stats.todayLogs}
+                  </p>
                 </div>
                 <Calendar className="h-8 w-8 text-blue-400" />
               </div>
@@ -194,8 +206,12 @@ export default function AuditLogsManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Critical Events</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.criticalEvents}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Critical Events
+                  </p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {stats.criticalEvents}
+                  </p>
                 </div>
                 <AlertCircle className="h-8 w-8 text-red-400" />
               </div>
@@ -206,8 +222,12 @@ export default function AuditLogsManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Failed Actions</p>
-                  <p className="text-2xl font-bold text-orange-600">{stats.failedActions}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Failed Actions
+                  </p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {stats.failedActions}
+                  </p>
                 </div>
                 <XCircle className="h-8 w-8 text-orange-400" />
               </div>
@@ -239,7 +259,9 @@ export default function AuditLogsManagement() {
               <Input
                 type="date"
                 value={filters.startDate || ""}
-                onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                onChange={(e) =>
+                  handleFilterChange("startDate", e.target.value)
+                }
                 placeholder="Start Date"
               />
             </div>
@@ -267,11 +289,17 @@ export default function AuditLogsManagement() {
                   <SelectItem value="user_created">User Created</SelectItem>
                   <SelectItem value="user_updated">User Updated</SelectItem>
                   <SelectItem value="user_deleted">User Deleted</SelectItem>
-                  <SelectItem value="message_released">Message Released</SelectItem>
-                  <SelectItem value="message_deleted">Message Deleted</SelectItem>
+                  <SelectItem value="message_released">
+                    Message Released
+                  </SelectItem>
+                  <SelectItem value="message_deleted">
+                    Message Deleted
+                  </SelectItem>
                   <SelectItem value="login_success">Login Success</SelectItem>
                   <SelectItem value="login_failed">Login Failed</SelectItem>
-                  <SelectItem value="settings_updated">Settings Updated</SelectItem>
+                  <SelectItem value="settings_updated">
+                    Settings Updated
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -301,8 +329,8 @@ export default function AuditLogsManagement() {
               <Search className="h-4 w-4 mr-2" />
               Search
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setFilters({});
                 setSearchQuery("");
@@ -330,14 +358,30 @@ export default function AuditLogsManagement() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Timestamp</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Admin</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Action</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Resource</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Details</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Severity</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Outcome</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Timestamp
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Admin
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Action
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Resource
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Details
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Severity
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Outcome
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-900">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -351,14 +395,20 @@ export default function AuditLogsManagement() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-gray-900">{log.adminName}</p>
-                          <p className="text-sm text-gray-500">{log.adminEmail}</p>
+                          <p className="font-medium text-gray-900">
+                            {log.adminName}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {log.adminEmail}
+                          </p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {getActionIcon(log.action)}
-                          <span className="text-sm font-medium">{formatAction(log.action)}</span>
+                          <span className="text-sm font-medium">
+                            {formatAction(log.action)}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -367,7 +417,10 @@ export default function AuditLogsManagement() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-900 truncate max-w-xs" title={log.details}>
+                        <p
+                          className="text-sm text-gray-900 truncate max-w-xs"
+                          title={log.details}
+                        >
                           {log.details}
                         </p>
                       </td>
@@ -403,8 +456,12 @@ export default function AuditLogsManagement() {
           {logs.length === 0 && !isLoading && (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No audit logs found</h3>
-              <p className="text-gray-600">Try adjusting your filters or search criteria.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No audit logs found
+              </h3>
+              <p className="text-gray-600">
+                Try adjusting your filters or search criteria.
+              </p>
             </div>
           )}
         </CardContent>
@@ -421,33 +478,49 @@ export default function AuditLogsManagement() {
               {/* Log Overview */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Timestamp:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Timestamp:
+                  </label>
                   <p className="text-sm">{formatDate(selectedLog.timestamp)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Admin:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Admin:
+                  </label>
                   <p className="text-sm font-medium">{selectedLog.adminName}</p>
-                  <p className="text-xs text-gray-500">{selectedLog.adminEmail}</p>
+                  <p className="text-xs text-gray-500">
+                    {selectedLog.adminEmail}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Action:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Action:
+                  </label>
                   <div className="flex items-center gap-2">
                     {getActionIcon(selectedLog.action)}
-                    <span className="text-sm">{formatAction(selectedLog.action)}</span>
+                    <span className="text-sm">
+                      {formatAction(selectedLog.action)}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Resource:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Resource:
+                  </label>
                   <Badge variant="outline">{selectedLog.resource}</Badge>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Severity:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Severity:
+                  </label>
                   <Badge className={getSeverityBadge(selectedLog.severity)}>
                     {selectedLog.severity}
                   </Badge>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Outcome:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Outcome:
+                  </label>
                   <div className="flex items-center gap-1">
                     {getOutcomeIcon(selectedLog.outcome)}
                     <Badge className={getOutcomeBadge(selectedLog.outcome)}>
@@ -456,11 +529,15 @@ export default function AuditLogsManagement() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">IP Address:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    IP Address:
+                  </label>
                   <p className="text-sm">{selectedLog.ipAddress}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Resource ID:</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Resource ID:
+                  </label>
                   <p className="text-sm">{selectedLog.resourceId || "N/A"}</p>
                 </div>
               </div>
@@ -474,22 +551,25 @@ export default function AuditLogsManagement() {
               </div>
 
               {/* Metadata */}
-              {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Metadata</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                      {JSON.stringify(selectedLog.metadata, null, 2)}
-                    </pre>
+              {selectedLog.metadata &&
+                Object.keys(selectedLog.metadata).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Metadata</h3>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                        {JSON.stringify(selectedLog.metadata, null, 2)}
+                      </pre>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* User Agent */}
               <div>
                 <h3 className="text-lg font-medium mb-2">User Agent</h3>
                 <div className="bg-white border rounded-lg p-4">
-                  <p className="text-xs text-gray-600 break-all">{selectedLog.userAgent}</p>
+                  <p className="text-xs text-gray-600 break-all">
+                    {selectedLog.userAgent}
+                  </p>
                 </div>
               </div>
             </div>

@@ -6,9 +6,13 @@ import { logAudit, AuditLogger } from "../../utils/audit-logger";
 // Schema definitions
 const domainQuerySchema = z.object({
   q: z.string().optional(),
-  status: z.enum(["active", "pending", "suspended", "failed", "configuring"]).optional(),
+  status: z
+    .enum(["active", "pending", "suspended", "failed", "configuring"])
+    .optional(),
   type: z.enum(["primary", "alias", "subdomain", "external"]).optional(),
-  verification: z.enum(["verified", "pending", "failed", "not_started"]).optional(),
+  verification: z
+    .enum(["verified", "pending", "failed", "not_started"])
+    .optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
 });
@@ -20,26 +24,32 @@ const createDomainSchema = z.object({
 });
 
 const updateDomainSchema = z.object({
-  status: z.enum(["active", "pending", "suspended", "failed", "configuring"]).optional(),
+  status: z
+    .enum(["active", "pending", "suspended", "failed", "configuring"])
+    .optional(),
   description: z.string().optional(),
-  mailSettings: z.object({
-    maxMessageSize: z.number().min(1),
-    retentionDays: z.number().min(1),
-    quotaPerUser: z.number().min(1),
-    allowExternalForwarding: z.boolean(),
-    requireTls: z.boolean(),
-    enableSpamFilter: z.boolean(),
-    customBounceMessage: z.string().optional(),
-  }).optional(),
-  security: z.object({
-    spfPolicy: z.enum(["none", "soft_fail", "fail"]),
-    dkimEnabled: z.boolean(),
-    dmarcPolicy: z.enum(["none", "quarantine", "reject"]),
-    mtaStsEnabled: z.boolean(),
-    tlsReportingEnabled: z.boolean(),
-    requireSecureAuth: z.boolean(),
-    allowedIpRanges: z.array(z.string()),
-  }).optional(),
+  mailSettings: z
+    .object({
+      maxMessageSize: z.number().min(1),
+      retentionDays: z.number().min(1),
+      quotaPerUser: z.number().min(1),
+      allowExternalForwarding: z.boolean(),
+      requireTls: z.boolean(),
+      enableSpamFilter: z.boolean(),
+      customBounceMessage: z.string().optional(),
+    })
+    .optional(),
+  security: z
+    .object({
+      spfPolicy: z.enum(["none", "soft_fail", "fail"]),
+      dkimEnabled: z.boolean(),
+      dmarcPolicy: z.enum(["none", "quarantine", "reject"]),
+      mtaStsEnabled: z.boolean(),
+      tlsReportingEnabled: z.boolean(),
+      requireSecureAuth: z.boolean(),
+      allowedIpRanges: z.array(z.string()),
+    })
+    .optional(),
 });
 
 // Response schemas
@@ -110,11 +120,13 @@ const domainStatsSchema = z.object({
   totalUsers: z.number(),
   dailyMessages: z.number(),
   storageUsed: z.number(),
-  topDomains: z.array(z.object({
-    domain: z.string(),
-    users: z.number(),
-    messages: z.number(),
-  })),
+  topDomains: z.array(
+    z.object({
+      domain: z.string(),
+      users: z.number(),
+      messages: z.number(),
+    }),
+  ),
 });
 
 export async function adminDomainRoutes(fastify: FastifyInstance) {
@@ -307,7 +319,9 @@ export async function adminDomainRoutes(fastify: FastifyInstance) {
         return stats;
       } catch (error: unknown) {
         console.error("Domain error:", error);
-        throw fastify.httpErrors.internalServerError("Failed to fetch domain statistics");
+        throw fastify.httpErrors.internalServerError(
+          "Failed to fetch domain statistics",
+        );
       }
     },
   );
@@ -484,7 +498,7 @@ export async function adminDomainRoutes(fastify: FastifyInstance) {
 
       try {
         // TODO: Implement actual domain update
-        
+
         // Log audit event
         await logAudit({
           actorId: currentUser.sub,
@@ -537,7 +551,7 @@ export async function adminDomainRoutes(fastify: FastifyInstance) {
 
       try {
         // TODO: Implement actual domain verification
-        
+
         // Log audit event
         await logAudit({
           actorId: currentUser.sub,
@@ -593,7 +607,7 @@ export async function adminDomainRoutes(fastify: FastifyInstance) {
 
       try {
         // TODO: Implement actual domain deletion with safety checks
-        
+
         // Log audit event
         await logAudit({
           actorId: currentUser.sub,
