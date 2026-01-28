@@ -6,7 +6,13 @@
 // Utilities
 export { cn } from "./lib/utils";
 
-// Components
+// Design System Tokens
+export * from "./tokens";
+
+// Providers
+export * from "./providers";
+
+// Base Components
 export { Button, buttonVariants, type ButtonProps } from "./components/button";
 export { Input, type InputProps } from "./components/input";
 export { Label } from "./components/label";
@@ -21,3 +27,6 @@ export {
 export { Badge, badgeVariants, type BadgeProps } from "./components/badge";
 export { Avatar, AvatarImage, AvatarFallback } from "./components/avatar";
 export { Spinner, Loading } from "./components/spinner";
+
+// Domain-Aware Components
+export * from "./components/domain";
