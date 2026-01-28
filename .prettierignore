@@ -1,0 +1,60 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.next
+out
+.turbo
+
+# Coverage
+coverage
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# Generated
+*.generated.*
+
+# Docker
+docker/data/*
+!docker/data/.gitkeep
+
+# Storybook
+storybook-static
+
+# DKIM keys (sensitive)
+dkim-keys/
+*.private
+*.pem
+!*.example.pem

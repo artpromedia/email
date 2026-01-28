@@ -1,0 +1,53 @@
+; ============================================================
+; DNS Zone File: example.com
+; ============================================================
+$ORIGIN example.com.
+$TTL 3600
+
+; SOA Record
+@       IN      SOA     ns1.example.com. admin.example.com. (
+                        2024010101      ; Serial (YYYYMMDDNN)
+                        3600            ; Refresh (1 hour)
+                        1800            ; Retry (30 minutes)
+                        604800          ; Expire (1 week)
+                        86400           ; Minimum TTL (1 day)
+                        )
+
+; Name Servers
+@       IN      NS      ns1.example.com.
+
+; A Records
+@       IN      A       172.28.0.1
+ns1     IN      A       172.28.0.1
+mail    IN      A       172.28.0.1
+smtp    IN      A       172.28.0.1
+imap    IN      A       172.28.0.1
+www     IN      A       172.28.0.1
+admin   IN      A       172.28.0.1
+api     IN      A       172.28.0.1
+
+; MX Records (Mail Exchanger)
+@       IN      MX      10 mail.example.com.
+@       IN      MX      20 mail2.example.com.
+
+; TXT Records - SPF
+@       IN      TXT     "v=spf1 mx a ip4:172.28.0.0/16 -all"
+
+; TXT Records - DKIM
+mail._domainkey IN      TXT     "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1234567890abcdefDKIMPublicKeyPlaceholder"
+
+; TXT Records - DMARC
+_dmarc  IN      TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@example.com; ruf=mailto:dmarc-forensic@example.com; adkim=s; aspf=s; pct=100"
+
+; TXT Records - Domain Verification
+_enterprise-email-verify IN TXT "verify-token-example-com-12345"
+
+; SRV Records - Autodiscover
+_autodiscover._tcp IN   SRV     0 0 443 autodiscover.example.com.
+_imaps._tcp     IN      SRV     0 1 993 imap.example.com.
+_submission._tcp IN     SRV     0 1 587 smtp.example.com.
+
+; CNAME Records
+autodiscover    IN      CNAME   mail.example.com.
+autoconfig      IN      CNAME   mail.example.com.
+mail2           IN      CNAME   mail.example.com.

@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@email/config": ["packages/config/src/index.ts"],
+      "@email/config/*": ["packages/config/src/*"],
+      "@email/types": ["packages/types/src/index.ts"],
+      "@email/types/*": ["packages/types/src/*"],
+      "@email/utils": ["packages/utils/src/index.ts"],
+      "@email/utils/*": ["packages/utils/src/*"],
+      "@email/ui": ["packages/ui/src/index.ts"],
+      "@email/ui/*": ["packages/ui/src/*"]
+    }
+  },
+  "include": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/types" },
+    { "path": "packages/utils" },
+    { "path": "packages/ui" }
+  ]
+}

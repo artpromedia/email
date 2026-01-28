@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+
+# Test coverage
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*.sublime-*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Cache files
+.eslintcache
+.cache/
+*.tsbuildinfo
+
+# Docker data
+docker/data/
+
+# DKIM keys
+dkim-keys/
+*.private
+*.key
+!*.example.key
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Generated files
+*.generated.*
+
+# Storybook
+storybook-static/
+
+# Test artifacts
+playwright-report/
+test-results/

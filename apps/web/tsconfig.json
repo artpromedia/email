@@ -1,0 +1,51 @@
+{
+  "extends": "../../tsconfig.react.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@email/config": [
+        "../../packages/config/src/index.ts"
+      ],
+      "@email/config/*": [
+        "../../packages/config/src/*"
+      ],
+      "@email/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@email/types/*": [
+        "../../packages/types/src/*"
+      ],
+      "@email/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
+      "@email/ui/*": [
+        "../../packages/ui/src/*"
+      ],
+      "@email/utils": [
+        "../../packages/utils/src/index.ts"
+      ],
+      "@email/utils/*": [
+        "../../packages/utils/src/*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "incremental": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

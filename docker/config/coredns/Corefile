@@ -1,0 +1,86 @@
+# ============================================================
+# CoreDNS Configuration for Multi-Domain Email Testing
+# ============================================================
+# This configuration provides local DNS resolution for testing
+# multiple email domains without real DNS infrastructure
+# ============================================================
+
+# Main zone configuration
+.:53 {
+    # Enable logging
+    log
+    errors
+
+    # Health check endpoint
+    health {
+        lameduck 5s
+    }
+
+    # Ready check endpoint
+    ready
+
+    # Prometheus metrics
+    prometheus :9153
+
+    # Forward unknown queries to upstream DNS
+    forward . 8.8.8.8 8.8.4.4 {
+        max_concurrent 1000
+    }
+
+    # Cache responses
+    cache 30
+
+    # Load balancing
+    loadbalance
+}
+
+# Primary domain: example.com
+example.com:53 {
+    log
+    errors
+
+    # Zone file for example.com
+    file /config/zones/example.com.zone
+
+    # Fallback to hosts
+    hosts {
+        172.28.0.1 mail.example.com
+        172.28.0.1 smtp.example.com
+        172.28.0.1 imap.example.com
+        fallthrough
+    }
+}
+
+# Secondary domain: example.org
+example.org:53 {
+    log
+    errors
+
+    # Zone file for example.org
+    file /config/zones/example.org.zone
+
+    # Fallback to hosts
+    hosts {
+        172.28.0.1 mail.example.org
+        172.28.0.1 smtp.example.org
+        172.28.0.1 imap.example.org
+        fallthrough
+    }
+}
+
+# Subsidiary domain: subsidiary.com
+subsidiary.com:53 {
+    log
+    errors
+
+    # Zone file for subsidiary.com
+    file /config/zones/subsidiary.com.zone
+
+    # Fallback to hosts
+    hosts {
+        172.28.0.1 mail.subsidiary.com
+        172.28.0.1 smtp.subsidiary.com
+        172.28.0.1 imap.subsidiary.com
+        fallthrough
+    }
+}

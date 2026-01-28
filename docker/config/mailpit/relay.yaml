@@ -1,0 +1,22 @@
+# ============================================================
+# Mailpit Relay Configuration for Multi-Domain Testing
+# ============================================================
+# This configuration allows Mailpit to handle multiple domains
+# for local email testing purposes
+# ============================================================
+
+# Host pattern matching for different domains
+# In development, all domains route to Mailpit for capture
+host:
+  - match: ".*@example\\.com$"
+    relay: ""  # Empty = capture locally
+    
+  - match: ".*@example\\.org$"
+    relay: ""  # Empty = capture locally
+    
+  - match: ".*@subsidiary\\.com$"
+    relay: ""  # Empty = capture locally
+
+# Default: capture all emails locally
+default:
+  relay: ""
