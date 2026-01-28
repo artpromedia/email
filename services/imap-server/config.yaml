@@ -1,0 +1,105 @@
+# IMAP Server Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 143
+  tls_port: 993
+  max_connections: 10000
+  idle_timeout: 30m
+  command_timeout: 5m
+
+tls:
+  enabled: true
+  cert_file: "/etc/ssl/certs/imap.crt"
+  key_file: "/etc/ssl/private/imap.key"
+  min_version: "TLS12"
+  require_starttls: true
+
+database:
+  host: "postgres"
+  port: 5432
+  name: "email"
+  user: "imap_service"
+  password: "${DB_PASSWORD}"
+  ssl_mode: "require"
+  max_connections: 100
+  min_connections: 10
+
+redis:
+  host: "redis"
+  port: 6379
+  password: "${REDIS_PASSWORD}"
+  db: 1
+  pool_size: 50
+
+storage:
+  type: "s3"  # "file" or "s3"
+  path: "/var/mail/storage"
+  
+  # S3 configuration
+  s3:
+    endpoint: "https://s3.amazonaws.com"
+    bucket: "email-storage"
+    region: "us-east-1"
+    access_key: "${S3_ACCESS_KEY}"
+    secret_key: "${S3_SECRET_KEY}"
+
+auth:
+  methods:
+    - "PLAIN"
+    - "LOGIN"
+  lockout:
+    enabled: true
+    max_attempts: 5
+    lockout_duration: 15m
+  session_timeout: 24h
+
+imap:
+  capabilities:
+    - "IMAP4rev1"
+    - "IMAP4rev2"
+    - "IDLE"
+    - "NAMESPACE"
+    - "QUOTA"
+    - "MOVE"
+    - "LITERAL+"
+    - "SASL-IR"
+    - "ENABLE"
+    - "UNSELECT"
+    - "UIDPLUS"
+    - "SPECIAL-USE"
+    - "LIST-EXTENDED"
+    - "LIST-STATUS"
+    - "CONDSTORE"
+    - "QRESYNC"
+    - "ID"
+    - "COMPRESS=DEFLATE"
+
+  # Namespace mode: "unified" or "domain_separated"
+  # unified: User sees a single INBOX that merges all mailboxes
+  # domain_separated: Each domain appears as a separate namespace
+  namespace_mode: "domain_separated"
+
+  # Enable QRESYNC for fast mailbox resync
+  qresync: true
+  
+  # Enable CONDSTORE for flag tracking
+  condstore: true
+  
+  # Enable compression
+  compress: true
+  
+  # Maximum message size (64MB)
+  max_message_size: 67108864
+  
+  # Maximum simultaneous commands
+  max_commands: 5
+
+metrics:
+  enabled: true
+  address: ":9090"
+
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"

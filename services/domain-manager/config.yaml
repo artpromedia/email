@@ -1,0 +1,57 @@
+# Domain Manager Service Configuration
+
+server:
+  port: 8083
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+    - "https://*.enterprise-email.com"
+
+database:
+  host: ${DB_HOST:localhost}
+  port: ${DB_PORT:5432}
+  database: ${DB_NAME:enterprise_email}
+  username: ${DB_USER:postgres}
+  password: ${DB_PASSWORD:postgres}
+  ssl_mode: ${DB_SSL_MODE:disable}
+  max_connections: 25
+  min_connections: 5
+  max_lifetime: 1h
+  idle_timeout: 30m
+
+redis:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}
+  password: ${REDIS_PASSWORD:}
+  db: 1
+  pool_size: 10
+
+dns:
+  verification_prefix: "enterprise-email-verify"
+  mx_host: "mx.enterprise-email.com"
+  spf_include: "spf.enterprise-email.com"
+  dmarc_report_email: "dmarc-reports@enterprise-email.com"
+  default_dkim_selector: "mail"
+
+dkim:
+  key_size: 2048
+  algorithm: "rsa-sha256"
+  encryption_key: ${DKIM_ENCRYPTION_KEY:change-this-to-a-secure-32-byte-key!}
+
+branding:
+  default_logo_url: "/assets/logo.svg"
+  default_favicon_url: "/assets/favicon.ico"
+  default_primary_color: "#4f46e5"
+
+monitor:
+  check_interval: "0 */30 * * * *"  # Every 30 minutes
+  alert_on_failure: true
+  alert_webhook_url: ${ALERT_WEBHOOK_URL:}
+  alert_email: ${ALERT_EMAIL:admin@enterprise-email.com}
+
+metrics:
+  enabled: true
+  port: 9090

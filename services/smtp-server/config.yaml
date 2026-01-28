@@ -1,0 +1,53 @@
+# SMTP Server Configuration
+server:
+  hostname: "mail.example.com"
+  smtp_addr: ":25"
+  submission_addr: ":587"
+  read_timeout: 60s
+  write_timeout: 60s
+  max_message_size: 26214400  # 25MB
+  max_recipients: 100
+  log_level: "info"
+
+database:
+  host: "postgres"
+  port: 5432
+  name: "email_platform"
+  user: "smtp_server"
+  password: "${DB_PASSWORD}"
+  ssl_mode: "require"
+  max_conns: 25
+  min_conns: 5
+  max_conn_lifetime: 1h
+  max_conn_idle_time: 30m
+
+redis:
+  addr: "redis:6379"
+  password: "${REDIS_PASSWORD}"
+  db: 0
+
+queue:
+  workers: 4
+  max_retries: 5
+  retry_delay: 5m
+  max_retry_delay: 6h
+  storage_path: "/app/data/queue"
+
+dkim:
+  default_selector: "default"
+  key_rotation_days: 90
+
+tls:
+  enabled: true
+  cert_file: "/app/certs/server.crt"
+  key_file: "/app/certs/server.key"
+
+limits:
+  connections_per_ip: 50
+  messages_per_minute: 100
+  max_idle_time: 5m
+
+metrics:
+  enabled: true
+  addr: ":9090"
+  path: "/metrics"

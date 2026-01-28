@@ -1,0 +1,250 @@
+// Package main is the entry point for the auth service.
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/artpromedia/email/services/auth/internal/config"
+	"github.com/artpromedia/email/services/auth/internal/handler"
+	"github.com/artpromedia/email/services/auth/internal/middleware"
+	"github.com/artpromedia/email/services/auth/internal/repository"
+	"github.com/artpromedia/email/services/auth/internal/service"
+	"github.com/artpromedia/email/services/auth/internal/token"
+	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
+
+func main() {
+	// Initialize logger
+	initLogger()
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to load configuration")
+	}
+
+	log.Info().
+		Str("environment", cfg.Server.Environment).
+		Int("port", cfg.Server.Port).
+		Msg("Starting auth service")
+
+	// Connect to PostgreSQL
+	dbPool, err := initDatabase(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to database")
+	}
+	defer dbPool.Close()
+
+	// Connect to Redis
+	redisClient, err := initRedis(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to Redis")
+	}
+	defer redisClient.Close()
+
+	// Initialize repository
+	repo := repository.New(dbPool)
+
+	// Initialize token service
+	tokenService, err := token.NewService(cfg.JWT.AccessSecret, cfg.JWT.RefreshSecret, cfg.JWT.AccessExpiry, cfg.JWT.RefreshExpiry)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize token service")
+	}
+
+	// Initialize services
+	authService := service.NewAuthService(repo, redisClient, tokenService, cfg)
+	ssoService := service.NewSSOService(repo, redisClient, authService, cfg)
+	adminService := service.NewAdminService(repo, redisClient, cfg)
+
+	// Initialize handlers
+	authHandler := handler.NewAuthHandler(authService)
+	ssoHandler := handler.NewSSOHandler(ssoService, authService)
+	adminHandler := handler.NewAdminHandler(adminService)
+
+	// Initialize middleware
+	authMiddleware := middleware.NewAuthMiddleware(tokenService, repo)
+
+	// Create router
+	router := createRouter(cfg, authHandler, ssoHandler, adminHandler, authMiddleware)
+
+	// Create HTTP server
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:      router,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
+	}
+
+	// Start server in goroutine
+	go func() {
+		log.Info().Msgf("Server listening on port %d", cfg.Server.Port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("Server failed to start")
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info().Msg("Shutting down server...")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("Server forced to shutdown")
+	}
+
+	log.Info().Msg("Server stopped")
+}
+
+func initLogger() {
+	// Set up zerolog
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	// Use pretty logging in development
+	if os.Getenv("APP_ENV") == "development" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+
+	// Set log level
+	level := os.Getenv("LOG_LEVEL")
+	switch level {
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+}
+
+func initDatabase(cfg *config.Config) (*pgxpool.Pool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	poolConfig, err := pgxpool.ParseConfig(cfg.Database.URL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse database URL: %w", err)
+	}
+
+	poolConfig.MaxConns = int32(cfg.Database.MaxOpenConns)
+	poolConfig.MinConns = int32(cfg.Database.MaxIdleConns)
+	poolConfig.MaxConnLifetime = time.Duration(cfg.Database.ConnMaxLifetime) * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+	}
+
+	// Test connection
+	if err := pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	log.Info().Msg("Connected to PostgreSQL")
+	return pool, nil
+}
+
+func initRedis(cfg *config.Config) (*redis.Client, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+
+	// Test connection
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to ping Redis: %w", err)
+	}
+
+	log.Info().Msg("Connected to Redis")
+	return client, nil
+}
+
+func createRouter(
+	cfg *config.Config,
+	authHandler *handler.AuthHandler,
+	ssoHandler *handler.SSOHandler,
+	adminHandler *handler.AdminHandler,
+	authMiddleware *middleware.AuthMiddleware,
+) *chi.Mux {
+	r := chi.NewRouter()
+
+	// Global middleware
+	r.Use(chimiddleware.RequestID)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Logger)
+	r.Use(chimiddleware.Recoverer)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Timeout(60 * time.Second))
+
+	// CORS configuration
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   cfg.Server.AllowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID", "X-Domain-ID"},
+		ExposedHeaders:   []string{"X-Request-ID"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
+	// Health check endpoints
+	r.Get("/health", healthCheck)
+	r.Get("/ready", readinessCheck)
+
+	// API routes
+	r.Route("/api/auth", func(r chi.Router) {
+		authHandler.RegisterRoutes(r, authMiddleware)
+		ssoHandler.RegisterRoutes(r, authMiddleware)
+	})
+
+	// Admin routes
+	r.Route("/api/admin", func(r chi.Router) {
+		adminHandler.RegisterRoutes(r, authMiddleware)
+	})
+
+	// API documentation
+	r.Get("/api/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"openapi":"3.0.0","info":{"title":"Auth Service API","version":"1.0.0"}}`))
+	})
+
+	return r
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"healthy","service":"auth"}`))
+}
+
+func readinessCheck(w http.ResponseWriter, r *http.Request) {
+	// TODO: Add actual readiness checks (DB, Redis, etc.)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ready","service":"auth"}`))
+}
