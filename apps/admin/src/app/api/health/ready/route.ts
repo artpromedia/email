@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
  * GET /api/health/ready
  * Readiness probe for admin dashboard
  */
-export async function GET() {
+export function GET() {
   const checks = {
     server: true,
     database: false,

@@ -11,7 +11,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      from: string;
+      to: string | string[];
+      cc?: string | string[];
+      bcc?: string | string[];
+      subject: string;
+      body: string;
+      bodyType?: string;
+      attachments?: string[];
+      priority?: string;
+      requestDeliveryReceipt?: boolean;
+      requestReadReceipt?: boolean;
+      inReplyTo?: string;
+      references?: string[];
+      headers?: Record<string, string>;
+    };
     const {
       from,
       to,
@@ -30,7 +45,8 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!from || !to || to.length === 0 || !subject || !emailBody) {
+    const toArray = Array.isArray(to) ? to : [to];
+    if (!from || !to || toArray.length === 0 || !subject || !emailBody) {
       return NextResponse.json(
         {
           error: "Missing required fields: from, to, subject, and body are required",
@@ -47,12 +63,13 @@ export async function POST(request: NextRequest) {
     // TODO: Apply domain policies and filters
 
     // Create email message object
-    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(7)}@${from.split("@")[1]}>`;
+    const domain = from.split("@")[1] || "example.com";
+    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(7)}@${domain}>`;
 
     const email = {
       messageId,
       from,
-      to: Array.isArray(to) ? to : [to],
+      to: toArray,
       cc: cc ? (Array.isArray(cc) ? cc : [cc]) : [],
       bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : [],
       subject,
@@ -73,7 +90,7 @@ export async function POST(request: NextRequest) {
     // TODO: Save to 'Sent' folder
     // TODO: Update conversation thread if replying
 
-    console.log("Email queued for sending:", {
+    console.info("Email queued for sending:", {
       messageId,
       from,
       to: email.to,

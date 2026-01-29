@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  * Liveness probe - checks if the application is running
  * Returns 200 if alive, 503 if dead
  */
-export async function GET() {
+export function GET() {
   try {
     // Basic liveness check - just verify the service is responding
     const memoryUsage = process.memoryUsage();

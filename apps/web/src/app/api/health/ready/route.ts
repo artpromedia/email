@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  * Readiness probe - checks if the application is ready to accept traffic
  * Returns 200 if ready, 503 if not ready
  */
-export async function GET() {
+export function GET() {
   const checks = {
     server: true,
     database: false,

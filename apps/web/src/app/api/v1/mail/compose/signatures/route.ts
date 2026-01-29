@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * GET /api/v1/mail/compose/signatures
  * Get user's email signatures
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    const _userId = "user-id-placeholder";
 
     // TODO: Fetch user's signatures from database
     const signatures = [
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as { name?: string; content?: string; isDefault?: boolean };
     const { name, content, isDefault } = body;
 
     if (!name || !content) {

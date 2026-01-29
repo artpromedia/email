@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * GET /api/v1/mail/compose/drafts
  * Get all draft emails for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const offset = Number.parseInt(searchParams.get("offset") || "0", 10);
 
     // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    const _userId = "user-id-placeholder";
 
     // TODO: Fetch drafts from database
     const drafts = [
@@ -58,7 +58,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      from?: string;
+      to?: string[];
+      cc?: string[];
+      bcc?: string[];
+      subject?: string;
+      body?: string;
+      bodyType?: string;
+      attachments?: string[];
+      inReplyTo?: string;
+      references?: string[];
+    };
     const {
       from,
       to = [],
@@ -93,7 +104,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("Draft created:", { id: draft.id, subject: draft.subject });
+    console.info("Draft created:", { id: draft.id, subject: draft.subject });
 
     return NextResponse.json(draft, { status: 201 });
   } catch (error) {
@@ -113,7 +124,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as { id?: string; [key: string]: unknown };
     const { id, ...updates } = body;
 
     if (!id) {
@@ -121,7 +132,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    const _userId = "user-id-placeholder";
 
     // TODO: Update draft in database
     const updatedDraft = {
@@ -130,7 +141,7 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("Draft updated:", { id, subject: updates.subject });
+    console.info("Draft updated:", { id, subject: updates.subject as string | undefined });
 
     return NextResponse.json(updatedDraft);
   } catch (error) {
@@ -143,7 +154,7 @@ export async function PUT(request: NextRequest) {
  * DELETE /api/v1/mail/compose/drafts/:id
  * Delete a draft email
  */
-export async function DELETE(request: NextRequest) {
+export function DELETE(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -158,10 +169,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    const _userId = "user-id-placeholder";
 
     // TODO: Delete draft from database
-    console.log("Draft deleted:", { id });
+    console.info("Draft deleted:", { id });
 
     return NextResponse.json({ success: true, id });
   } catch (error) {

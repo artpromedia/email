@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
  * GET /api/health/live
  * Liveness probe for admin dashboard
  */
-export async function GET() {
+export function GET() {
   try {
     const memoryUsage = process.memoryUsage();
     const uptime = process.uptime();

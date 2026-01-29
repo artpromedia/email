@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * GET /api/v1/mail/compose/branding
  * Get domain branding configuration for email compose
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {

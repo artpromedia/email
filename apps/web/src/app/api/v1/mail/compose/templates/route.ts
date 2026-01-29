@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * GET /api/v1/mail/compose/templates
  * Get email templates for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -77,7 +77,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      name?: string;
+      category?: string;
+      subject?: string;
+      body?: string;
+      variables?: string[];
+      isPublic?: boolean;
+    };
     const { name, category, subject, body: templateBody, variables, isPublic = false } = body;
 
     if (!name || !subject || !templateBody) {
@@ -91,16 +98,16 @@ export async function POST(request: NextRequest) {
     const template = {
       id: Date.now().toString(),
       name,
-      category: category || "uncategorized",
+      category: category ?? "uncategorized",
       subject,
       body: templateBody,
-      variables: variables || [],
+      variables: variables ?? [],
       isPublic,
       createdBy: userId,
       createdAt: new Date().toISOString(),
     };
 
-    console.log("Template created:", { id: template.id, name });
+    console.info("Template created:", { id: template.id, name });
 
     return NextResponse.json(template, { status: 201 });
   } catch (error) {

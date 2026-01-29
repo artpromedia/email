@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       url: `/api/v1/mail/compose/attachments/${fileId}`,
     };
 
-    console.log("Attachment uploaded:", {
+    console.info("Attachment uploaded:", {
       id: fileId,
       filename: file.name,
       size: file.size,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
  * DELETE /api/v1/mail/compose/attachments/:id
  * Delete an attachment
  */
-export async function DELETE(request: NextRequest) {
+export function DELETE(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -84,10 +84,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    const _userId = "user-id-placeholder";
 
     // TODO: Delete from MinIO/S3
-    console.log("Attachment deleted:", { id });
+    console.info("Attachment deleted:", { id });
 
     return NextResponse.json({ success: true, id });
   } catch (error) {

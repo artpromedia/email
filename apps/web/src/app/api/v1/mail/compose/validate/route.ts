@@ -11,7 +11,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      from?: string;
+      to?: string[];
+      cc?: string[];
+      bcc?: string[];
+      subject?: string;
+      body?: string;
+    };
     const { from, to, cc, bcc, subject, body: emailBody } = body;
 
     const errors: Record<string, string> = {};
@@ -61,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for large recipient lists
-    const totalRecipients = (to?.length || 0) + (cc?.length || 0) + (bcc?.length || 0);
+    const totalRecipients = (to?.length ?? 0) + (cc?.length ?? 0) + (bcc?.length ?? 0);
     if (totalRecipients > 100) {
       errors.recipients = "Too many recipients (max 100)";
     } else if (totalRecipients > 50) {

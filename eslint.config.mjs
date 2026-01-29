@@ -23,6 +23,7 @@ export default tseslint.config(
       "**/next.config.js",
       "**/postcss.config.js",
       "**/tailwind.config.js",
+      "**/next-env.d.ts",
     ],
   },
   {
@@ -84,13 +85,16 @@ export default tseslint.config(
           allowBoolean: true,
         },
       ],
-      
+
       // Allow || for string defaults (TypeScript will catch actual nullish issues)
-      "@typescript-eslint/prefer-nullish-coalescing": ["error", {
-        ignorePrimitives: {
-          string: true,
+      "@typescript-eslint/prefer-nullish-coalescing": [
+        "error",
+        {
+          ignorePrimitives: {
+            string: true,
+          },
         },
-      }],
+      ],
       // Allow unsafe error assignments (common pattern in catch handlers)
       "@typescript-eslint/no-unsafe-assignment": "warn",
       "@typescript-eslint/no-unsafe-call": "warn",
@@ -247,7 +251,10 @@ export default tseslint.config(
         },
       ],
       "jsx-a11y/click-events-have-key-events": "error",
-      "jsx-a11y/no-static-element-interactions": ["error", { handlers: ["onClick"], allowExpressionValues: true }],
+      "jsx-a11y/no-static-element-interactions": [
+        "error",
+        { handlers: ["onClick"], allowExpressionValues: true },
+      ],
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/img-redundant-alt": "error",
       "jsx-a11y/label-has-associated-control": [

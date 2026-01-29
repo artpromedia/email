@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * GET /api/v1/mail/compose/addresses
  * Get available sender addresses for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    const _userId = "user-id-placeholder";
 
     // TODO: Fetch user's email addresses from database
     const addresses = [
