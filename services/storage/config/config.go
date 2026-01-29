@@ -68,7 +68,7 @@ func Load() *Config {
 		ShutdownTimeout: getDuration("SHUTDOWN_TIMEOUT", 30*time.Second),
 
 		// Database
-		DatabaseURL:   getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/storage?sslmode=disable"),
+		DatabaseURL:   requireEnv("DATABASE_URL"),
 		MaxDBConns:    getInt("MAX_DB_CONNS", 25),
 		MinDBConns:    getInt("MIN_DB_CONNS", 5),
 		DBConnMaxLife: getDuration("DB_CONN_MAX_LIFE", time.Hour),
@@ -81,8 +81,8 @@ func Load() *Config {
 		// S3/MinIO
 		S3Endpoint:        getEnv("S3_ENDPOINT", "http://localhost:9000"),
 		S3Region:          getEnv("S3_REGION", "us-east-1"),
-		S3AccessKey:       getEnv("S3_ACCESS_KEY", "minioadmin"),
-		S3SecretKey:       getEnv("S3_SECRET_KEY", "minioadmin"),
+		S3AccessKey:       requireEnv("S3_ACCESS_KEY"),
+		S3SecretKey:       requireEnv("S3_SECRET_KEY"),
 		S3Bucket:          getEnv("S3_BUCKET", "email-storage"),
 		S3UsePathStyle:    getBool("S3_USE_PATH_STYLE", true),
 		S3PresignDuration: getDuration("S3_PRESIGN_DURATION", 15*time.Minute),
@@ -137,6 +137,14 @@ func getInt64(key string, defaultValue int64) int64 {
 		}
 	}
 	return defaultValue
+}
+
+func requireEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatal().Str("key", key).Msg("Required environment variable is missing")
+	}
+	return value
 }
 
 func getBool(key string, defaultValue bool) bool {

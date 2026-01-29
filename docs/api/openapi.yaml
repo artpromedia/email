@@ -1,0 +1,879 @@
+openapi: 3.0.3
+info:
+  title: Enterprise Email Platform API
+  description: |
+    Complete REST API documentation for the Enterprise Email Platform.
+
+    ## Authentication
+    All API endpoints require authentication via Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer <your-token>
+    ```
+
+    ## Rate Limiting
+    - Auth endpoints: 5 requests/minute
+    - API endpoints: 100-200 requests/minute
+    - Headers include: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+
+    ## Error Responses
+    All error responses follow this format:
+    ```json
+    {
+      "error": "Error message",
+      "code": "ERROR_CODE",
+      "details": {}
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@enterpriseemail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+  - url: https://api.enterpriseemail.com/v1
+    description: Production server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Mail Compose
+    description: Email composition and sending
+  - name: Mail
+    description: Email management (inbox, folders, etc.)
+  - name: Auth
+    description: Authentication and authorization
+  - name: Domains
+    description: Domain management
+  - name: Users
+    description: User management
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+    Email:
+      type: object
+      properties:
+        messageId:
+          type: string
+          description: Unique message identifier
+        from:
+          type: string
+          format: email
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+        subject:
+          type: string
+        body:
+          type: string
+        bodyType:
+          type: string
+          enum: [html, plain]
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
+        priority:
+          type: string
+          enum: [low, normal, high]
+        createdAt:
+          type: string
+          format: date-time
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+          format: uri
+
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        isDefault:
+          type: boolean
+        isVerified:
+          type: boolean
+        signature:
+          type: string
+
+    Signature:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        content:
+          type: string
+        isDefault:
+          type: boolean
+
+    Draft:
+      type: object
+      properties:
+        id:
+          type: string
+        from:
+          type: string
+          format: email
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+        subject:
+          type: string
+        body:
+          type: string
+        bodyType:
+          type: string
+          enum: [html, plain]
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        variables:
+          type: array
+          items:
+            type: string
+        isPublic:
+          type: boolean
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Returns service health status
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if the service is ready to accept traffic
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+                  checks:
+                    type: object
+                    properties:
+                      server:
+                        type: boolean
+                      database:
+                        type: boolean
+                      redis:
+                        type: boolean
+                      storage:
+                        type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+        "503":
+          description: Service is not ready
+
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: Checks if the service is alive
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: alive
+                  uptime:
+                    type: integer
+                    description: Service uptime in seconds
+                  memory:
+                    type: object
+                    properties:
+                      heapUsed:
+                        type: integer
+                        description: Heap used in MB
+                      heapTotal:
+                        type: integer
+                        description: Total heap in MB
+                      heapUsedPercentage:
+                        type: integer
+        "503":
+          description: Service is not alive
+
+  /mail/compose/addresses:
+    get:
+      tags:
+        - Mail Compose
+      summary: Get sender addresses
+      description: Returns all available sender addresses for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  addresses:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Address"
+                  defaultAddressId:
+                    type: string
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /mail/compose/signatures:
+    get:
+      tags:
+        - Mail Compose
+      summary: Get email signatures
+      description: Returns all email signatures for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signatures:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Signature"
+                  defaultSignatureId:
+                    type: string
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - Mail Compose
+      summary: Create email signature
+      description: Creates a new email signature
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - content
+              properties:
+                name:
+                  type: string
+                content:
+                  type: string
+                isDefault:
+                  type: boolean
+      responses:
+        "201":
+          description: Signature created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Signature"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+
+  /mail/compose/branding:
+    get:
+      tags:
+        - Mail Compose
+      summary: Get domain branding
+      description: Returns branding configuration for a specific domain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: domain
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Domain name
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain:
+                    type: string
+                  logo:
+                    type: string
+                    format: uri
+                  brandColor:
+                    type: string
+                  companyName:
+                    type: string
+                  footerText:
+                    type: string
+                  disclaimerText:
+                    type: string
+        "400":
+          description: Domain parameter required
+        "401":
+          description: Unauthorized
+
+  /mail/compose/validate:
+    post:
+      tags:
+        - Mail Compose
+      summary: Validate email
+      description: Validates email addresses, subject, and content before sending
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from
+                - to
+              properties:
+                from:
+                  type: string
+                  format: email
+                to:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                cc:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                bcc:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                subject:
+                  type: string
+                body:
+                  type: string
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isValid:
+                    type: boolean
+                  errors:
+                    type: object
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: Unauthorized
+
+  /mail/compose/send:
+    post:
+      tags:
+        - Mail Compose
+      summary: Send email
+      description: Sends an email message
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from
+                - to
+                - subject
+                - body
+              properties:
+                from:
+                  type: string
+                  format: email
+                to:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                cc:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                bcc:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                subject:
+                  type: string
+                body:
+                  type: string
+                bodyType:
+                  type: string
+                  enum: [html, plain]
+                  default: html
+                attachments:
+                  type: array
+                  items:
+                    type: string
+                    description: Attachment IDs
+                priority:
+                  type: string
+                  enum: [low, normal, high]
+                  default: normal
+                requestDeliveryReceipt:
+                  type: boolean
+                requestReadReceipt:
+                  type: boolean
+      responses:
+        "202":
+          description: Email queued for sending
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messageId:
+                    type: string
+                  status:
+                    type: string
+                    example: queued
+                  message:
+                    type: string
+                  sentAt:
+                    type: string
+                    format: date-time
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+
+  /mail/compose/drafts:
+    get:
+      tags:
+        - Mail Compose
+      summary: Get draft emails
+      description: Returns all draft emails for the authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  drafts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Draft"
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - Mail Compose
+      summary: Create draft
+      description: Creates a new draft email
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from:
+                  type: string
+                  format: email
+                to:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                cc:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                bcc:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                subject:
+                  type: string
+                body:
+                  type: string
+                bodyType:
+                  type: string
+                  enum: [html, plain]
+                attachments:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+        "401":
+          description: Unauthorized
+
+    put:
+      tags:
+        - Mail Compose
+      summary: Update draft
+      description: Updates an existing draft email (auto-save)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Draft"
+                - type: object
+                  required:
+                    - id
+      responses:
+        "200":
+          description: Draft updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+        "400":
+          description: Draft ID required
+        "401":
+          description: Unauthorized
+
+    delete:
+      tags:
+        - Mail Compose
+      summary: Delete draft
+      description: Deletes a draft email
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Draft deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+        "400":
+          description: Draft ID required
+        "401":
+          description: Unauthorized
+
+  /mail/compose/attachments:
+    post:
+      tags:
+        - Mail Compose
+      summary: Upload attachment
+      description: Uploads an email attachment (max 25MB)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Attachment uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attachment"
+        "400":
+          description: No file provided
+        "401":
+          description: Unauthorized
+        "413":
+          description: File size exceeds 25MB limit
+
+    delete:
+      tags:
+        - Mail Compose
+      summary: Delete attachment
+      description: Deletes an uploaded attachment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Attachment deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+        "400":
+          description: Attachment ID required
+        "401":
+          description: Unauthorized
+
+  /mail/compose/templates:
+    get:
+      tags:
+        - Mail Compose
+      summary: Get email templates
+      description: Returns all email templates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Template"
+                  total:
+                    type: integer
+                  categories:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - Mail Compose
+      summary: Create template
+      description: Creates a new email template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - subject
+                - body
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                subject:
+                  type: string
+                body:
+                  type: string
+                variables:
+                  type: array
+                  items:
+                    type: string
+                isPublic:
+                  type: boolean
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "400":
+          description: Missing required fields
+        "401":
+          description: Unauthorized

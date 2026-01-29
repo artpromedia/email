@@ -5,8 +5,8 @@ services:
     container_name: enterprise-email-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-email_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-email_secure_password_123}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
@@ -14,12 +14,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-scripts/postgres:/docker-entrypoint-initdb.d:ro
+      - ./docker/backups/postgres:/backups
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-email_admin} -d ${POSTGRES_DB:-enterprise_email}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-enterprise_email}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,13 +34,13 @@ services:
       --appendonly yes
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-redis_secure_password_123}
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secure_password_123}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,16 +53,17 @@ services:
     image: minio/minio:latest
     container_name: enterprise-email-minio
     restart: unless-stopped
-    command: server /data --console-address ":9001"
+    command: server /data --console-address ":9001" --certs-dir /root/.minio/certs
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_secure_password_123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       MINIO_DEFAULT_BUCKETS: ${MINIO_DEFAULT_BUCKETS:-attachments,templates,exports,backups}
     ports:
       - "${MINIO_API_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
+      - ./docker/certs/minio:/root/.minio/certs:ro
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -84,12 +82,15 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-minio_admin} ${MINIO_ROOT_PASSWORD:-minio_secure_password_123};
+      mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
       mc mb --ignore-existing myminio/attachments;
       mc mb --ignore-existing myminio/templates;
       mc mb --ignore-existing myminio/exports;
       mc mb --ignore-existing myminio/backups;
       mc anonymous set download myminio/templates;
+      mc version enable myminio/attachments;
+      mc version enable myminio/exports;
+      mc version enable myminio/backups;
       echo 'MinIO buckets created successfully';
       exit 0;
       "
@@ -107,8 +108,11 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD:-OpenSearch_Secure_123!}
-      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD:?OPENSEARCH_PASSWORD is required}
+      - plugins.security.ssl.http.enabled=true
+      - plugins.security.ssl.http.pemcert_filepath=certs/opensearch.pem
+      - plugins.security.ssl.http.pemkey_filepath=certs/opensearch-key.pem
+      - plugins.security.ssl.http.pemtrustedcas_filepath=certs/root-ca.pem
     ulimits:
       memlock:
         soft: -1
@@ -223,11 +227,105 @@ services:
     container_name: enterprise-email-redis-commander
     restart: unless-stopped
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-redis_secure_password_123}
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
     ports:
       - "${REDIS_COMMANDER_PORT:-8081}:8081"
     depends_on:
       redis:
+        condition: service_healthy
+    networks:
+      - email-network
+
+  # Monitoring and Observability
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: enterprise-email-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - email-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: enterprise-email-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY:?GRAFANA_SECRET_KEY is required}
+    ports:
+      - "${GRAFANA_PORT:-3030}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./infrastructure/monitoring/grafana-dashboard-domain-overview.json:/var/lib/grafana/dashboards/domain-overview.json:ro
+    depends_on:
+      - prometheus
+    networks:
+      - email-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: enterprise-email-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - email-network
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: enterprise-email-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - email-network
+
+  # PgBouncer - Connection Pooling
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: enterprise-email-pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      MAX_DB_CONNECTIONS: 100
+      MAX_USER_CONNECTIONS: 100
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:5432"
+    depends_on:
+      postgres:
         condition: service_healthy
     networks:
       - email-network
@@ -242,6 +340,10 @@ volumes:
   opensearch_data:
     driver: local
   mailpit_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:
