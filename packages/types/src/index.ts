@@ -3,6 +3,9 @@
  * Shared TypeScript types for Enterprise Email
  */
 
+// Admin domain types
+export * from "./admin-domain";
+
 // Email types
 export {
   EmailStatus,
