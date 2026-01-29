@@ -43,7 +43,7 @@ interface StatusBadgeProps {
   status: DomainStatus;
 }
 
-function StatusBadge({ status }: StatusBadgeProps) {
+function StatusBadge({ status }: Readonly<StatusBadgeProps>) {
   const config = {
     pending: {
       label: "Pending",
@@ -88,7 +88,7 @@ interface DnsStatusIconsProps {
   dmarc: DnsRecordStatus;
 }
 
-function DnsStatusIcons({ mx, spf, dkim, dmarc }: DnsStatusIconsProps) {
+function DnsStatusIcons({ mx, spf, dkim, dmarc }: Readonly<DnsStatusIconsProps>) {
   const records = [
     { name: "MX", status: mx },
     { name: "SPF", status: spf },
@@ -134,7 +134,7 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
 interface StorageDisplayProps {
@@ -142,20 +142,23 @@ interface StorageDisplayProps {
   limit: number;
 }
 
-function StorageDisplay({ used, limit }: StorageDisplayProps) {
+function StorageDisplay({ used, limit }: Readonly<StorageDisplayProps>) {
   const percentage = Math.min((used / limit) * 100, 100);
   const isHigh = percentage > 80;
   const isCritical = percentage > 95;
+
+  const getProgressColor = () => {
+    if (isCritical) return "bg-red-500";
+    if (isHigh) return "bg-yellow-500";
+    return "bg-blue-500";
+  };
 
   return (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-neutral-700 dark:text-neutral-300">{formatBytes(used)}</span>
       <div className="h-1.5 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
         <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            isCritical ? "bg-red-500" : isHigh ? "bg-yellow-500" : "bg-blue-500"
-          )}
+          className={cn("h-full rounded-full transition-all", getProgressColor())}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -173,7 +176,7 @@ interface DomainRowProps {
   onSelect: (id: string, selected: boolean) => void;
 }
 
-function DomainRow({ domain, isSelected, onSelect }: DomainRowProps) {
+function DomainRow({ domain, isSelected, onSelect }: Readonly<DomainRowProps>) {
   return (
     <tr className="border-b border-neutral-200 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800/50">
       {/* Checkbox */}
@@ -260,7 +263,7 @@ interface TableHeaderProps {
   onSelectAll: (selected: boolean) => void;
 }
 
-function TableHeader({ allSelected, onSelectAll }: TableHeaderProps) {
+function TableHeader({ allSelected, onSelectAll }: Readonly<TableHeaderProps>) {
   return (
     <thead className="bg-neutral-50 dark:bg-neutral-800/50">
       <tr>
@@ -304,7 +307,7 @@ interface FilterDropdownProps {
   onChange: (value: DomainStatus | undefined) => void;
 }
 
-function FilterDropdown({ value, onChange }: FilterDropdownProps) {
+function FilterDropdown({ value, onChange }: Readonly<FilterDropdownProps>) {
   const [isOpen, setIsOpen] = useState(false);
 
   const options: { value: DomainStatus | undefined; label: string }[] = [
@@ -335,12 +338,10 @@ function FilterDropdown({ value, onChange }: FilterDropdownProps) {
 
       {isOpen && (
         <>
-          <div
-            className="fixed inset-0 z-10"
+          <button
+            type="button"
+            className="fixed inset-0 z-10 cursor-default"
             onClick={() => setIsOpen(false)}
-            onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
-            role="button"
-            tabIndex={0}
             aria-label="Close dropdown"
           />
           <div className="absolute left-0 z-20 mt-1 w-40 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800">

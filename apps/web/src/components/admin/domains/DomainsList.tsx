@@ -63,12 +63,12 @@ function StatusBadge({ status }: Readonly<StatusBadgeProps>) {
       className: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400",
       icon: XCircle,
     },
-  } as const;
+  } satisfies Record<
+    DomainStatus,
+    { label: string; className: string; icon: React.ComponentType<{ className?: string }> }
+  >;
 
-  type ConfigKey = keyof typeof config;
-  const isValidStatus = (s: string): s is ConfigKey => s in config;
-  const statusKey: ConfigKey = isValidStatus(status) ? status : "pending";
-  const { label, className, icon: Icon } = config[statusKey];
+  const { label, className, icon: Icon } = config[status];
 
   return (
     <span
@@ -243,22 +243,24 @@ export function DomainsList({ className }: Readonly<DomainsListProps>) {
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
   const query = useMemo<DomainListQuery>(() => {
-    const baseQuery: DomainListQuery = {
+    const result: DomainListQuery = {
       page: 1,
       pageSize: 50,
       sortBy: "name",
       sortOrder: "asc",
     };
-    
+
     if (search) {
-      baseQuery.search = search;
+      result.search = search;
     }
-    
-    if (statusFilter !== "all") {
-      baseQuery.status = statusFilter;
+
+    if (statusFilter === "all") {
+      // Don't add status filter
+    } else {
+      result.status = statusFilter;
     }
-    
-    return baseQuery;
+
+    return result;
   }, [search, statusFilter]);
 
   const { data, isLoading, refetch } = useAdminDomains(query);

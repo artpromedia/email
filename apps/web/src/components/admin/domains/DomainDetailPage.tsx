@@ -55,7 +55,7 @@ interface StatusBadgeProps {
   size?: "sm" | "md";
 }
 
-function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
+function StatusBadge({ status, size = "md" }: Readonly<StatusBadgeProps>) {
   const config = {
     pending: {
       label: "Pending",
@@ -114,17 +114,15 @@ function ConfirmDialog({
   onConfirm,
   onCancel,
   isLoading,
-}: ConfirmDialogProps) {
+}: Readonly<ConfirmDialogProps>) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-black/50"
         onClick={onCancel}
-        onKeyDown={(e) => e.key === "Escape" && onCancel()}
-        role="button"
-        tabIndex={0}
         aria-label="Close dialog"
       />
       <div className="relative mx-4 w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
@@ -210,7 +208,10 @@ interface DomainDetailPageProps {
   initialTab?: TabId;
 }
 
-export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDetailPageProps) {
+export function DomainDetailPage({
+  domainId,
+  initialTab = "overview",
+}: Readonly<DomainDetailPageProps>) {
   const router = useRouter();
 
   // State
