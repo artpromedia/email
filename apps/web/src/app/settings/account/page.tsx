@@ -5,17 +5,10 @@
  */
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Save, Loader2, Camera, AlertCircle, CheckCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {
-  User,
-  Save,
-  Loader2,
-  Camera,
-  AlertCircle,
-  CheckCircle,
-} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -56,13 +49,13 @@ export default function AccountSettingsPage() {
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     values: {
-      firstName: user?.profile.firstName || "",
-      lastName: user?.profile.lastName || "",
-      displayName: user?.profile.displayName || "",
-      jobTitle: user?.profile.jobTitle || "",
-      department: user?.profile.department || "",
-      phoneNumber: user?.profile.phoneNumber || "",
-      timezone: user?.profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      firstName: user?.profile.firstName ?? "",
+      lastName: user?.profile.lastName ?? "",
+      displayName: user?.profile.displayName ?? "",
+      jobTitle: user?.profile.jobTitle ?? "",
+      department: user?.profile.department ?? "",
+      phoneNumber: user?.profile.phoneNumber ?? "",
+      timezone: user?.profile.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
   });
 
@@ -78,16 +71,16 @@ export default function AccountSettingsPage() {
     return user.email.slice(0, 2).toUpperCase();
   };
 
-  const onSubmit = async (data: ProfileFormData) => {
+  const onSubmit = async (_data: ProfileFormData) => {
     setIsSaving(true);
     setSaveSuccess(false);
-    
+
     try {
       // TODO: Implement profile update API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to save profile:", error);
     } finally {
       setIsSaving(false);
@@ -106,7 +99,7 @@ export default function AccountSettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Manage your personal information and how others see you.
         </p>
       </div>
@@ -116,22 +109,18 @@ export default function AccountSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Profile Picture</CardTitle>
-            <CardDescription>
-              Your profile picture helps others recognize you
-            </CardDescription>
+            <CardDescription>Your profile picture helps others recognize you</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
               <div className="relative">
                 <Avatar className="h-24 w-24">
                   <AvatarImage src={user?.profile.avatarUrl} />
-                  <AvatarFallback className="text-2xl">
-                    {getUserInitials()}
-                  </AvatarFallback>
+                  <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
                 </Avatar>
                 <button
                   type="button"
-                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+                  className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
                 >
                   <Camera className="h-4 w-4" />
                 </button>
@@ -140,9 +129,7 @@ export default function AccountSettingsPage() {
                 <Button type="button" variant="outline" size="sm">
                   Upload new picture
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  JPG, PNG or GIF. Max size 2MB.
-                </p>
+                <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max size 2MB.</p>
               </div>
             </div>
           </CardContent>
@@ -152,21 +139,15 @@ export default function AccountSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
-            <CardDescription>
-              Update your personal details
-            </CardDescription>
+            <CardDescription>Update your personal details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
-                <Input
-                  id="firstName"
-                  placeholder="John"
-                  {...register("firstName")}
-                />
+                <Input id="firstName" placeholder="John" {...register("firstName")} />
                 {errors.firstName && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-sm text-destructive">
                     <AlertCircle className="h-3 w-3" />
                     {errors.firstName.message}
                   </p>
@@ -174,13 +155,9 @@ export default function AccountSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  {...register("lastName")}
-                />
+                <Input id="lastName" placeholder="Doe" {...register("lastName")} />
                 {errors.lastName && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-sm text-destructive">
                     <AlertCircle className="h-3 w-3" />
                     {errors.lastName.message}
                   </p>
@@ -205,7 +182,7 @@ export default function AccountSettingsPage() {
               <Input
                 id="email"
                 type="email"
-                value={user?.email || ""}
+                value={user?.email ?? ""}
                 disabled
                 className="bg-muted"
               />
@@ -233,27 +210,17 @@ export default function AccountSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Work Information</CardTitle>
-            <CardDescription>
-              Help colleagues find you in the organization
-            </CardDescription>
+            <CardDescription>Help colleagues find you in the organization</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="jobTitle">Job title</Label>
-                <Input
-                  id="jobTitle"
-                  placeholder="Software Engineer"
-                  {...register("jobTitle")}
-                />
+                <Input id="jobTitle" placeholder="Software Engineer" {...register("jobTitle")} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  placeholder="Engineering"
-                  {...register("department")}
-                />
+                <Input id="department" placeholder="Engineering" {...register("department")} />
               </div>
             </div>
           </CardContent>
@@ -263,9 +230,7 @@ export default function AccountSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Regional Settings</CardTitle>
-            <CardDescription>
-              Configure your timezone for accurate timestamps
-            </CardDescription>
+            <CardDescription>Configure your timezone for accurate timestamps</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -293,7 +258,7 @@ export default function AccountSettingsPage() {
         <div className="flex items-center justify-between">
           <div>
             {saveSuccess && (
-              <p className="text-sm text-green-600 flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
                 Profile saved successfully
               </p>

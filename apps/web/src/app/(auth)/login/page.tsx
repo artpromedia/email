@@ -1,8 +1,9 @@
+/* eslint-disable jsx-a11y/no-autofocus */
 "use client";
 
 /**
  * Login Page - Multi-domain aware login with smart domain detection
- * 
+ *
  * Features:
  * - Smart domain detection as user types email
  * - Domain-specific branding display
@@ -14,9 +15,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Mail,
   Lock,
@@ -29,6 +28,8 @@ import {
   AlertCircle,
   KeyRound,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -71,10 +72,10 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || "/";
-  const prefilledEmail = searchParams.get("email") || "";
+  const prefilledEmail = searchParams.get("email") ?? "";
 
   const [showPassword, setShowPassword] = useState(false);
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
@@ -84,7 +85,7 @@ export default function LoginPage() {
     register,
     handleSubmit,
     watch,
-    setValue,
+    _setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -136,7 +137,7 @@ export default function LoginPage() {
 
       // Successful login
       router.push(returnUrl);
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation
       console.error("Login failed:", error);
     }
@@ -155,8 +156,8 @@ export default function LoginPage() {
   const ssoOnly = detectedDomain?.ssoEnabled && !detectedDomain.passwordLoginEnabled;
 
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
         {/* Domain Logo */}
         {branding?.logo ? (
           <div className="flex justify-center">
@@ -167,8 +168,8 @@ export default function LoginPage() {
             />
           </div>
         ) : (
-          <div 
-            className="mx-auto h-12 w-12 rounded-full flex items-center justify-center"
+          <div
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
             style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
           >
             <Mail className="h-6 w-6 text-primary-foreground" />
@@ -191,7 +192,7 @@ export default function LoginPage() {
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -202,11 +203,11 @@ export default function LoginPage() {
                 {...register("email")}
               />
               {isDetectingDomain && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
               )}
             </div>
             {errors.email && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.email.message}
               </p>
@@ -215,10 +216,12 @@ export default function LoginPage() {
 
           {/* Domain Detection Indicator */}
           {detectedDomain && (
-            <div 
-              className="flex items-center gap-2 p-3 rounded-lg text-sm"
-              style={{ 
-                backgroundColor: branding?.primaryColor ? `${branding.primaryColor}15` : "var(--muted)",
+            <div
+              className="flex items-center gap-2 rounded-lg p-3 text-sm"
+              style={{
+                backgroundColor: branding?.primaryColor
+                  ? `${branding.primaryColor}15`
+                  : "var(--muted)",
               }}
             >
               <Building2 className="h-4 w-4" style={{ color: branding?.primaryColor }} />
@@ -226,7 +229,7 @@ export default function LoginPage() {
                 Signing in to <strong>{detectedDomain.organizationName}</strong>
               </span>
               {detectedDomain.ssoEnabled && (
-                <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                   SSO Available
                 </span>
               )}
@@ -238,7 +241,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="twoFactorCode">Two-Factor Code</Label>
               <div className="relative">
-                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Shield className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="twoFactorCode"
                   type="text"
@@ -261,15 +264,12 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                >
+                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -283,15 +283,11 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-destructive flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm text-destructive">
                   <AlertCircle className="h-3 w-3" />
                   {errors.password.message}
                 </p>
@@ -308,7 +304,7 @@ export default function LoginPage() {
                 className="h-4 w-4 rounded border-input"
                 {...register("rememberMe")}
               />
-              <Label htmlFor="rememberMe" className="text-sm font-normal cursor-pointer">
+              <Label htmlFor="rememberMe" className="cursor-pointer text-sm font-normal">
                 Remember me for 30 days
               </Label>
             </div>
@@ -316,8 +312,8 @@ export default function LoginPage() {
 
           {/* Error Message */}
           {loginMutation.error && (
-            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
                 {loginMutation.error instanceof Error
                   ? loginMutation.error.message
@@ -332,7 +328,9 @@ export default function LoginPage() {
               type="submit"
               className="w-full"
               disabled={isSubmitting || loginMutation.isPending}
-              style={branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined}
+              style={
+                branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined
+              }
             >
               {loginMutation.isPending ? (
                 <>
@@ -373,7 +371,11 @@ export default function LoginPage() {
               className="w-full"
               onClick={handleSSOLogin}
               disabled={ssoMutation.isPending}
-              style={ssoOnly && branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined}
+              style={
+                ssoOnly && branding?.primaryColor
+                  ? { backgroundColor: branding.primaryColor }
+                  : undefined
+              }
             >
               {ssoMutation.isPending ? (
                 <>
@@ -386,7 +388,8 @@ export default function LoginPage() {
                   {detectedDomain?.ssoProvider === "google" && "Continue with Google"}
                   {detectedDomain?.ssoProvider === "microsoft" && "Continue with Microsoft"}
                   {detectedDomain?.ssoProvider === "okta" && "Continue with Okta"}
-                  {(detectedDomain?.ssoProvider === "saml" || detectedDomain?.ssoProvider === "oidc") &&
+                  {(detectedDomain?.ssoProvider === "saml" ||
+                    detectedDomain?.ssoProvider === "oidc") &&
                     `Continue with ${detectedDomain.organizationName} SSO`}
                   {!detectedDomain?.ssoProvider && "Continue with SSO"}
                 </>
@@ -403,7 +406,7 @@ export default function LoginPage() {
             Don&apos;t have an account?{" "}
             <Link
               href={`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-              className="text-primary hover:underline font-medium"
+              className="font-medium text-primary hover:underline"
             >
               Sign up
             </Link>

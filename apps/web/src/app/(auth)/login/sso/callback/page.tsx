@@ -2,7 +2,7 @@
 
 /**
  * SSO Callback Page - Handles SSO provider callback
- * 
+ *
  * Features:
  * - Processes authorization code from SSO provider
  * - Validates state parameter
@@ -11,29 +11,28 @@
  */
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  KeyRound,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  ArrowLeft,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Button,
-} from "@email/ui";
+import { useRouter, useSearchParams } from "next/navigation";
+import { KeyRound, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@email/ui";
 import { useCompleteSSOCallback } from "@/lib/auth";
+
+// Helper to extract domain from state (if encoded)
+function extractDomainFromState(stateParam: string): string | null {
+  try {
+    // Try to decode if it's base64 JSON
+    const decoded = JSON.parse(atob(stateParam)) as { domain?: string };
+    return decoded.domain ?? null;
+  } catch {
+    // If not encoded, try getting from URL or return null
+    return null;
+  }
+}
 
 export default function SSOCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
@@ -55,6 +54,7 @@ export default function SSOCallbackPage() {
 
     // Check for error from provider
     if (error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCallbackAttempted(true);
       return;
     }
@@ -72,7 +72,7 @@ export default function SSOCallbackPage() {
     }
 
     // Extract domain from state or use stored domain
-    const domain = storedDomain || extractDomainFromState(state);
+    const domain = storedDomain ?? extractDomainFromState(state);
     if (!domain) {
       setCallbackAttempted(true);
       return;
@@ -95,24 +95,12 @@ export default function SSOCallbackPage() {
     );
   }, [code, state, error, storedState, storedDomain, callbackAttempted, callbackMutation, router]);
 
-  // Helper to extract domain from state (if encoded)
-  function extractDomainFromState(stateParam: string): string | null {
-    try {
-      // Try to decode if it's base64 JSON
-      const decoded = JSON.parse(atob(stateParam));
-      return decoded.domain || null;
-    } catch {
-      // If not encoded, try getting from URL or return null
-      return null;
-    }
-  }
-
   // Provider error
   if (error) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-6 w-6 text-destructive" />
           </div>
 
@@ -125,19 +113,17 @@ export default function SSOCallbackPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-destructive/10 text-sm">
+          <div className="rounded-lg bg-destructive/10 p-4 text-sm">
             <p className="font-medium text-destructive">
               {error === "access_denied"
                 ? "You denied access to your account"
                 : error === "server_error"
-                ? "The identity provider encountered an error"
-                : error === "temporarily_unavailable"
-                ? "The identity provider is temporarily unavailable"
-                : `Error: ${error}`}
+                  ? "The identity provider encountered an error"
+                  : error === "temporarily_unavailable"
+                    ? "The identity provider is temporarily unavailable"
+                    : `Error: ${error}`}
             </p>
-            {errorDescription && (
-              <p className="mt-2 text-muted-foreground">{errorDescription}</p>
-            )}
+            {errorDescription && <p className="mt-2 text-muted-foreground">{errorDescription}</p>}
           </div>
 
           <div className="flex flex-col gap-3">
@@ -156,25 +142,23 @@ export default function SSOCallbackPage() {
   // Missing parameters
   if (!code || !state) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-6 w-6 text-destructive" />
           </div>
 
           <div>
             <CardTitle className="text-2xl">Invalid Callback</CardTitle>
-            <CardDescription className="mt-2">
-              Missing required parameters
-            </CardDescription>
+            <CardDescription className="mt-2">Missing required parameters</CardDescription>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
             <p>
-              This page should only be accessed as part of an SSO login flow.
-              Please start the login process again.
+              This page should only be accessed as part of an SSO login flow. Please start the login
+              process again.
             </p>
           </div>
 
@@ -192,29 +176,27 @@ export default function SSOCallbackPage() {
   // State mismatch
   if (state !== storedState) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-6 w-6 text-destructive" />
           </div>
 
           <div>
             <CardTitle className="text-2xl">Security Error</CardTitle>
-            <CardDescription className="mt-2">
-              Session validation failed
-            </CardDescription>
+            <CardDescription className="mt-2">Session validation failed</CardDescription>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-destructive/10 text-sm">
+          <div className="rounded-lg bg-destructive/10 p-4 text-sm">
             <p className="text-destructive">
-              The security state does not match. This could indicate a CSRF
-              attack or an expired session.
+              The security state does not match. This could indicate a CSRF attack or an expired
+              session.
             </p>
           </div>
 
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
             <p>Please start the login process again from the beginning.</p>
           </div>
 
@@ -232,9 +214,9 @@ export default function SSOCallbackPage() {
   // Success state
   if (success) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-6 w-6 text-green-500" />
           </div>
 
@@ -249,9 +231,7 @@ export default function SSOCallbackPage() {
         <CardContent>
           <div className="flex flex-col items-center gap-4 py-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Redirecting to your inbox...
-            </p>
+            <p className="text-sm text-muted-foreground">Redirecting to your inbox...</p>
           </div>
         </CardContent>
       </Card>
@@ -260,9 +240,9 @@ export default function SSOCallbackPage() {
 
   // Processing state
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <KeyRound className="h-6 w-6 text-primary" />
         </div>
 
@@ -278,7 +258,7 @@ export default function SSOCallbackPage() {
         {/* Loading Animation */}
         <div className="flex flex-col items-center gap-4 py-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground animate-pulse">
+          <p className="animate-pulse text-sm text-muted-foreground">
             Verifying your credentials...
           </p>
         </div>
@@ -286,13 +266,11 @@ export default function SSOCallbackPage() {
         {/* Error from callback */}
         {callbackMutation.error && (
           <>
-            <div className="p-4 rounded-lg bg-destructive/10 text-sm">
+            <div className="rounded-lg bg-destructive/10 p-4 text-sm">
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <AlertCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
                 <div>
-                  <p className="font-medium text-destructive">
-                    Authentication failed
-                  </p>
+                  <p className="font-medium text-destructive">Authentication failed</p>
                   <p className="mt-1 text-muted-foreground">
                     {callbackMutation.error instanceof Error
                       ? callbackMutation.error.message

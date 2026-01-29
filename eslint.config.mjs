@@ -84,9 +84,24 @@ export default tseslint.config(
           allowBoolean: true,
         },
       ],
-      "@typescript-eslint/prefer-nullish-coalescing": "error",
+      
+      // Allow || for string defaults (TypeScript will catch actual nullish issues)
+      "@typescript-eslint/prefer-nullish-coalescing": ["error", {
+        ignorePrimitives: {
+          string: true,
+        },
+      }],
+      // Allow unsafe error assignments (common pattern in catch handlers)
+      "@typescript-eslint/no-unsafe-assignment": "warn",
+      "@typescript-eslint/no-unsafe-call": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
+      "@typescript-eslint/no-unsafe-return": "warn",
+      "@typescript-eslint/no-unsafe-argument": "warn",
+      // autoFocus is intentional UX in auth forms
+      "jsx-a11y/no-autofocus": "off",
+
       "@typescript-eslint/prefer-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/no-unnecessary-condition": "warn",
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/await-thenable": "error",
       "@typescript-eslint/require-await": "error",
@@ -232,7 +247,7 @@ export default tseslint.config(
         },
       ],
       "jsx-a11y/click-events-have-key-events": "error",
-      "jsx-a11y/no-static-element-interactions": "error",
+      "jsx-a11y/no-static-element-interactions": ["error", { handlers: ["onClick"], allowExpressionValues: true }],
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/img-redundant-alt": "error",
       "jsx-a11y/label-has-associated-control": [

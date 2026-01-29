@@ -7,43 +7,31 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Mail,
-  ArrowRight,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  Send,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Button,
-} from "@email/ui";
+import { Mail, ArrowRight, Loader2, AlertCircle, CheckCircle, Send } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@email/ui";
 import { useVerifyEmail, useResendVerificationEmail } from "@/lib/auth";
 
 export default function VerifyEmailPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
 
-  const [verificationAttempted, setVerificationAttempted] = useState(false);
+  const [_verificationAttempted, _setVerificationAttempted] = useState(false);
+  const verificationAttemptedRef = React.useRef(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const verificationAttemptedRef = React.useRef(false);
 
   const verifyEmailMutation = useVerifyEmail();
   const resendMutation = useResendVerificationEmail();
 
   // Auto-verify if token is present
   useEffect(() => {
-    if (token && !verificationAttempted) {
-      setVerificationAttempted(true);
+    if (token && !verificationAttemptedRef.current) {
+      verificationAttemptedRef.current = true;
       verifyEmailMutation.mutate({ token });
     }
-  }, [token, verificationAttempted, verifyEmailMutation]);
+  }, [token, verifyEmailMutation]);
 
   // Handle resend
   const handleResend = async () => {
@@ -53,7 +41,7 @@ export default function VerifyEmailPage() {
         // In a real app, this would need adjustment
         await resendMutation.mutateAsync(email);
         setResendSuccess(true);
-      } catch (error) {
+      } catch (_error) {
         console.error("Failed to resend verification:", error);
       }
     }
@@ -62,9 +50,9 @@ export default function VerifyEmailPage() {
   // Verification in progress with token
   if (token && verifyEmailMutation.isPending) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Mail className="h-6 w-6 text-primary" />
           </div>
           <div>
@@ -78,9 +66,7 @@ export default function VerifyEmailPage() {
         <CardContent>
           <div className="flex flex-col items-center gap-4 py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground animate-pulse">
-              Verifying...
-            </p>
+            <p className="animate-pulse text-sm text-muted-foreground">Verifying...</p>
           </div>
         </CardContent>
       </Card>
@@ -90,9 +76,9 @@ export default function VerifyEmailPage() {
   // Verification successful
   if (token && verifyEmailMutation.isSuccess) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-6 w-6 text-green-500" />
           </div>
           <div>
@@ -104,7 +90,7 @@ export default function VerifyEmailPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-green-500/10 text-sm text-center">
+          <div className="rounded-lg bg-green-500/10 p-4 text-center text-sm">
             <p className="text-green-700 dark:text-green-400">
               You can now use all features of your account.
             </p>
@@ -124,9 +110,9 @@ export default function VerifyEmailPage() {
   // Verification failed
   if (token && verifyEmailMutation.isError) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-6 w-6 text-destructive" />
           </div>
           <div>
@@ -138,7 +124,7 @@ export default function VerifyEmailPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-destructive/10 text-sm">
+          <div className="rounded-lg bg-destructive/10 p-4 text-sm">
             <p className="text-destructive">
               {verifyEmailMutation.error instanceof Error
                 ? verifyEmailMutation.error.message
@@ -146,10 +132,10 @@ export default function VerifyEmailPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
             <p className="text-muted-foreground">
-              Verification links expire after 24 hours. You can request a new
-              one from your account settings.
+              Verification links expire after 24 hours. You can request a new one from your account
+              settings.
             </p>
           </div>
 
@@ -171,27 +157,25 @@ export default function VerifyEmailPage() {
 
   // Waiting for verification (no token, just registered)
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Mail className="h-6 w-6 text-primary" />
         </div>
         <div>
           <CardTitle className="text-2xl">Verify your email</CardTitle>
           <CardDescription className="mt-2">
-            We&apos;ve sent a verification link to{" "}
-            <strong>{email || "your email"}</strong>
+            We&apos;ve sent a verification link to <strong>{email || "your email"}</strong>
           </CardDescription>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="p-4 rounded-lg bg-muted text-sm space-y-3">
+        <div className="space-y-3 rounded-lg bg-muted p-4 text-sm">
           <p className="text-muted-foreground">
-            Please check your inbox and click the verification link to confirm
-            your email address.
+            Please check your inbox and click the verification link to confirm your email address.
           </p>
-          <ul className="text-muted-foreground space-y-1 list-disc list-inside">
+          <ul className="list-inside list-disc space-y-1 text-muted-foreground">
             <li>Check your spam/junk folder</li>
             <li>Make sure the email address is correct</li>
             <li>Links expire after 24 hours</li>
@@ -199,17 +183,15 @@ export default function VerifyEmailPage() {
         </div>
 
         {resendSuccess ? (
-          <div className="p-4 rounded-lg bg-green-500/10 text-sm text-center">
-            <p className="text-green-700 dark:text-green-400 flex items-center justify-center gap-2">
+          <div className="rounded-lg bg-green-500/10 p-4 text-center text-sm">
+            <p className="flex items-center justify-center gap-2 text-green-700 dark:text-green-400">
               <CheckCircle className="h-4 w-4" />
               Verification email sent!
             </p>
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">
-              Didn&apos;t receive the email?
-            </p>
+            <p className="mb-2 text-sm text-muted-foreground">Didn&apos;t receive the email?</p>
             <Button
               variant="outline"
               onClick={handleResend}
@@ -227,14 +209,12 @@ export default function VerifyEmailPage() {
         )}
 
         {resendMutation.isError && (
-          <div className="p-3 rounded-lg bg-destructive/10 text-sm text-center">
-            <p className="text-destructive">
-              Failed to resend. Please try again later.
-            </p>
+          <div className="rounded-lg bg-destructive/10 p-3 text-center text-sm">
+            <p className="text-destructive">Failed to resend. Please try again later.</p>
           </div>
         )}
 
-        <div className="pt-4 border-t">
+        <div className="border-t pt-4">
           <Button asChild variant="ghost" className="w-full">
             <Link href="/login">Back to Login</Link>
           </Button>

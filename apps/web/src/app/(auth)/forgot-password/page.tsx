@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/no-autofocus */
 "use client";
 
 /**
@@ -6,9 +7,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Mail,
   ArrowLeft,
@@ -18,6 +17,8 @@ import {
   CheckCircle,
   KeyRound,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -60,7 +61,7 @@ export default function ForgotPasswordPage() {
       await forgotPasswordMutation.mutateAsync({ email: data.email });
       setSubmittedEmail(data.email);
       setSubmitted(true);
-    } catch (error) {
+    } catch (_error) {
       // Show success anyway to prevent email enumeration
       setSubmittedEmail(data.email);
       setSubmitted(true);
@@ -69,26 +70,24 @@ export default function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-6 w-6 text-green-500" />
           </div>
           <div>
             <CardTitle className="text-2xl">Check your email</CardTitle>
             <CardDescription className="mt-2">
-              We&apos;ve sent a password reset link to{" "}
-              <strong>{submittedEmail}</strong>
+              We&apos;ve sent a password reset link to <strong>{submittedEmail}</strong>
             </CardDescription>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm">
+          <div className="rounded-lg bg-muted p-4 text-sm">
             <p className="text-muted-foreground">
-              If an account exists with this email address, you&apos;ll receive
-              a password reset link within a few minutes. Please check your spam
-              folder if you don&apos;t see it.
+              If an account exists with this email address, you&apos;ll receive a password reset
+              link within a few minutes. Please check your spam folder if you don&apos;t see it.
             </p>
           </div>
 
@@ -117,9 +116,9 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <KeyRound className="h-6 w-6 text-primary" />
         </div>
         <div>
@@ -135,7 +134,7 @@ export default function ForgotPasswordPage() {
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -147,7 +146,7 @@ export default function ForgotPasswordPage() {
               />
             </div>
             {errors.email && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.email.message}
               </p>

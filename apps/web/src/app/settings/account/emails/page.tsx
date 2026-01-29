@@ -1,8 +1,9 @@
+/* eslint-disable jsx-a11y/no-autofocus */
 "use client";
 
 /**
  * Email Settings Page - Manage multiple email addresses
- * 
+ *
  * Features:
  * - List all email addresses
  * - Add new email addresses
@@ -13,9 +14,7 @@
  */
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Mail,
   Plus,
@@ -30,6 +29,8 @@ import {
   Shield,
   Info,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -88,7 +89,7 @@ export default function EmailSettingsPage() {
       await addEmailMutation.mutateAsync({ email: data.email });
       reset();
       setShowAddForm(false);
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to add email:", error);
     }
   };
@@ -98,7 +99,7 @@ export default function EmailSettingsPage() {
     setDeletingEmailId(emailId);
     try {
       await removeEmailMutation.mutateAsync(emailId);
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to remove email:", error);
     } finally {
       setDeletingEmailId(null);
@@ -110,7 +111,7 @@ export default function EmailSettingsPage() {
     setSettingPrimaryId(emailId);
     try {
       await setPrimaryMutation.mutateAsync(emailId);
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to set primary email:", error);
     } finally {
       setSettingPrimaryId(null);
@@ -121,13 +122,13 @@ export default function EmailSettingsPage() {
   const handleResendVerification = async (emailId: string) => {
     try {
       await resendVerificationMutation.mutateAsync(emailId);
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to resend verification:", error);
     }
   };
 
   // Sort emails: primary first, then verified, then unverified
-  const sortedEmails = [...(emails || [])].sort((a, b) => {
+  const sortedEmails = [...(emails ?? [])].sort((a, b) => {
     if (a.isPrimary) return -1;
     if (b.isPrimary) return 1;
     if (a.isVerified && !b.isVerified) return -1;
@@ -136,22 +137,19 @@ export default function EmailSettingsPage() {
   });
 
   // Group by domain
-  const emailsByDomain = sortedEmails.reduce((acc, email) => {
+  const emailsByDomain = sortedEmails.reduce<Record<string, UserEmail[]>>((acc, email) => {
     const domain = email.domain;
-    if (!acc[domain]) {
-      acc[domain] = [];
-    }
-    acc[domain].push(email);
+    (acc[domain] ??= []).push(email);
     return acc;
-  }, {} as Record<string, UserEmail[]>);
+  }, {});
 
   return (
     <div className="container max-w-4xl py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Email Addresses</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage email addresses associated with your account. You can have multiple
-          emails and use any of them to sign in.
+        <p className="mt-2 text-muted-foreground">
+          Manage email addresses associated with your account. You can have multiple emails and use
+          any of them to sign in.
         </p>
       </div>
 
@@ -159,15 +157,14 @@ export default function EmailSettingsPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
               <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="font-medium">Primary Email</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Your primary email is used for account notifications, password
-                recovery, and security alerts. It cannot be removed until you set
-                another email as primary.
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your primary email is used for account notifications, password recovery, and
+                security alerts. It cannot be removed until you set another email as primary.
               </p>
             </div>
           </div>
@@ -180,9 +177,7 @@ export default function EmailSettingsPage() {
           <CardContent className="py-12">
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Loading your email addresses...
-              </p>
+              <p className="text-sm text-muted-foreground">Loading your email addresses...</p>
             </div>
           </CardContent>
         </Card>
@@ -195,10 +190,8 @@ export default function EmailSettingsPage() {
             <div className="flex items-center gap-4">
               <AlertCircle className="h-5 w-5 text-destructive" />
               <div>
-                <p className="font-medium text-destructive">
-                  Failed to load email addresses
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="font-medium text-destructive">Failed to load email addresses</p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {error instanceof Error ? error.message : "Please try again later."}
                 </p>
               </div>
@@ -218,8 +211,7 @@ export default function EmailSettingsPage() {
                   <CardTitle className="text-lg">{domain}</CardTitle>
                 </div>
                 <CardDescription>
-                  {domainEmails.length} email{domainEmails.length !== 1 ? "s" : ""}{" "}
-                  registered
+                  {domainEmails.length} email{domainEmails.length !== 1 ? "s" : ""} registered
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -230,9 +222,7 @@ export default function EmailSettingsPage() {
                       email={email}
                       onSetPrimary={() => handleSetPrimary(email.id)}
                       onRemove={() => handleRemoveEmail(email.id)}
-                      onResendVerification={() =>
-                        handleResendVerification(email.id)
-                      }
+                      onResendVerification={() => handleResendVerification(email.id)}
                       isSettingPrimary={settingPrimaryId === email.id}
                       isDeleting={deletingEmailId === email.id}
                       isResending={
@@ -251,8 +241,8 @@ export default function EmailSettingsPage() {
             <CardHeader>
               <CardTitle className="text-lg">Add Email Address</CardTitle>
               <CardDescription>
-                Add another email address to your account. You&apos;ll need to verify
-                it before it can be used for sign-in.
+                Add another email address to your account. You&apos;ll need to verify it before it
+                can be used for sign-in.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -262,7 +252,7 @@ export default function EmailSettingsPage() {
                     <Label htmlFor="new-email">New email address</Label>
                     <div className="flex gap-3">
                       <div className="relative flex-1">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           id="new-email"
                           type="email"
@@ -273,10 +263,7 @@ export default function EmailSettingsPage() {
                           {...register("email")}
                         />
                       </div>
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting || addEmailMutation.isPending}
-                      >
+                      <Button type="submit" disabled={isSubmitting || addEmailMutation.isPending}>
                         {addEmailMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
@@ -295,13 +282,13 @@ export default function EmailSettingsPage() {
                       </Button>
                     </div>
                     {errors.email && (
-                      <p className="text-sm text-destructive flex items-center gap-1">
+                      <p className="flex items-center gap-1 text-sm text-destructive">
                         <AlertCircle className="h-3 w-3" />
                         {errors.email.message}
                       </p>
                     )}
                     {addEmailMutation.error && (
-                      <p className="text-sm text-destructive flex items-center gap-1">
+                      <p className="flex items-center gap-1 text-sm text-destructive">
                         <AlertCircle className="h-3 w-3" />
                         {addEmailMutation.error instanceof Error
                           ? addEmailMutation.error.message
@@ -310,20 +297,16 @@ export default function EmailSettingsPage() {
                     )}
                   </div>
 
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-muted text-sm">
-                    <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
+                    <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                     <p className="text-muted-foreground">
-                      A verification email will be sent to confirm ownership.
-                      The email won&apos;t be active until verified.
+                      A verification email will be sent to confirm ownership. The email won&apos;t
+                      be active until verified.
                     </p>
                   </div>
                 </form>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAddForm(true)}
-                  className="gap-2"
-                >
+                <Button variant="outline" onClick={() => setShowAddForm(true)} className="gap-2">
                   <Plus className="h-4 w-4" />
                   Add email address
                 </Button>
@@ -361,18 +344,18 @@ function EmailRow({
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
               email.isPrimary
                 ? "bg-primary/10"
                 : email.isVerified
-                ? "bg-green-500/10"
-                : "bg-yellow-500/10"
+                  ? "bg-green-500/10"
+                  : "bg-yellow-500/10"
             }`}
           >
             {email.isPrimary ? (
-              <Star className="h-5 w-5 text-primary fill-primary" />
+              <Star className="h-5 w-5 fill-primary text-primary" />
             ) : email.isVerified ? (
               <CheckCircle className="h-5 w-5 text-green-500" />
             ) : (
@@ -381,7 +364,7 @@ function EmailRow({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-medium truncate">{email.email}</span>
+              <span className="truncate font-medium">{email.email}</span>
               {email.isPrimary && (
                 <Badge variant="secondary" className="flex-shrink-0">
                   Primary
@@ -402,7 +385,7 @@ function EmailRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2">
           {/* Resend Verification */}
           {!email.isVerified && (
             <Button
@@ -453,17 +436,9 @@ function EmailRow({
                     }}
                     disabled={isDeleting}
                   >
-                    {isDeleting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      "Confirm"
-                    )}
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowConfirmDelete(false)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setShowConfirmDelete(false)}>
                     Cancel
                   </Button>
                 </div>
@@ -472,7 +447,7 @@ function EmailRow({
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowConfirmDelete(true)}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

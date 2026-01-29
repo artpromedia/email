@@ -1,8 +1,9 @@
+/* eslint-disable jsx-a11y/no-autofocus */
 "use client";
 
 /**
  * Registration Page - Domain-aware user registration
- * 
+ *
  * Features:
  * - Email domain validation and organization detection
  * - Domain-specific branding
@@ -11,12 +12,10 @@
  * - Redirect to login if registration disabled for domain
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Mail,
   Lock,
@@ -31,6 +30,8 @@ import {
   X,
   Info,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -68,7 +69,7 @@ const registerSchema = z
       .regex(/\d/, "Password must contain a number")
       .regex(/[^A-Za-z0-9]/, "Password must contain a special character"),
     confirmPassword: z.string(),
-    acceptTerms: z.boolean().refine((val) => val === true, {
+    acceptTerms: z.boolean().refine((val) => val, {
       message: "You must accept the terms and conditions",
     }),
   })
@@ -97,9 +98,9 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
-  const prefilledEmail = searchParams.get("email") || "";
+  const prefilledEmail = searchParams.get("email") ?? "";
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -174,7 +175,7 @@ export default function RegisterPage() {
       } else {
         router.push("/");
       }
-    } catch (error) {
+    } catch (_error) {
       console.error("Registration failed:", error);
     }
   };
@@ -182,8 +183,8 @@ export default function RegisterPage() {
   // Check if registration is disabled for this domain
   if (detectedDomain && !detectedDomain.registrationEnabled) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
           {branding?.logo ? (
             <div className="flex justify-center">
               <img
@@ -194,7 +195,7 @@ export default function RegisterPage() {
             </div>
           ) : (
             <div
-              className="mx-auto h-12 w-12 rounded-full flex items-center justify-center"
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
               style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
             >
               <Building2 className="h-6 w-6 text-primary-foreground" />
@@ -211,14 +212,14 @@ export default function RegisterPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm">
+          <div className="rounded-lg bg-muted p-4 text-sm">
             <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
               <div>
                 <p className="font-medium">Contact your administrator</p>
                 <p className="mt-1 text-muted-foreground">
-                  Your organization requires administrator approval for new accounts.
-                  Please contact your IT administrator to request access.
+                  Your organization requires administrator approval for new accounts. Please contact
+                  your IT administrator to request access.
                 </p>
               </div>
             </div>
@@ -226,15 +227,11 @@ export default function RegisterPage() {
 
           <div className="flex flex-col gap-3">
             <Button asChild className="w-full">
-              <Link href={`/login?email=${encodeURIComponent(email)}`}>
-                Back to Sign In
-              </Link>
+              <Link href={`/login?email=${encodeURIComponent(email)}`}>Back to Sign In</Link>
             </Button>
             {detectedDomain.ssoEnabled && (
               <Button asChild variant="outline" className="w-full">
-                <Link href={`/login/sso?domain=${detectedDomain.domain}`}>
-                  Sign in with SSO
-                </Link>
+                <Link href={`/login/sso?domain=${detectedDomain.domain}`}>Sign in with SSO</Link>
               </Button>
             )}
           </div>
@@ -244,8 +241,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
         {/* Domain Logo */}
         {branding?.logo ? (
           <div className="flex justify-center">
@@ -257,7 +254,7 @@ export default function RegisterPage() {
           </div>
         ) : (
           <div
-            className="mx-auto h-12 w-12 rounded-full flex items-center justify-center"
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
             style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
           >
             <User className="h-6 w-6 text-primary-foreground" />
@@ -268,9 +265,7 @@ export default function RegisterPage() {
           <CardTitle className="text-2xl">
             {branding?.name ? `Join ${branding.name}` : "Create an account"}
           </CardTitle>
-          <CardDescription className="mt-2">
-            Enter your details to get started
-          </CardDescription>
+          <CardDescription className="mt-2">Enter your details to get started</CardDescription>
         </div>
       </CardHeader>
 
@@ -280,7 +275,7 @@ export default function RegisterPage() {
           <div className="space-y-2">
             <Label htmlFor="email">Work email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -291,11 +286,11 @@ export default function RegisterPage() {
                 {...register("email")}
               />
               {isDetectingDomain && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
               )}
             </div>
             {errors.email && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.email.message}
               </p>
@@ -305,17 +300,14 @@ export default function RegisterPage() {
           {/* Domain Detection Indicator */}
           {detectedDomain && (
             <div
-              className="flex items-center gap-2 p-3 rounded-lg text-sm"
+              className="flex items-center gap-2 rounded-lg p-3 text-sm"
               style={{
                 backgroundColor: branding?.primaryColor
                   ? `${branding.primaryColor}15`
                   : "var(--muted)",
               }}
             >
-              <Building2
-                className="h-4 w-4"
-                style={{ color: branding?.primaryColor }}
-              />
+              <Building2 className="h-4 w-4" style={{ color: branding?.primaryColor }} />
               <span>
                 You&apos;re joining <strong>{detectedDomain.organizationName}</strong>
               </span>
@@ -335,7 +327,7 @@ export default function RegisterPage() {
                 {...register("firstName")}
               />
               {errors.firstName && (
-                <p className="text-sm text-destructive flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm text-destructive">
                   <AlertCircle className="h-3 w-3" />
                   {errors.firstName.message}
                 </p>
@@ -351,7 +343,7 @@ export default function RegisterPage() {
                 {...register("lastName")}
               />
               {errors.lastName && (
-                <p className="text-sm text-destructive flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm text-destructive">
                   <AlertCircle className="h-3 w-3" />
                   {errors.lastName.message}
                 </p>
@@ -363,7 +355,7 @@ export default function RegisterPage() {
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -377,11 +369,7 @@ export default function RegisterPage() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
 
@@ -395,11 +383,7 @@ export default function RegisterPage() {
                       req.met ? "text-green-600" : "text-muted-foreground"
                     }`}
                   >
-                    {req.met ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <X className="h-3 w-3" />
-                    )}
+                    {req.met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                     {req.label}
                   </div>
                 ))}
@@ -407,7 +391,7 @@ export default function RegisterPage() {
             )}
 
             {errors.password && !password && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.password.message}
               </p>
@@ -418,7 +402,7 @@ export default function RegisterPage() {
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
@@ -432,15 +416,11 @@ export default function RegisterPage() {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.confirmPassword && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.confirmPassword.message}
               </p>
@@ -453,12 +433,12 @@ export default function RegisterPage() {
               <input
                 id="acceptTerms"
                 type="checkbox"
-                className="h-4 w-4 rounded border-input mt-0.5"
+                className="mt-0.5 h-4 w-4 rounded border-input"
                 {...register("acceptTerms")}
               />
               <Label
                 htmlFor="acceptTerms"
-                className="text-sm font-normal cursor-pointer leading-relaxed"
+                className="cursor-pointer text-sm font-normal leading-relaxed"
               >
                 I agree to the{" "}
                 <Link href="/terms" className="text-primary hover:underline">
@@ -471,7 +451,7 @@ export default function RegisterPage() {
               </Label>
             </div>
             {errors.acceptTerms && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.acceptTerms.message}
               </p>
@@ -480,8 +460,8 @@ export default function RegisterPage() {
 
           {/* Error Message */}
           {registerMutation.error && (
-            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
                 {registerMutation.error instanceof Error
                   ? registerMutation.error.message
@@ -495,9 +475,7 @@ export default function RegisterPage() {
             type="submit"
             className="w-full"
             disabled={isSubmitting || registerMutation.isPending || !allRequirementsMet}
-            style={
-              branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined
-            }
+            style={branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined}
           >
             {registerMutation.isPending ? (
               <>
@@ -519,7 +497,7 @@ export default function RegisterPage() {
           Already have an account?{" "}
           <Link
             href={`/login${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-            className="text-primary hover:underline font-medium"
+            className="font-medium text-primary hover:underline"
           >
             Sign in
           </Link>

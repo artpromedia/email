@@ -2,7 +2,7 @@
 
 /**
  * SSO Login Page - Handles SSO initiation and callback
- * 
+ *
  * Features:
  * - Domain parameter handling for direct SSO links
  * - SSO provider redirect
@@ -10,15 +10,9 @@
  */
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  KeyRound,
-  Loader2,
-  AlertCircle,
-  Building2,
-  ArrowLeft,
-} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { KeyRound, Loader2, AlertCircle, Building2, ArrowLeft } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -31,13 +25,14 @@ import {
 import { useInitiateSSOLogin, useDomainDetection } from "@/lib/auth";
 
 export default function SSOLoginPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
   const domain = searchParams.get("domain");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  const [initiatedSSO, setInitiatedSSO] = useState(false);
+  const [_initiatedSSO, _setInitiatedSSO] = useState(false);
+  const initiatedSSORef = React.useRef(false);
 
   // Domain detection for branding
   const { data: domainInfo, isLoading: isLoadingDomain } = useDomainDetection(
@@ -53,11 +48,11 @@ export default function SSOLoginPage() {
 
   // Auto-initiate SSO if domain is provided and no error
   useEffect(() => {
-    if (domain && !error && !initiatedSSO && domainInfo?.ssoEnabled) {
-      setInitiatedSSO(true);
+    if (domain && !error && !initiatedSSORef.current && domainInfo.ssoEnabled) {
+      initiatedSSORef.current = true;
       ssoMutation.mutate(domain);
     }
-  }, [domain, error, initiatedSSO, domainInfo, ssoMutation]);
+  }, [domain, error, domainInfo, ssoMutation]);
 
   // Handle manual SSO initiation
   const handleInitiateSSO = () => {
@@ -69,9 +64,9 @@ export default function SSOLoginPage() {
   // Error state
   if (error) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-6 w-6 text-destructive" />
           </div>
 
@@ -84,19 +79,17 @@ export default function SSOLoginPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-destructive/10 text-sm">
+          <div className="rounded-lg bg-destructive/10 p-4 text-sm">
             <p className="font-medium text-destructive">
               {error === "access_denied"
                 ? "Access was denied by your identity provider"
                 : error === "invalid_state"
-                ? "Invalid session state. Please try again."
-                : error === "user_not_found"
-                ? "No account found for your identity"
-                : "An error occurred during SSO authentication"}
+                  ? "Invalid session state. Please try again."
+                  : error === "user_not_found"
+                    ? "No account found for your identity"
+                    : "An error occurred during SSO authentication"}
             </p>
-            {errorDescription && (
-              <p className="mt-2 text-muted-foreground">{errorDescription}</p>
-            )}
+            {errorDescription && <p className="mt-2 text-muted-foreground">{errorDescription}</p>}
           </div>
 
           <div className="flex flex-col gap-3">
@@ -119,25 +112,23 @@ export default function SSOLoginPage() {
   // No domain provided
   if (!domain) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <KeyRound className="h-6 w-6 text-muted-foreground" />
           </div>
 
           <div>
             <CardTitle className="text-2xl">SSO Login</CardTitle>
-            <CardDescription className="mt-2">
-              No domain specified for SSO login
-            </CardDescription>
+            <CardDescription className="mt-2">No domain specified for SSO login</CardDescription>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
             <p>
-              Please use the login page to enter your email address. We&apos;ll
-              automatically detect if your organization uses SSO.
+              Please use the login page to enter your email address. We&apos;ll automatically detect
+              if your organization uses SSO.
             </p>
           </div>
 
@@ -155,8 +146,8 @@ export default function SSOLoginPage() {
   // Domain not SSO enabled
   if (domainInfo && !domainInfo.ssoEnabled) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
           {branding?.logo ? (
             <div className="flex justify-center">
               <img
@@ -167,7 +158,7 @@ export default function SSOLoginPage() {
             </div>
           ) : (
             <div
-              className="mx-auto h-12 w-12 rounded-full flex items-center justify-center"
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
               style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
             >
               <Building2 className="h-6 w-6 text-primary-foreground" />
@@ -183,10 +174,10 @@ export default function SSOLoginPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
             <p>
-              Single Sign-On is not configured for this organization. Please use
-              email and password to sign in.
+              Single Sign-On is not configured for this organization. Please use email and password
+              to sign in.
             </p>
           </div>
 
@@ -203,8 +194,8 @@ export default function SSOLoginPage() {
 
   // Loading/redirecting state
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
         {branding?.logo ? (
           <div className="flex justify-center">
             <img
@@ -215,7 +206,7 @@ export default function SSOLoginPage() {
           </div>
         ) : (
           <div
-            className="mx-auto h-12 w-12 rounded-full flex items-center justify-center"
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
             style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
           >
             <KeyRound className="h-6 w-6 text-primary-foreground" />
@@ -237,28 +228,23 @@ export default function SSOLoginPage() {
       <CardContent className="space-y-6">
         {/* Loading Animation */}
         <div className="flex flex-col items-center gap-4 py-8">
-          <Loader2
-            className="h-8 w-8 animate-spin"
-            style={{ color: branding?.primaryColor }}
-          />
-          <p className="text-sm text-muted-foreground animate-pulse">
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: branding?.primaryColor }} />
+          <p className="animate-pulse text-sm text-muted-foreground">
             {ssoMutation.isPending
               ? "Redirecting to your identity provider..."
               : isLoadingDomain
-              ? "Checking organization settings..."
-              : "Preparing SSO login..."}
+                ? "Checking organization settings..."
+                : "Preparing SSO login..."}
           </p>
         </div>
 
         {/* Error from mutation */}
         {ssoMutation.error && (
-          <div className="p-4 rounded-lg bg-destructive/10 text-sm">
+          <div className="rounded-lg bg-destructive/10 p-4 text-sm">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+              <AlertCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
               <div>
-                <p className="font-medium text-destructive">
-                  Failed to initiate SSO
-                </p>
+                <p className="font-medium text-destructive">Failed to initiate SSO</p>
                 <p className="mt-1 text-muted-foreground">
                   {ssoMutation.error instanceof Error
                     ? ssoMutation.error.message

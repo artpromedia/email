@@ -44,9 +44,9 @@ export function useCurrentUser() {
  */
 export function useDomainDetection(email: string, enabled = true) {
   const domain = email.split("@")[1];
-  
+
   return useQuery({
-    queryKey: authKeys.domain(domain || ""),
+    queryKey: authKeys.domain(domain ?? ""),
     queryFn: () => authApi.detectDomain(email),
     enabled: enabled && !!domain && domain.includes("."),
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -59,14 +59,14 @@ export function useDomainDetection(email: string, enabled = true) {
  */
 export function useLogin() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: LoginRequest) => authApi.login(request),
     onSuccess: (data) => {
       // Store tokens
       localStorage.setItem("accessToken", data.tokens.accessToken);
       localStorage.setItem("refreshToken", data.tokens.refreshToken);
-      
+
       // Update user cache
       queryClient.setQueryData(authKeys.user(), data.user);
     },
@@ -78,14 +78,14 @@ export function useLogin() {
  */
 export function useRegister() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: RegisterRequest) => authApi.register(request),
     onSuccess: (data) => {
       // Store tokens
       localStorage.setItem("accessToken", data.tokens.accessToken);
       localStorage.setItem("refreshToken", data.tokens.refreshToken);
-      
+
       // Update user cache
       queryClient.setQueryData(authKeys.user(), data.user);
     },
@@ -97,7 +97,7 @@ export function useRegister() {
  */
 export function useLogout() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
@@ -128,7 +128,7 @@ export function useInitiateSSOLogin() {
  */
 export function useCompleteSSOCallback() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ domain, request }: { domain: string; request: SSOCallbackRequest }) =>
       authApi.completeSSOCallback(domain, request),
@@ -136,10 +136,10 @@ export function useCompleteSSOCallback() {
       // Store tokens
       localStorage.setItem("accessToken", data.tokens.accessToken);
       localStorage.setItem("refreshToken", data.tokens.refreshToken);
-      
+
       // Update user cache
       queryClient.setQueryData(authKeys.user(), data.user);
-      
+
       // Clear SSO state
       sessionStorage.removeItem("sso_state");
     },
@@ -162,11 +162,11 @@ export function useEmails() {
  */
 export function useAddEmail() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: AddEmailRequest) => authApi.addEmail(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.emails() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.emails() });
     },
   });
 }
@@ -176,11 +176,11 @@ export function useAddEmail() {
  */
 export function useRemoveEmail() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (emailId: string) => authApi.removeEmail(emailId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.emails() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.emails() });
     },
   });
 }
@@ -190,12 +190,12 @@ export function useRemoveEmail() {
  */
 export function useSetPrimaryEmail() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (emailId: string) => authApi.setPrimaryEmail(emailId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.emails() });
-      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.emails() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.user() });
     },
   });
 }
@@ -214,11 +214,11 @@ export function useResendVerificationEmail() {
  */
 export function useVerifyEmail() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: VerifyEmailRequest) => authApi.verifyEmail(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.emails() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.emails() });
     },
   });
 }
@@ -239,11 +239,11 @@ export function useSessions() {
  */
 export function useRevokeSession() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (sessionId: string) => authApi.revokeSession(sessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.sessions() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.sessions() });
     },
   });
 }
@@ -253,11 +253,11 @@ export function useRevokeSession() {
  */
 export function useRevokeAllOtherSessions() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: () => authApi.revokeAllOtherSessions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.sessions() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.sessions() });
     },
   });
 }
@@ -276,11 +276,11 @@ export function useSetupMFA() {
  */
 export function useVerifyMFA() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: MFAVerifyRequest) => authApi.verifyMFA(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.user() });
     },
   });
 }
@@ -290,11 +290,11 @@ export function useVerifyMFA() {
  */
 export function useDisableMFA() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: MFAVerifyRequest) => authApi.disableMFA(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      void queryClient.invalidateQueries({ queryKey: authKeys.user() });
     },
   });
 }

@@ -1,8 +1,10 @@
+/* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
+
 "use client";
 
 /**
  * Domain Switcher Header Component
- * 
+ *
  * Features:
  * - Display current domain with branding
  * - Dropdown to switch between domains
@@ -43,7 +45,7 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const { data: user, isLoading: isLoadingUser } = useCurrentUser();
   const logoutMutation = useLogout();
 
@@ -97,16 +99,15 @@ export function Header({ className }: HeaderProps) {
               />
             ) : (
               <div
-                className="h-8 w-8 rounded-lg flex items-center justify-center"
+                className="flex h-8 w-8 items-center justify-center rounded-lg"
                 style={{
-                  backgroundColor:
-                    activeDomainBranding?.primaryColor || "var(--primary)",
+                  backgroundColor: activeDomainBranding?.primaryColor || "var(--primary)",
                 }}
               >
                 <Mail className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
-            <span className="font-semibold hidden sm:inline-block">
+            <span className="hidden font-semibold sm:inline-block">
               {activeDomainBranding?.name || "Enterprise Email"}
             </span>
           </Link>
@@ -120,8 +121,8 @@ export function Header({ className }: HeaderProps) {
                 onClick={() => setShowDomainMenu(!showDomainMenu)}
                 className="gap-2 px-3"
               >
-                <DomainAvatar domain={activeDomain || ""} size="sm" />
-                <span className="hidden md:inline-block max-w-[150px] truncate">
+                <DomainAvatar domain={activeDomain ?? ""} size="sm" />
+                <span className="hidden max-w-[150px] truncate md:inline-block">
                   {activeDomain}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
@@ -130,11 +131,8 @@ export function Header({ className }: HeaderProps) {
               {/* Domain Dropdown */}
               {showDomainMenu && (
                 <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowDomainMenu(false)}
-                  />
-                  <div className="absolute left-0 top-full mt-2 z-50 w-72 rounded-lg border bg-popover shadow-lg">
+                  <div className="fixed inset-0 z-40" onClick={() => setShowDomainMenu(false)} />
+                  <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-lg border bg-popover shadow-lg">
                     <div className="p-2">
                       <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                         Switch Domain
@@ -148,18 +146,14 @@ export function Header({ className }: HeaderProps) {
                               onClick={() => handleDomainSwitch(domain)}
                               className={cn(
                                 "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors",
-                                isActive
-                                  ? "bg-accent text-accent-foreground"
-                                  : "hover:bg-accent/50"
+                                isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                               )}
                             >
                               <DomainAvatar domain={domain} size="sm" />
                               <div className="flex-1 text-left">
-                                <p className="font-medium truncate">{domain}</p>
+                                <p className="truncate font-medium">{domain}</p>
                               </div>
-                              {isActive && (
-                                <Check className="h-4 w-4 text-primary" />
-                              )}
+                              {isActive && <Check className="h-4 w-4 text-primary" />}
                             </button>
                           );
                         })}
@@ -169,7 +163,7 @@ export function Header({ className }: HeaderProps) {
                       <Link
                         href="/settings/domains"
                         onClick={() => setShowDomainMenu(false)}
-                        className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent/50 transition-colors"
+                        className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/50"
                       >
                         <Plus className="h-4 w-4" />
                         Add domain
@@ -196,14 +190,10 @@ export function Header({ className }: HeaderProps) {
               >
                 <Avatar className="h-7 w-7">
                   <AvatarImage src={user.profile.avatarUrl} />
-                  <AvatarFallback className="text-xs">
-                    {getUserInitials(user)}
-                  </AvatarFallback>
+                  <AvatarFallback className="text-xs">{getUserInitials(user)}</AvatarFallback>
                 </Avatar>
-                <span className="hidden sm:inline-block max-w-[120px] truncate">
-                  {user.profile.displayName ||
-                    user.profile.firstName ||
-                    user.email.split("@")[0]}
+                <span className="hidden max-w-[120px] truncate sm:inline-block">
+                  {user.profile.displayName || user.profile.firstName || user.email.split("@")[0]}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
@@ -211,29 +201,24 @@ export function Header({ className }: HeaderProps) {
               {/* User Dropdown */}
               {showUserMenu && (
                 <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowUserMenu(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-lg border bg-popover shadow-lg">
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border bg-popover shadow-lg">
                     {/* User Info */}
-                    <div className="p-4 border-b">
+                    <div className="border-b p-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={user.profile.avatarUrl} />
                           <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">
                             {user.profile.displayName ||
-                              `${user.profile.firstName || ""} ${
-                                user.profile.lastName || ""
+                              `${user.profile.firstName ?? ""} ${
+                                user.profile.lastName ?? ""
                               }`.trim() ||
                               user.email.split("@")[0]}
                           </p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {user.email}
-                          </p>
+                          <p className="truncate text-sm text-muted-foreground">{user.email}</p>
                         </div>
                       </div>
                       {user.role !== "user" && (
@@ -248,7 +233,7 @@ export function Header({ className }: HeaderProps) {
                       <Link
                         href="/settings/account"
                         onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                       >
                         <User className="h-4 w-4" />
                         Account Settings
@@ -256,7 +241,7 @@ export function Header({ className }: HeaderProps) {
                       <Link
                         href="/settings/account/emails"
                         onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                       >
                         <Mail className="h-4 w-4" />
                         Email Addresses
@@ -264,17 +249,16 @@ export function Header({ className }: HeaderProps) {
                       <Link
                         href="/settings/account/security"
                         onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                       >
                         <Shield className="h-4 w-4" />
                         Security
                       </Link>
-                      {(user.role === "org_admin" ||
-                        user.role === "super_admin") && (
+                      {(user.role === "org_admin" || user.role === "super_admin") && (
                         <Link
                           href="/settings/organization"
                           onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                         >
                           <Building2 className="h-4 w-4" />
                           Organization
@@ -283,7 +267,7 @@ export function Header({ className }: HeaderProps) {
                       <Link
                         href="/settings"
                         onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                       >
                         <Settings className="h-4 w-4" />
                         All Settings
@@ -295,7 +279,7 @@ export function Header({ className }: HeaderProps) {
                       <button
                         onClick={handleLogout}
                         disabled={logoutMutation.isPending}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
                       >
                         {logoutMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />

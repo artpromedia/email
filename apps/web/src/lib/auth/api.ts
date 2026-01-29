@@ -22,7 +22,15 @@ import type {
   AuthUser,
 } from "./types";
 
-const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:8081";
+interface ApiErrorResponse {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  };
+}
+
+const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8081";
 
 class AuthApiError extends Error {
   constructor(
@@ -37,17 +45,17 @@ class AuthApiError extends Error {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  const data = await response.json();
-  
+  const data = (await response.json()) as ApiErrorResponse & { data?: T };
+
   if (!response.ok) {
     throw new AuthApiError(
-      data.error?.code || "UNKNOWN_ERROR",
-      data.error?.message || "An error occurred",
+      data.error?.code ?? "UNKNOWN_ERROR",
+      data.error?.message ?? "An error occurred",
       response.status,
       data.error?.details
     );
   }
-  
+
   return data.data as T;
 }
 
@@ -55,12 +63,12 @@ function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  
+
   const accessToken = localStorage.getItem("accessToken");
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
-  
+
   return headers;
 }
 
@@ -74,23 +82,23 @@ export const authApi = {
   async detectDomain(email: string): Promise<DomainInfo | null> {
     const domain = email.split("@")[1];
     if (!domain) return null;
-    
+
     try {
       const response = await fetch(`${AUTH_API_URL}/api/v1/auth/domain/${domain}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-      
+
       if (response.status === 404) {
         return null;
       }
-      
-      return handleResponse<DomainInfo>(response);
+
+      return await handleResponse<DomainInfo>(response);
     } catch {
       return null;
     }
   },
-  
+
   /**
    * Login with email and password
    */
@@ -100,10 +108,10 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    
+
     return handleResponse<LoginResponse>(response);
   },
-  
+
   /**
    * Register a new user
    */
@@ -113,10 +121,10 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    
+
     return handleResponse<RegisterResponse>(response);
   },
-  
+
   /**
    * Logout current user
    */
@@ -125,26 +133,26 @@ export const authApi = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    
+
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
   },
-  
+
   /**
    * Refresh access token
    */
   async refreshToken(): Promise<{ accessToken: string; expiresAt: string }> {
     const refreshToken = localStorage.getItem("refreshToken");
-    
+
     const response = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
     });
-    
+
     return handleResponse(response);
   },
-  
+
   /**
    * Get current user profile
    */
@@ -153,12 +161,12 @@ export const authApi = {
       method: "GET",
       headers: getAuthHeaders(),
     });
-    
+
     return handleResponse<AuthUser>(response);
   },
-  
+
   // SSO Operations
-  
+
   /**
    * Initiate SSO login
    */
@@ -167,10 +175,10 @@ export const authApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
-    
+
     return handleResponse<SSOInitiateResponse>(response);
   },
-  
+
   /**
    * Complete SSO callback
    */
@@ -180,12 +188,12 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    
+
     return handleResponse<LoginResponse>(response);
   },
-  
+
   // Email Management
-  
+
   /**
    * Get user's email addresses
    */
@@ -194,10 +202,10 @@ export const authApi = {
       method: "GET",
       headers: getAuthHeaders(),
     });
-    
+
     return handleResponse<UserEmail[]>(response);
   },
-  
+
   /**
    * Add a new email address
    */
@@ -207,10 +215,10 @@ export const authApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
-    
+
     return handleResponse<UserEmail>(response);
   },
-  
+
   /**
    * Remove an email address
    */
@@ -219,17 +227,17 @@ export const authApi = {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to remove email",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to remove email",
         response.status
       );
     }
   },
-  
+
   /**
    * Set an email as primary
    */
@@ -238,36 +246,39 @@ export const authApi = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to set primary email",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to set primary email",
         response.status
       );
     }
   },
-  
+
   /**
    * Resend verification email
    */
   async resendVerificationEmail(emailId: string): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/emails/${emailId}/resend-verification`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
-    
+    const response = await fetch(
+      `${AUTH_API_URL}/api/v1/auth/emails/${emailId}/resend-verification`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(),
+      }
+    );
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to resend verification",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to resend verification",
         response.status
       );
     }
   },
-  
+
   /**
    * Verify email with token
    */
@@ -277,19 +288,19 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to verify email",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to verify email",
         response.status
       );
     }
   },
-  
+
   // Session Management
-  
+
   /**
    * Get active sessions
    */
@@ -298,10 +309,10 @@ export const authApi = {
       method: "GET",
       headers: getAuthHeaders(),
     });
-    
+
     return handleResponse<UserSession[]>(response);
   },
-  
+
   /**
    * Revoke a session
    */
@@ -310,17 +321,17 @@ export const authApi = {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to revoke session",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to revoke session",
         response.status
       );
     }
   },
-  
+
   /**
    * Revoke all other sessions
    */
@@ -329,19 +340,19 @@ export const authApi = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to revoke sessions",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to revoke sessions",
         response.status
       );
     }
   },
-  
+
   // MFA Operations
-  
+
   /**
    * Setup MFA
    */
@@ -350,10 +361,10 @@ export const authApi = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    
+
     return handleResponse<MFASetupResponse>(response);
   },
-  
+
   /**
    * Verify and enable MFA
    */
@@ -363,17 +374,17 @@ export const authApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Invalid MFA code",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Invalid MFA code",
         response.status
       );
     }
   },
-  
+
   /**
    * Disable MFA
    */
@@ -383,19 +394,19 @@ export const authApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to disable MFA",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to disable MFA",
         response.status
       );
     }
   },
-  
+
   // Password Operations
-  
+
   /**
    * Change password
    */
@@ -405,17 +416,17 @@ export const authApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to change password",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to change password",
         response.status
       );
     }
   },
-  
+
   /**
    * Request password reset
    */
@@ -425,17 +436,17 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to send reset email",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to send reset email",
         response.status
       );
     }
   },
-  
+
   /**
    * Reset password with token
    */
@@ -445,12 +456,12 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse;
       throw new AuthApiError(
-        data.error?.code || "UNKNOWN_ERROR",
-        data.error?.message || "Failed to reset password",
+        data.error?.code ?? "UNKNOWN_ERROR",
+        data.error?.message ?? "Failed to reset password",
         response.status
       );
     }

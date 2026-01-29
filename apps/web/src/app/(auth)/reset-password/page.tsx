@@ -1,15 +1,14 @@
+/* eslint-disable jsx-a11y/no-autofocus */
 "use client";
 
 /**
  * Reset Password Page - Set new password with reset token
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Lock,
   Eye,
@@ -22,6 +21,8 @@ import {
   X,
   KeyRound,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -64,7 +65,7 @@ const resetPasswordSchema = z
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -103,9 +104,9 @@ export default function ResetPasswordPage() {
   // Invalid token
   if (!token) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-6 w-6 text-destructive" />
           </div>
           <div>
@@ -117,10 +118,10 @@ export default function ResetPasswordPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
             <p className="text-muted-foreground">
-              Password reset links expire after 1 hour for security reasons.
-              Please request a new one.
+              Password reset links expire after 1 hour for security reasons. Please request a new
+              one.
             </p>
           </div>
         </CardContent>
@@ -137,9 +138,9 @@ export default function ResetPasswordPage() {
   // Success state
   if (success) {
     return (
-      <Card className="shadow-lg border-0">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-6 w-6 text-green-500" />
           </div>
           <div>
@@ -151,10 +152,8 @@ export default function ResetPasswordPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-muted text-sm text-center">
-            <p className="text-muted-foreground">
-              You can now sign in with your new password.
-            </p>
+          <div className="rounded-lg bg-muted p-4 text-center text-sm">
+            <p className="text-muted-foreground">You can now sign in with your new password.</p>
           </div>
         </CardContent>
 
@@ -178,15 +177,15 @@ export default function ResetPasswordPage() {
         confirmPassword: data.confirmPassword,
       });
       setSuccess(true);
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to reset password:", error);
     }
   };
 
   return (
-    <Card className="shadow-lg border-0">
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <KeyRound className="h-6 w-6 text-primary" />
         </div>
         <div>
@@ -203,7 +202,7 @@ export default function ResetPasswordPage() {
           <div className="space-y-2">
             <Label htmlFor="password">New password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -218,11 +217,7 @@ export default function ResetPasswordPage() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
 
@@ -236,11 +231,7 @@ export default function ResetPasswordPage() {
                       req.met ? "text-green-600" : "text-muted-foreground"
                     }`}
                   >
-                    {req.met ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <X className="h-3 w-3" />
-                    )}
+                    {req.met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                     {req.label}
                   </div>
                 ))}
@@ -248,7 +239,7 @@ export default function ResetPasswordPage() {
             )}
 
             {errors.password && !password && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.password.message}
               </p>
@@ -259,7 +250,7 @@ export default function ResetPasswordPage() {
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
@@ -273,15 +264,11 @@ export default function ResetPasswordPage() {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.confirmPassword && (
-              <p className="text-sm text-destructive flex items-center gap-1">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 {errors.confirmPassword.message}
               </p>
@@ -290,8 +277,8 @@ export default function ResetPasswordPage() {
 
           {/* Error Message */}
           {resetPasswordMutation.error && (
-            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
                 {resetPasswordMutation.error instanceof Error
                   ? resetPasswordMutation.error.message
@@ -304,9 +291,7 @@ export default function ResetPasswordPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={
-              isSubmitting || resetPasswordMutation.isPending || !allRequirementsMet
-            }
+            disabled={isSubmitting || resetPasswordMutation.isPending || !allRequirementsMet}
           >
             {resetPasswordMutation.isPending ? (
               <>
@@ -324,9 +309,9 @@ export default function ResetPasswordPage() {
       </CardContent>
 
       <CardFooter>
-        <p className="text-center text-sm text-muted-foreground w-full">
+        <p className="w-full text-center text-sm text-muted-foreground">
           Remember your password?{" "}
-          <Link href="/login" className="text-primary hover:underline font-medium">
+          <Link href="/login" className="font-medium text-primary hover:underline">
             Sign in
           </Link>
         </p>
