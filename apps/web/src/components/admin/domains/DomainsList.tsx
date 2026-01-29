@@ -38,11 +38,14 @@ interface DomainsListProps {
 // ============================================================
 
 interface StatusBadgeProps {
-  status: DomainStatus;
+  readonly status: DomainStatus;
 }
 
-function StatusBadge({ status }: StatusBadgeProps) {
-  const config = {
+function StatusBadge({ status }: Readonly<StatusBadgeProps>) {
+  const config: Record<
+    DomainStatus,
+    { label: string; className: string; icon: typeof CheckCircle2 }
+  > = {
     pending: {
       label: "Pending",
       className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -65,7 +68,8 @@ function StatusBadge({ status }: StatusBadgeProps) {
     },
   };
 
-  const { label, className, icon: Icon } = config[status] || config.pending;
+  const statusConfig = config[status as DomainStatus] ?? config.pending;
+  const { label, className, icon: Icon } = statusConfig;
 
   return (
     <span
@@ -85,11 +89,11 @@ function StatusBadge({ status }: StatusBadgeProps) {
 // ============================================================
 
 interface DnsStatusProps {
-  type: "MX" | "SPF" | "DKIM" | "DMARC";
-  verified: boolean;
+  readonly type: "MX" | "SPF" | "DKIM" | "DMARC";
+  readonly verified: boolean;
 }
 
-function DnsStatusIcon({ type, verified }: DnsStatusProps) {
+function DnsStatusIcon({ type, verified }: Readonly<DnsStatusProps>) {
   return (
     <div
       className="flex items-center gap-1"
@@ -110,11 +114,11 @@ function DnsStatusIcon({ type, verified }: DnsStatusProps) {
 // ============================================================
 
 interface DomainsTableProps {
-  domains: AdminDomain[];
-  onDomainClick: (domain: AdminDomain) => void;
+  readonly domains: AdminDomain[];
+  readonly onDomainClick: (domain: AdminDomain) => void;
 }
 
-function DomainsTable({ domains, onDomainClick }: DomainsTableProps) {
+function DomainsTable({ domains, onDomainClick }: Readonly<DomainsTableProps>) {
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -233,21 +237,22 @@ function DomainsTable({ domains, onDomainClick }: DomainsTableProps) {
 // MAIN COMPONENT
 // ============================================================
 
-export function DomainsList({ className }: DomainsListProps) {
+export function DomainsList({ className }: Readonly<DomainsListProps>) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DomainStatus | "all">("all");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
-  const query: DomainListQuery = useMemo(
-    () => ({
-      search: search || undefined,
-      status: statusFilter !== "all" ? statusFilter : undefined,
-      page: 1,
-      pageSize: 50,
-      sortBy: "name",
-      sortOrder: "asc",
-    }),
+  const query = useMemo(
+    () =>
+      ({
+        ...(search ? { search } : {}),
+        ...(statusFilter === "all" ? {} : { status: statusFilter }),
+        page: 1,
+        pageSize: 50,
+        sortBy: "name" as const,
+        sortOrder: "asc" as const,
+      }) satisfies DomainListQuery,
     [search, statusFilter]
   );
 
@@ -283,7 +288,7 @@ export function DomainsList({ className }: DomainsListProps) {
       a.download = `domains-${new Date().toISOString()}.csv`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to export domains:", error);

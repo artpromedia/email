@@ -51,7 +51,7 @@ interface StepIndicatorProps {
   }[];
 }
 
-function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
+function StepIndicator({ currentStep, steps }: Readonly<StepIndicatorProps>) {
   return (
     <div className="mb-8 flex items-center justify-center gap-2">
       {steps.map((step, index) => {
@@ -59,17 +59,19 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
         const isCurrent = step.number === currentStep;
         const Icon = step.icon;
 
+        const getStepClasses = () => {
+          if (isCompleted) return "border-green-500 bg-green-500 text-white";
+          if (isCurrent) return "border-blue-500 bg-blue-500 text-white";
+          return "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-800";
+        };
+
         return (
           <div key={step.number} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
                 className={cn(
                   "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors",
-                  isCompleted
-                    ? "border-green-500 bg-green-500 text-white"
-                    : isCurrent
-                      ? "border-blue-500 bg-blue-500 text-white"
-                      : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-800"
+                  getStepClasses()
                 )}
               >
                 {isCompleted ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
@@ -103,10 +105,10 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
 // ============================================================
 
 interface CopyButtonProps {
-  value: string;
+  readonly value: string;
 }
 
-function CopyButton({ value }: CopyButtonProps) {
+function CopyButton({ value }: Readonly<CopyButtonProps>) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
@@ -162,7 +164,7 @@ function Step1EnterDomain({
   onNext,
   isLoading,
   error,
-}: Step1Props) {
+}: Readonly<Step1Props>) {
   const [domainError, setDomainError] = useState<string | undefined>();
   const checkAvailability = useCheckDomainAvailability();
 
@@ -312,12 +314,11 @@ function Step1EnterDomain({
 // ============================================================
 
 interface Step2Props {
-  domainId: string;
-  domain: string;
-  verificationRecords: VerificationRecord[];
-  selectedMethod: VerificationMethod | undefined;
-  onMethodSelect: (method: VerificationMethod) => void;
-  onVerify: () => void;
+  readonly domain: string;
+  readonly verificationRecords: VerificationRecord[];
+  readonly selectedMethod: VerificationMethod | undefined;
+  readonly onMethodSelect: (method: VerificationMethod) => void;
+  readonly onVerify: () => void;
   onBack: () => void;
   isVerifying: boolean;
   isVerified: boolean;
@@ -325,7 +326,6 @@ interface Step2Props {
 }
 
 function Step2VerifyOwnership({
-  _domainId,
   domain,
   verificationRecords,
   selectedMethod,
@@ -335,7 +335,7 @@ function Step2VerifyOwnership({
   isVerifying,
   isVerified,
   verificationError,
-}: Step2Props) {
+}: Readonly<Step2Props>) {
   const selectedRecord = verificationRecords.find((r) => r.method === selectedMethod);
 
   const methodLabels: Record<VerificationMethod, { title: string; description: string }> = {
@@ -527,18 +527,16 @@ function Step2VerifyOwnership({
 // ============================================================
 
 interface Step3Props {
-  domainId: string;
-  domain: string;
-  dnsRecords: DnsRecord[];
-  onVerifyDns: () => void;
-  onNext: () => void;
-  onBack: () => void;
+  readonly domain: string;
+  readonly dnsRecords: DnsRecord[];
+  readonly onVerifyDns: () => void;
+  readonly onNext: () => void;
+  readonly onBack: () => void;
   isVerifying: boolean;
   allVerified: boolean;
 }
 
 function Step3ConfigureDns({
-  _domainId,
   domain,
   dnsRecords,
   onVerifyDns,
@@ -546,7 +544,7 @@ function Step3ConfigureDns({
   onBack,
   isVerifying,
   allVerified,
-}: Step3Props) {
+}: Readonly<Step3Props>) {
   const getStatusIcon = (status: DnsRecordStatus) => {
     switch (status) {
       case "verified":
@@ -611,13 +609,12 @@ function Step3ConfigureDns({
                     <span
                       className={cn(
                         "text-sm",
-                        record.status === "verified"
-                          ? "text-green-600"
-                          : record.status === "missing"
-                            ? "text-red-600"
-                            : record.status === "mismatch"
-                              ? "text-yellow-600"
-                              : "text-neutral-500"
+                        (() => {
+                          if (record.status === "verified") return "text-green-600";
+                          if (record.status === "missing") return "text-red-600";
+                          if (record.status === "mismatch") return "text-yellow-600";
+                          return "text-neutral-500";
+                        })()
                       )}
                     >
                       {getStatusText(record.status)}
@@ -687,21 +684,36 @@ function Step3ConfigureDns({
         )}
 
         {/* Status Summary */}
-        {allVerified ? (
-          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <span className="text-sm font-medium text-green-700 dark:text-green-400">
-              All DNS records verified!
-            </span>
-          </div>
-        ) : requiredVerified ? (
-          <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-            <span className="text-sm text-yellow-700 dark:text-yellow-400">
-              Required records verified. Optional records pending.
-            </span>
-          </div>
-        ) : null}
+        {(() => {
+          if (allVerified) {
+            return (
+              <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                  All DNS records verified!
+                </span>
+              </div>
+            );
+          }
+          if (requiredVerified) {
+            return (
+              <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
+                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                <span className="text-sm text-yellow-700 dark:text-yellow-400">
+                  Required records verified. Optional records pending.
+                </span>
+              </div>
+            );
+          }
+          return (
+            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+              <XCircle className="h-5 w-5 text-red-600" />
+              <span className="text-sm text-red-700 dark:text-red-400">
+                Some DNS records need to be configured.
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-4">
@@ -756,7 +768,7 @@ interface Step4Props {
   isLoading: boolean;
 }
 
-function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
+function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Readonly<Step4Props>) {
   const [catchAllEnabled, setCatchAllEnabled] = useState(false);
   const [catchAllAction, setCatchAllAction] = useState<"deliver" | "forward" | "reject">("reject");
   const [catchAllDestination, setCatchAllDestination] = useState("");
