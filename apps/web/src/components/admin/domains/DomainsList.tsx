@@ -42,10 +42,7 @@ interface StatusBadgeProps {
 }
 
 function StatusBadge({ status }: Readonly<StatusBadgeProps>) {
-  const config: Record<
-    DomainStatus,
-    { label: string; className: string; icon: typeof CheckCircle2 }
-  > = {
+  const config = {
     pending: {
       label: "Pending",
       className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -66,10 +63,12 @@ function StatusBadge({ status }: Readonly<StatusBadgeProps>) {
       className: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400",
       icon: XCircle,
     },
-  };
+  } as const;
 
-  const statusConfig = config[status as DomainStatus] ?? config.pending;
-  const { label, className, icon: Icon } = statusConfig;
+  type ConfigKey = keyof typeof config;
+  const isValidStatus = (s: string): s is ConfigKey => s in config;
+  const statusKey: ConfigKey = isValidStatus(status) ? status : "pending";
+  const { label, className, icon: Icon } = config[statusKey];
 
   return (
     <span
@@ -243,18 +242,24 @@ export function DomainsList({ className }: Readonly<DomainsListProps>) {
   const [statusFilter, setStatusFilter] = useState<DomainStatus | "all">("all");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
-  const query = useMemo(
-    () =>
-      ({
-        ...(search ? { search } : {}),
-        ...(statusFilter === "all" ? {} : { status: statusFilter }),
-        page: 1,
-        pageSize: 50,
-        sortBy: "name" as const,
-        sortOrder: "asc" as const,
-      }) satisfies DomainListQuery,
-    [search, statusFilter]
-  );
+  const query = useMemo<DomainListQuery>(() => {
+    const baseQuery: DomainListQuery = {
+      page: 1,
+      pageSize: 50,
+      sortBy: "name",
+      sortOrder: "asc",
+    };
+    
+    if (search) {
+      baseQuery.search = search;
+    }
+    
+    if (statusFilter !== "all") {
+      baseQuery.status = statusFilter;
+    }
+    
+    return baseQuery;
+  }, [search, statusFilter]);
 
   const { data, isLoading, refetch } = useAdminDomains(query);
   const bulkVerifyDns = useBulkVerifyDns();
