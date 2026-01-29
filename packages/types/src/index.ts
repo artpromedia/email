@@ -4,7 +4,7 @@
  */
 
 // Admin domain types
-export * from "./admin-domain";
+export * from "./admin-domain.js";
 
 // Email types
 export {

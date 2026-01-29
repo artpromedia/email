@@ -15,7 +15,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-scripts/postgres:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-email_admin} -d ${POSTGRES_DB:-enterprise_email}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-email_admin} -d ${POSTGRES_DB:-enterprise_email}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -118,7 +122,8 @@ services:
     volumes:
       - opensearch_data:/usr/share/opensearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
+      test:
+        ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -159,14 +164,14 @@ services:
       MP_MAX_MESSAGES: 5000
       MP_DATABASE: /data/mailpit.db
       MP_WEBROOT: /
-      # Multi-domain relay configuration
-      MP_SMTP_RELAY_CONFIG: /config/relay.yaml
+      # Multi-domain relay configuration - Disabled for local dev
+      # MP_SMTP_RELAY_CONFIG: /config/relay.yaml
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_HTTP_PORT:-8025}:8025"
     volumes:
       - mailpit_data:/data
-      - ./docker/config/mailpit:/config:ro
+      # - ./docker/config/mailpit:/config:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v1/info"]
       interval: 10s

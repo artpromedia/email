@@ -1,6 +1,7 @@
 # Multi-Domain Email Infrastructure
 
-Complete production infrastructure for enterprise multi-domain email system with automatic DNS verification, TLS certificate provisioning, and per-domain monitoring.
+Complete production infrastructure for enterprise multi-domain email system with automatic DNS
+verification, TLS certificate provisioning, and per-domain monitoring.
 
 ## Architecture Overview
 
@@ -51,6 +52,7 @@ Complete production infrastructure for enterprise multi-domain email system with
 ### 1. DNS Architecture
 
 #### Primary Domain Setup
+
 ```
 mail.enterprise-email.com → Load Balancer IP
 smtp.enterprise-email.com → Load Balancer IP
@@ -62,6 +64,7 @@ api.enterprise-email.com → Ingress Controller
 #### Customer Domain Configuration
 
 **Option A: MX to Primary Domain**
+
 ```
 ; Customer DNS
 example.com.          MX  10 mail.enterprise-email.com.
@@ -69,6 +72,7 @@ webmail.example.com.  CNAME webmail.enterprise-email.com.
 ```
 
 **Option B: Custom Vanity Domain**
+
 ```
 ; Customer DNS
 example.com.          MX  10 mail.example.com.
@@ -77,6 +81,7 @@ webmail.example.com.  CNAME webmail.enterprise-email.com.
 ```
 
 #### DNS Verification Records
+
 ```
 ; Domain ownership verification
 _mail-verification.example.com. TXT "mail-verification=<token>"
@@ -101,6 +106,7 @@ _dmarc.example.com.             TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@en
 #### Certificate Strategies
 
 **Primary Domain (Wildcard)**
+
 ```yaml
 dnsNames:
   - "*.enterprise-email.com"
@@ -108,6 +114,7 @@ dnsNames:
 ```
 
 **Customer Domains (Per-Domain)**
+
 ```yaml
 dnsNames:
   - example.com
@@ -118,6 +125,7 @@ dnsNames:
 ### 3. Kubernetes Infrastructure
 
 #### Namespace Structure
+
 ```
 email-system/         # Main application namespace
 cert-manager/         # Certificate management
@@ -128,16 +136,19 @@ monitoring/           # Prometheus + Grafana
 #### Key Resources
 
 **Ingress Controller with SNI**
+
 - Automatic TLS certificate selection
 - Per-domain rate limiting
 - Custom headers for domain identification
 
 **Dynamic Ingress Controller**
+
 - Watches database for verified domains
 - Creates ingress rules automatically
 - Manages certificate lifecycle
 
 **Service Mesh**
+
 - Domain-based routing
 - Request tracing per organization
 - Circuit breakers and retries
@@ -147,17 +158,20 @@ monitoring/           # Prometheus + Grafana
 #### Postfix Setup
 
 **Virtual Domain Handling**
+
 ```
 virtual_mailbox_domains = proxy:pgsql:/etc/postfix/pgsql-domains.cf
 virtual_mailbox_maps = proxy:pgsql:/etc/postfix/pgsql-mailboxes.cf
 ```
 
 **SNI for TLS**
+
 - Present correct certificate per domain
 - Automatic certificate rotation
 - TLS 1.2+ enforcement
 
 **IP Pool Management**
+
 ```
 Domain A → Dedicated IP Pool (10.0.1.10-11)
 Domain B → Shared IP Pool (10.0.1.20-29)
@@ -189,6 +203,7 @@ CREATE TABLE domain_ip_pools (
 #### IP Warming Strategy
 
 **New Domain/IP Pair**
+
 - Day 1-3: 100 emails/day
 - Day 4-7: 500 emails/day
 - Day 8-14: 2,000 emails/day
@@ -200,28 +215,30 @@ CREATE TABLE domain_ip_pools (
 For compliance-sensitive customers:
 
 #### Dedicated Infrastructure
+
 ```hcl
 module "isolated_domain" {
   source = "./modules/isolated-domain"
-  
+
   domain_name     = "regulated-client.com"
   organization_id = "org-uuid"
   region          = "eu-west-1"
-  
+
   # Dedicated database
   database_instance_class = "db.r6g.xlarge"
   enable_encryption       = true
   backup_retention_days   = 30
-  
+
   # Dedicated storage
   storage_bucket_prefix = "regulated-client"
-  
+
   # Dedicated encryption keys
   kms_key_alias = "regulated-client-key"
 }
 ```
 
 #### Features
+
 - Separate PostgreSQL instance per domain
 - Separate S3 bucket with encryption
 - Dedicated KMS keys
@@ -233,6 +250,7 @@ module "isolated_domain" {
 #### Per-Domain Metrics
 
 **Prometheus Labels**
+
 ```
 smtp_messages_total{domain="example.com", organization="org-123"}
 domain_storage_used_bytes{domain="example.com"}
@@ -240,6 +258,7 @@ domain_verified{domain="example.com", status="active"}
 ```
 
 **Grafana Dashboards**
+
 - Multi-domain overview
 - Per-domain email volume
 - Storage usage by domain
@@ -249,21 +268,25 @@ domain_verified{domain="example.com", status="active"}
 #### Alert Rules
 
 **DNS Alerts**
+
 - DNS record changed
 - Domain verification failed
 - DNS health check failed
 
 **Certificate Alerts**
+
 - Certificate expiring (30 days)
 - Certificate expiring critical (7 days)
 - Certificate renewal failed
 
 **Performance Alerts**
+
 - High error rate per domain
 - Queue backlog per domain
 - High latency per domain
 
 **Security Alerts**
+
 - SPF/DKIM failures
 - High authentication failures
 - Reputation score drop
@@ -271,6 +294,7 @@ domain_verified{domain="example.com", status="active"}
 ### 8. Deployment
 
 #### Prerequisites
+
 ```bash
 # Install required tools
 brew install terraform kubectl helm
@@ -285,6 +309,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx \
 ```
 
 #### Terraform Deployment
+
 ```bash
 cd infrastructure/terraform
 
@@ -301,6 +326,7 @@ terraform apply
 ```
 
 #### Kubernetes Deployment
+
 ```bash
 cd infrastructure/kubernetes
 
@@ -317,6 +343,7 @@ kubectl apply -f ../services/
 ```
 
 #### Postfix Configuration
+
 ```bash
 # Copy configuration files
 cp infrastructure/postfix/*.cf /etc/postfix/
@@ -331,6 +358,7 @@ postfix reload
 ### 9. Domain Onboarding Flow
 
 #### 1. Customer Adds Domain
+
 ```bash
 POST /api/domains
 {
@@ -341,6 +369,7 @@ POST /api/domains
 ```
 
 #### 2. System Returns DNS Records
+
 ```json
 {
   "domain_id": "domain-456",
@@ -362,46 +391,55 @@ POST /api/domains
 ```
 
 #### 3. Customer Configures DNS
+
 Customer adds records to their DNS provider
 
 #### 4. Automated Verification
+
 - DNS monitor checks every 5 minutes
 - Verifies ownership, MX, SPF, DKIM, DMARC
 - Updates domain status in database
 
 #### 5. Certificate Provisioning
+
 - cert-manager requests certificate from Let's Encrypt
 - Uses DNS-01 or HTTP-01 challenge
 - Stores certificate in Kubernetes Secret
 
 #### 6. Ingress Configuration
+
 - Dynamic ingress controller detects verified domain
 - Creates new ingress rule
 - Adds SNI configuration for TLS
 
 #### 7. SMTP Configuration
+
 - Postfix virtual domain lookup includes new domain
 - IP pool assigned (if applicable)
 - DKIM key generated and signed
 
 #### 8. Domain Active
+
 Domain is ready to send/receive email
 
 ### 10. Scaling Considerations
 
 #### Horizontal Scaling
+
 - SMTP servers: Scale based on connection count
 - IMAP servers: Scale based on active sessions
 - API services: Scale based on request rate
 - Storage service: Scale based on I/O operations
 
 #### Database Scaling
+
 - Read replicas for domain lookups
 - Connection pooling
 - Query caching
 - Partitioning by organization
 
 #### Storage Scaling
+
 - S3 with CloudFront for attachments
 - Lifecycle policies (Glacier after 90 days)
 - Compression and deduplication
@@ -410,12 +448,14 @@ Domain is ready to send/receive email
 ### 11. Disaster Recovery
 
 #### Backup Strategy
+
 - Database: Automated daily backups (30-day retention)
 - Email storage: S3 versioning + cross-region replication
 - Configuration: Git repository + encrypted secrets
 - Certificates: Backed up to S3
 
 #### Recovery Procedures
+
 - RTO: 4 hours
 - RPO: 15 minutes
 - Automated failover to backup region
@@ -424,18 +464,21 @@ Domain is ready to send/receive email
 ### 12. Security
 
 #### Network Security
+
 - VPC with private subnets
 - Security groups restricting traffic
 - WAF on public endpoints
 - DDoS protection
 
 #### Data Security
+
 - Encryption at rest (KMS)
 - Encryption in transit (TLS 1.2+)
 - Secrets management (AWS Secrets Manager)
 - Regular security scans
 
 #### Access Control
+
 - RBAC for Kubernetes
 - IAM roles with least privilege
 - Audit logging
@@ -444,6 +487,7 @@ Domain is ready to send/receive email
 ## Testing
 
 ### DNS Verification Testing
+
 ```bash
 # Test domain verification
 go run services/domain-manager/cmd/verify-domain/main.go \
@@ -452,6 +496,7 @@ go run services/domain-manager/cmd/verify-domain/main.go \
 ```
 
 ### Certificate Testing
+
 ```bash
 # Test certificate provisioning
 kubectl get certificate -n email-system
@@ -459,6 +504,7 @@ kubectl describe certificate example-com-tls -n email-system
 ```
 
 ### SMTP Testing
+
 ```bash
 # Test SMTP delivery
 swaks --to user@example.com \
@@ -473,6 +519,7 @@ kubectl logs -f deployment/smtp-server -n email-system
 ## Troubleshooting
 
 ### DNS Not Resolving
+
 ```bash
 # Check DNS propagation
 dig example.com MX
@@ -483,6 +530,7 @@ kubectl logs -f deployment/domain-manager -n email-system | grep example.com
 ```
 
 ### Certificate Not Issuing
+
 ```bash
 # Check cert-manager status
 kubectl get certificaterequest -n email-system
@@ -493,6 +541,7 @@ kubectl logs -n cert-manager deployment/cert-manager
 ```
 
 ### Email Not Routing
+
 ```bash
 # Check Postfix logs
 tail -f /var/log/mail.log | grep example.com
@@ -512,6 +561,7 @@ psql -c "SELECT * FROM domains WHERE name = 'example.com';"
 ## Support
 
 For issues or questions:
+
 - Email: support@enterprise-email.com
 - Slack: #email-infrastructure
 - Docs: https://docs.enterprise-email.com

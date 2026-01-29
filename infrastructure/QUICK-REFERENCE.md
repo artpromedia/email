@@ -3,12 +3,14 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - AWS account with appropriate permissions
 - kubectl configured
 - terraform >= 1.5
 - helm >= 3.x
 
 ### Deploy Infrastructure
+
 ```bash
 cd infrastructure
 chmod +x deploy.sh
@@ -26,6 +28,7 @@ export GRAFANA_PASSWORD=<secure-password>
 ## 📋 Common Operations
 
 ### Add New Customer Domain
+
 ```bash
 # 1. Customer adds domain via API
 curl -X POST https://api.enterprise-email.com/domains \
@@ -43,6 +46,7 @@ kubectl logs -f deployment/domain-manager -n email-system | grep example.com
 ```
 
 ### Check Domain Status
+
 ```bash
 # View all domains and verification status
 kubectl exec -it deployment/domain-manager -n email-system -- \
@@ -54,6 +58,7 @@ kubectl exec -it deployment/domain-manager -n email-system -- \
 ```
 
 ### Certificate Management
+
 ```bash
 # List all certificates
 kubectl get certificates -n email-system
@@ -67,6 +72,7 @@ kubectl delete certificate example-com-tls -n email-system
 ```
 
 ### IP Pool Management
+
 ```bash
 # Create new IP pool
 psql $DATABASE_URL <<EOF
@@ -77,8 +83,8 @@ EOF
 # Assign pool to domain
 psql $DATABASE_URL <<EOF
 INSERT INTO domain_ip_pools (domain_id, pool_id)
-SELECT 
-  d.id, 
+SELECT
+  d.id,
   ip.id
 FROM domains d, ip_pools ip
 WHERE d.name = 'example.com' AND ip.pool_name = 'dedicated-vip';
@@ -95,6 +101,7 @@ EOF
 ```
 
 ### Monitor Domain Health
+
 ```bash
 # Access Grafana
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
@@ -113,6 +120,7 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 909
 ## 🔍 Troubleshooting
 
 ### DNS Not Verifying
+
 ```bash
 # 1. Check DNS propagation
 dig example.com MX
@@ -128,6 +136,7 @@ kubectl logs -f deployment/domain-manager -n email-system | grep "DNS verificati
 ```
 
 ### Certificate Not Issuing
+
 ```bash
 # 1. Check certificate request
 kubectl get certificaterequest -n email-system
@@ -143,6 +152,7 @@ kubectl describe certificate example-com-tls -n email-system
 ```
 
 ### Email Not Routing
+
 ```bash
 # 1. Check if domain is active in database
 psql $DATABASE_URL -c "SELECT name, status, verified FROM domains WHERE name = 'example.com';"
@@ -162,13 +172,14 @@ kubectl exec -it deployment/smtp-server -n email-system -- \
 ```
 
 ### High Error Rate Alert
+
 ```bash
 # 1. Check Prometheus alert
 kubectl get prometheusrules -n monitoring
 
 # 2. Query error metrics
 # In Prometheus UI (localhost:9090):
-rate(smtp_messages_failed_total{domain="example.com"}[5m]) / 
+rate(smtp_messages_failed_total{domain="example.com"}[5m]) /
 rate(smtp_messages_total{domain="example.com"}[5m])
 
 # 3. Check SMTP server logs
@@ -181,12 +192,13 @@ psql $DATABASE_URL -c "SELECT * FROM domains WHERE name = 'example.com';"
 ## 📊 Monitoring Queries
 
 ### Prometheus Queries
+
 ```promql
 # Email volume by domain (messages/minute)
 sum by (domain) (rate(smtp_messages_total[5m]) * 60)
 
 # Error rate by domain (%)
-rate(smtp_messages_failed_total{domain!=""}[5m]) / 
+rate(smtp_messages_failed_total{domain!=""}[5m]) /
 rate(smtp_messages_total{domain!=""}[5m]) * 100
 
 # Storage usage by domain (GB)
@@ -206,9 +218,10 @@ ip_warming_phase{domain!=""}
 ```
 
 ### Database Queries
+
 ```sql
 -- Domains summary
-SELECT 
+SELECT
   name,
   status,
   verified,
@@ -218,7 +231,7 @@ FROM domains
 ORDER BY created_at DESC;
 
 -- Domain storage usage
-SELECT 
+SELECT
   d.name,
   ROUND(d.storage_used_bytes / 1024.0 / 1024 / 1024, 2) as used_gb,
   ROUND(d.storage_quota_bytes / 1024.0 / 1024 / 1024, 2) as quota_gb,
@@ -228,7 +241,7 @@ WHERE d.status = 'active'
 ORDER BY usage_pct DESC;
 
 -- Top sending domains (last 7 days)
-SELECT 
+SELECT
   d.name,
   COUNT(*) as email_count
 FROM emails e
@@ -240,7 +253,7 @@ ORDER BY email_count DESC
 LIMIT 10;
 
 -- IP pool usage
-SELECT 
+SELECT
   ip.pool_name,
   ip.pool_type,
   COUNT(DISTINCT dip.domain_id) as domain_count,
@@ -252,7 +265,7 @@ WHERE ip.active = true
 GROUP BY ip.id;
 
 -- Domains in IP warming
-SELECT 
+SELECT
   d.name,
   iws.current_phase,
   iws.daily_limit,
@@ -266,6 +279,7 @@ WHERE iws.status = 'active';
 ## 🔧 Maintenance
 
 ### Scale Services
+
 ```bash
 # Scale SMTP servers
 kubectl scale deployment smtp-server -n email-system --replicas=5
@@ -278,6 +292,7 @@ kubectl scale deployment web-client -n email-system --replicas=4
 ```
 
 ### Update Configuration
+
 ```bash
 # Update ingress
 kubectl edit ingress mail-ingress-primary -n email-system
@@ -290,6 +305,7 @@ kubectl rollout restart deployment/domain-manager -n email-system
 ```
 
 ### Backup and Restore
+
 ```bash
 # Backup database
 pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
@@ -304,6 +320,7 @@ psql $DATABASE_URL < backup-20240129.sql
 ## 🔐 Security
 
 ### Rotate Secrets
+
 ```bash
 # Update database password
 kubectl create secret generic database-credentials \
@@ -316,6 +333,7 @@ kubectl rollout restart deployment -n email-system
 ```
 
 ### Update TLS Certificates
+
 ```bash
 # Let's Encrypt auto-renews, but to force renewal:
 kubectl delete certificate <cert-name> -n email-system
@@ -327,28 +345,30 @@ kubectl get certificaterequest -n email-system
 ## 📱 Alerting
 
 ### Configure Alertmanager
+
 ```yaml
 # alertmanager-config.yaml
 receivers:
-  - name: 'email'
+  - name: "email"
     email_configs:
-      - to: 'ops@enterprise-email.com'
-        from: 'alerts@enterprise-email.com'
-        smarthost: 'smtp.enterprise-email.com:587'
-  - name: 'slack'
+      - to: "ops@enterprise-email.com"
+        from: "alerts@enterprise-email.com"
+        smarthost: "smtp.enterprise-email.com:587"
+  - name: "slack"
     slack_configs:
-      - api_url: '$SLACK_WEBHOOK_URL'
-        channel: '#email-alerts'
+      - api_url: "$SLACK_WEBHOOK_URL"
+        channel: "#email-alerts"
 
 route:
-  receiver: 'email'
+  receiver: "email"
   routes:
     - match:
         severity: critical
-      receiver: 'slack'
+      receiver: "slack"
 ```
 
 Apply:
+
 ```bash
 kubectl create secret generic alertmanager-config \
   --from-file=alertmanager.yaml=alertmanager-config.yaml \

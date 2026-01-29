@@ -107,7 +107,7 @@ export const DomainSelector = forwardRef<HTMLDivElement, DomainSelectorProps>(
   (
     {
       onChange,
-      _placeholder = "Select domain",
+      placeholder: _placeholder = "Select domain",
       disabled = false,
       size = "md",
       showDomain = false,

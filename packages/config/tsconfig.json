@@ -4,7 +4,6 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@email/config": ["./src/index.ts"],
       "@email/config/*": ["./src/*"]

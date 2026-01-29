@@ -7,16 +7,13 @@
 
 # Host pattern matching for different domains
 # In development, all domains route to Mailpit for capture
-host:
-  - match: ".*@example\\.com$"
-    relay: ""  # Empty = capture locally
-    
-  - match: ".*@example\\.org$"
-    relay: ""  # Empty = capture locally
-    
-  - match: ".*@subsidiary\\.com$"
-    relay: ""  # Empty = capture locally
+# Simplified format for Mailpit
+allow:
+  - "*@example.com"
+  - "*@example.org"
+  - "*@subsidiary.com"
+  - "*" # Allow all by default
 
-# Default: capture all emails locally
-default:
-  relay: ""
+
+# Capture all emails locally (no relay)
+# Leave relay section empty or omit it

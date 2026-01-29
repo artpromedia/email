@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS ip_pools (
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    
+
     CONSTRAINT valid_pool_type CHECK (pool_type IN ('dedicated', 'shared', 'high-volume'))
 );
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS domain_ip_pools (
     assigned_by UUID, -- User who assigned the pool
     is_primary BOOLEAN DEFAULT true,
     priority INTEGER DEFAULT 100, -- Lower number = higher priority
-    
+
     UNIQUE(domain_id, pool_id)
 );
 
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS ip_warming_schedules (
     completed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    
+
     CONSTRAINT valid_warming_status CHECK (status IN ('active', 'completed', 'paused'))
 );
 
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS ip_reputation (
     blacklist_reason TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    
+
     UNIQUE(ip_address, provider)
 );
 
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS ip_usage_stats (
     spam_complaints INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    
+
     UNIQUE(pool_id, domain_id, ip_address, date)
 );
 
@@ -129,11 +129,11 @@ BEGIN
     SELECT ips INTO v_ips
     FROM ip_pools
     WHERE id = p_pool_id AND active = true;
-    
+
     IF v_ips IS NULL THEN
         RETURN NULL;
     END IF;
-    
+
     -- Get the last used IP index for this domain
     SELECT COALESCE(
         (SELECT array_position(v_ips, ip_address::TEXT)
@@ -143,11 +143,11 @@ BEGIN
          LIMIT 1),
         0
     ) INTO v_last_used_index;
-    
+
     -- Get next IP (round-robin)
     v_next_index := (v_last_used_index % array_length(v_ips, 1)) + 1;
     v_ip := v_ips[v_next_index]::INET;
-    
+
     RETURN v_ip;
 END;
 $$ LANGUAGE plpgsql;
@@ -166,17 +166,17 @@ BEGIN
         AND pool_id = p_pool_id
         AND status = 'active'
     ) INTO v_warming_active;
-    
+
     IF v_warming_active THEN
         RETURN TRUE;
     END IF;
-    
+
     -- Check domain age
     SELECT EXTRACT(DAY FROM NOW() - created_at)
     INTO v_domain_age_days
     FROM domains
     WHERE id = p_domain_id;
-    
+
     -- Require warming for domains less than 30 days old
     RETURN v_domain_age_days < 30;
 END;
@@ -198,20 +198,20 @@ BEGIN
     AND iws.status = 'active'
     ORDER BY iws.created_at DESC
     LIMIT 1;
-    
+
     -- Get domain's configured limit
     SELECT daily_send_limit
     INTO v_domain_limit
     FROM domains
     WHERE id = p_domain_id;
-    
+
     -- Return the lower of warming limit or domain limit
     IF v_warming_limit IS NOT NULL THEN
         v_limit := LEAST(v_warming_limit, COALESCE(v_domain_limit, v_warming_limit));
     ELSE
         v_limit := v_domain_limit;
     END IF;
-    
+
     RETURN v_limit;
 END;
 $$ LANGUAGE plpgsql;
