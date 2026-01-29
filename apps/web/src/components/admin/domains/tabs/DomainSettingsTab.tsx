@@ -5,7 +5,7 @@
  * Configure domain-level email settings and policies
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import type { DomainSettings } from "@email/types";
 import { cn } from "@email/ui";
@@ -28,27 +28,23 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
   const { data: currentSettings, isLoading } = useDomainSettings(domainId);
   const updateSettings = useUpdateDomainSettings();
 
-  const [settings, setSettings] = useState<DomainSettings>({
-    catchAllEnabled: false,
-    catchAllAddress: "",
-    defaultStorageQuotaBytes: 10737418240, // 10 GB
-    maxMessageSizeBytes: 26214400, // 25 MB
-    maxRecipientsPerMessage: 100,
-    maxMessagesPerDay: 10000,
-    spfPolicy: "softfail",
-    dmarcPolicy: "quarantine",
-    requireTls: true,
-    allowedIpRanges: [],
-    blockedCountries: [],
-  });
+  const [settings, setSettings] = useState<DomainSettings>(
+    currentSettings ?? {
+      catchAllEnabled: false,
+      catchAllAddress: "",
+      defaultStorageQuotaBytes: 10737418240, // 10 GB
+      maxMessageSizeBytes: 26214400, // 25 MB
+      maxRecipientsPerMessage: 100,
+      maxMessagesPerDay: 10000,
+      spfPolicy: "softfail",
+      dmarcPolicy: "quarantine",
+      requireTls: true,
+      allowedIpRanges: [],
+      blockedCountries: [],
+    }
+  );
 
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (currentSettings) {
-      setSettings(currentSettings);
-    }
-  }, [currentSettings]);
 
   const handleSave = async () => {
     try {

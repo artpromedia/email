@@ -5,8 +5,8 @@
  * Customize the visual branding for emails from this domain
  */
 
-import { useState, useEffect } from "react";
-import { Save, Upload, X, AlertCircle, CheckCircle2, Palette } from "lucide-react";
+import { useState } from "react";
+import { Save, Upload, X, AlertCircle, CheckCircle2 } from "lucide-react";
 import type { DomainBranding } from "@email/types";
 import { cn } from "@email/ui";
 
@@ -73,25 +73,20 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
   const updateBranding = useUpdateDomainBranding();
   const uploadLogo = useUploadDomainLogo();
 
-  const [branding, setBranding] = useState<DomainBranding>({
-    logoUrl: "",
-    primaryColor: "#0066cc",
-    secondaryColor: "#f0f0f0",
-    textColor: "#333333",
-    linkColor: "#0066cc",
-    footerHtml: "",
-    customCss: "",
-  });
+  const [branding, setBranding] = useState<DomainBranding>(
+    currentBranding ?? {
+      logoUrl: "",
+      primaryColor: "#0066cc",
+      secondaryColor: "#f0f0f0",
+      textColor: "#333333",
+      linkColor: "#0066cc",
+      footerHtml: "",
+      customCss: "",
+    }
+  );
 
   const [saved, setSaved] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (currentBranding) {
-      setBranding(currentBranding);
-      setLogoPreview(currentBranding.logoUrl || null);
-    }
-  }, [currentBranding]);
+  const [logoPreview, setLogoPreview] = useState<string | null>(currentBranding?.logoUrl ?? null);
 
   const handleSave = async () => {
     try {
@@ -276,9 +271,16 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
               </div>
               <p className="text-sm">
                 This is sample body text in your{" "}
-                <a href="#" style={{ color: branding.linkColor }}>
+                <span
+                  role="link"
+                  style={{
+                    color: branding.linkColor,
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                  }}
+                >
                   chosen colors
-                </a>
+                </span>
                 .
               </p>
             </div>

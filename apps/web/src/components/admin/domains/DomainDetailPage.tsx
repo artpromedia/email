@@ -14,7 +14,6 @@ import {
   Pause,
   Play,
   Trash2,
-  MoreHorizontal,
   Globe,
   Shield,
   Key,
@@ -35,18 +34,17 @@ import {
   useUpdateDomainStatus,
   useMakeDomainPrimary,
   useDeleteDomain,
-  type AdminDomainDetail,
   type DomainStatus,
 } from "@/lib/admin";
 
 // Import tab components
-import { DnsRecordsTab } from "./tabs/DnsRecordsTab";
 import { DkimKeysTab } from "./tabs/DkimKeysTab";
-import { DomainUsersTab } from "./tabs/DomainUsersTab";
-import { DomainSettingsTab } from "./tabs/DomainSettingsTab";
+import { DnsRecordsTab } from "./tabs/DnsRecordsTab";
 import { DomainBrandingTab } from "./tabs/DomainBrandingTab";
 import { DomainOverviewTab } from "./tabs/DomainOverviewTab";
 import { DomainPoliciesTab } from "./tabs/DomainPoliciesTab";
+import { DomainSettingsTab } from "./tabs/DomainSettingsTab";
+import { DomainUsersTab } from "./tabs/DomainUsersTab";
 
 // ============================================================
 // STATUS BADGE COMPONENT
@@ -124,17 +122,21 @@ function ConfirmDialog({
       <div
         className="absolute inset-0 bg-black/50"
         onClick={onCancel}
+        onKeyDown={(e) => e.key === "Escape" && onCancel()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close dialog"
       />
-      <div className="relative bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl max-w-md w-full mx-4 p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+      <div className="relative mx-4 w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
+        <h3 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
           {title}
         </h3>
-        <p className="text-neutral-600 dark:text-neutral-400 mb-6">{message}</p>
+        <p className="mb-6 text-neutral-600 dark:text-neutral-400">{message}</p>
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
           >
             Cancel
           </button>
@@ -142,11 +144,11 @@ function ConfirmDialog({
             onClick={onConfirm}
             disabled={isLoading}
             className={cn(
-              "px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2",
+              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium",
               confirmVariant === "danger"
                 ? "bg-red-600 text-white hover:bg-red-700"
                 : "bg-blue-600 text-white hover:bg-blue-700",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -187,14 +189,14 @@ const TABS: Tab[] = [
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse p-6">
-      <div className="h-8 w-48 bg-neutral-200 dark:bg-neutral-700 rounded mb-4" />
-      <div className="h-4 w-96 bg-neutral-200 dark:bg-neutral-700 rounded mb-8" />
-      <div className="flex gap-4 mb-6">
+      <div className="mb-4 h-8 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
+      <div className="mb-8 h-4 w-96 rounded bg-neutral-200 dark:bg-neutral-700" />
+      <div className="mb-6 flex gap-4">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-10 w-24 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div key={i} className="h-10 w-24 rounded bg-neutral-200 dark:bg-neutral-700" />
         ))}
       </div>
-      <div className="h-64 bg-neutral-200 dark:bg-neutral-700 rounded" />
+      <div className="h-64 rounded bg-neutral-200 dark:bg-neutral-700" />
     </div>
   );
 }
@@ -266,14 +268,11 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100 mb-2">
+        <AlertCircle className="mb-4 h-12 w-12 text-red-500" />
+        <h3 className="mb-2 text-lg font-medium text-neutral-900 dark:text-neutral-100">
           Failed to load domain
         </h3>
-        <button
-          onClick={() => refetch()}
-          className="text-blue-600 hover:text-blue-700"
-        >
+        <button onClick={() => refetch()} className="text-blue-600 hover:text-blue-700">
           Try again
         </button>
       </div>
@@ -288,12 +287,12 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
       {/* Header */}
-      <div className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="border-b border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="mx-auto max-w-7xl px-6 py-4">
           {/* Back link */}
           <Link
             href="/admin/domains"
-            className="inline-flex items-center gap-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 mb-4"
+            className="mb-4 inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Domains
@@ -303,8 +302,8 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div
-                className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: domain.color + "20" }}
+                className="flex h-12 w-12 items-center justify-center rounded-lg"
+                style={{ backgroundColor: `${domain.color}20` }}
               >
                 <Globe className="h-6 w-6" style={{ color: domain.color }} />
               </div>
@@ -315,15 +314,13 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
                   </h1>
                   <StatusBadge status={domain.status} />
                   {domain.isPrimary && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-xs font-medium rounded-full">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
                       <Star className="h-3 w-3 fill-current" />
                       Primary
                     </span>
                   )}
                 </div>
-                <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-                  {domain.displayName}
-                </p>
+                <p className="mt-1 text-neutral-500 dark:text-neutral-400">{domain.displayName}</p>
               </div>
             </div>
 
@@ -333,7 +330,7 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
                 <button
                   onClick={() => setShowMakePrimaryDialog(true)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border",
+                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
                     "bg-white dark:bg-neutral-800",
                     "border-neutral-200 dark:border-neutral-700",
                     "hover:bg-neutral-50 dark:hover:bg-neutral-700"
@@ -346,10 +343,10 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
               <button
                 onClick={() => setShowSuspendDialog(true)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border",
+                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
                   domain.status === "suspended"
-                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100"
-                    : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100"
+                    ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
+                    : "border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
                 )}
               >
                 {domain.status === "suspended" ? (
@@ -367,9 +364,9 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
               <button
                 onClick={() => setShowDeleteDialog(true)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm rounded-lg",
-                  "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800",
-                  "text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
+                  "border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20",
+                  "text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30"
                 )}
               >
                 <Trash2 className="h-4 w-4" />
@@ -380,8 +377,8 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
         </div>
 
         {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center gap-1 -mb-px overflow-x-auto">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="-mb-px flex items-center gap-1 overflow-x-auto">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -390,10 +387,10 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                    "flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors",
                     isActive
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:border-neutral-300"
+                      : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -406,7 +403,7 @@ export function DomainDetailPage({ domainId, initialTab = "overview" }: DomainDe
       </div>
 
       {/* Tab Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="mx-auto max-w-7xl px-6 py-6">
         {activeTab === "overview" && <DomainOverviewTab domain={domain} />}
         {activeTab === "dns" && <DnsRecordsTab domainId={domain.id} domain={domain.domain} />}
         {activeTab === "dkim" && <DkimKeysTab domainId={domain.id} domain={domain.domain} />}

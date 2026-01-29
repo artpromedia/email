@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { Plus, Key, Check, X, MoreHorizontal, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
+import { Plus, Key, Check, MoreHorizontal, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
 import type { DkimKey } from "@email/types";
 import { cn } from "@email/ui";
 

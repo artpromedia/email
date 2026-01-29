@@ -21,10 +21,7 @@ import {
   Clock,
   Star,
   ChevronDown,
-  Shield,
-  Mail,
   Users,
-  HardDrive,
 } from "lucide-react";
 import { cn } from "@email/ui";
 
@@ -70,7 +67,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
         className
       )}
     >
@@ -120,9 +117,7 @@ function DnsStatusIcons({ mx, spf, dkim, dmarc }: DnsStatusIconsProps) {
           className="flex items-center gap-0.5"
           title={`${record.name}: ${record.status}`}
         >
-          <span className="text-xs text-neutral-500 dark:text-neutral-400">
-            {record.name}
-          </span>
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">{record.name}</span>
           {getStatusIcon(record.status)}
         </div>
       ))}
@@ -154,18 +149,12 @@ function StorageDisplay({ used, limit }: StorageDisplayProps) {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm text-neutral-700 dark:text-neutral-300">
-        {formatBytes(used)}
-      </span>
-      <div className="w-20 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+      <span className="text-sm text-neutral-700 dark:text-neutral-300">{formatBytes(used)}</span>
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isCritical
-              ? "bg-red-500"
-              : isHigh
-                ? "bg-yellow-500"
-                : "bg-blue-500"
+            isCritical ? "bg-red-500" : isHigh ? "bg-yellow-500" : "bg-blue-500"
           )}
           style={{ width: `${percentage}%` }}
         />
@@ -186,7 +175,7 @@ interface DomainRowProps {
 
 function DomainRow({ domain, isSelected, onSelect }: DomainRowProps) {
   return (
-    <tr className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+    <tr className="border-b border-neutral-200 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800/50">
       {/* Checkbox */}
       <td className="px-4 py-3">
         <input
@@ -204,7 +193,7 @@ function DomainRow({ domain, isSelected, onSelect }: DomainRowProps) {
           className="flex items-center gap-2 hover:text-blue-600"
         >
           <div
-            className="w-2 h-2 rounded-full flex-shrink-0"
+            className="h-2 w-2 flex-shrink-0 rounded-full"
             style={{ backgroundColor: domain.color }}
           />
           <div className="flex flex-col">
@@ -214,7 +203,7 @@ function DomainRow({ domain, isSelected, onSelect }: DomainRowProps) {
             <span className="text-xs text-neutral-500">{domain.displayName}</span>
           </div>
           {domain.isPrimary && (
-            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
+            <Star className="h-4 w-4 flex-shrink-0 fill-yellow-500 text-yellow-500" />
           )}
         </Link>
       </td>
@@ -234,10 +223,7 @@ function DomainRow({ domain, isSelected, onSelect }: DomainRowProps) {
 
       {/* Storage */}
       <td className="px-4 py-3">
-        <StorageDisplay
-          used={domain.storageUsedBytes}
-          limit={domain.storageLimitBytes}
-        />
+        <StorageDisplay used={domain.storageUsedBytes} limit={domain.storageLimitBytes} />
       </td>
 
       {/* DNS Status */}
@@ -255,7 +241,7 @@ function DomainRow({ domain, isSelected, onSelect }: DomainRowProps) {
         <div className="flex items-center gap-2">
           <Link
             href={`/admin/domains/${domain.id}`}
-            className="p-1.5 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
+            className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
           >
             <MoreHorizontal className="h-4 w-4" />
           </Link>
@@ -335,7 +321,7 @@ function FilterDropdown({ value, onChange }: FilterDropdownProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border",
+          "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
           "bg-white dark:bg-neutral-800",
           "border-neutral-200 dark:border-neutral-700",
           "hover:bg-neutral-50 dark:hover:bg-neutral-700",
@@ -352,8 +338,12 @@ function FilterDropdown({ value, onChange }: FilterDropdownProps) {
           <div
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
+            role="button"
+            tabIndex={0}
+            aria-label="Close dropdown"
           />
-          <div className="absolute left-0 mt-1 w-40 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-20">
+          <div className="absolute left-0 z-20 mt-1 w-40 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
             {options.map((option) => (
               <button
                 key={option.label}
@@ -363,7 +353,7 @@ function FilterDropdown({ value, onChange }: FilterDropdownProps) {
                 }}
                 className={cn(
                   "w-full px-3 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700",
-                  option.value === value && "bg-blue-50 dark:bg-blue-900/20 text-blue-600"
+                  option.value === value && "bg-blue-50 text-blue-600 dark:bg-blue-900/20"
                 )}
               >
                 {option.label}
@@ -382,21 +372,21 @@ function FilterDropdown({ value, onChange }: FilterDropdownProps) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-4">
+    <div className="flex flex-col items-center justify-center px-4 py-16">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
         <Globe className="h-8 w-8 text-neutral-400" />
       </div>
-      <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100 mb-2">
+      <h3 className="mb-2 text-lg font-medium text-neutral-900 dark:text-neutral-100">
         No domains found
       </h3>
-      <p className="text-neutral-500 dark:text-neutral-400 text-center mb-6 max-w-sm">
-        Get started by adding your first domain. You can manage email, DNS records, and
-        users for each domain.
+      <p className="mb-6 max-w-sm text-center text-neutral-500 dark:text-neutral-400">
+        Get started by adding your first domain. You can manage email, DNS records, and users for
+        each domain.
       </p>
       <Link
         href="/admin/domains/new"
         className={cn(
-          "inline-flex items-center gap-2 px-4 py-2 rounded-lg",
+          "inline-flex items-center gap-2 rounded-lg px-4 py-2",
           "bg-blue-600 text-white hover:bg-blue-700",
           "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         )}
@@ -415,21 +405,18 @@ function EmptyState() {
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse">
-      <div className="flex items-center justify-between mb-6">
-        <div className="h-8 w-48 bg-neutral-200 dark:bg-neutral-700 rounded" />
-        <div className="h-10 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
+      <div className="mb-6 flex items-center justify-between">
+        <div className="h-8 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
+        <div className="h-10 w-32 rounded bg-neutral-200 dark:bg-neutral-700" />
       </div>
-      <div className="flex items-center gap-4 mb-4">
-        <div className="h-10 w-64 bg-neutral-200 dark:bg-neutral-700 rounded" />
-        <div className="h-10 w-32 bg-neutral-200 dark:bg-neutral-700 rounded" />
+      <div className="mb-4 flex items-center gap-4">
+        <div className="h-10 w-64 rounded bg-neutral-200 dark:bg-neutral-700" />
+        <div className="h-10 w-32 rounded bg-neutral-200 dark:bg-neutral-700" />
       </div>
-      <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
         <div className="h-12 bg-neutral-100 dark:bg-neutral-800" />
         {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="h-16 border-t border-neutral-200 dark:border-neutral-700"
-          />
+          <div key={i} className="h-16 border-t border-neutral-200 dark:border-neutral-700" />
         ))}
       </div>
     </div>
@@ -483,7 +470,7 @@ export function DomainsListPage() {
         setSelectedIds(new Set());
       }
     },
-    [data?.domains]
+    [data]
   );
 
   const handleBulkVerifyDns = useCallback(() => {
@@ -506,20 +493,17 @@ export function DomainsListPage() {
   const allSelected = useMemo(() => {
     if (!data?.domains || data.domains.length === 0) return false;
     return data.domains.every((d) => selectedIds.has(d.id));
-  }, [data?.domains, selectedIds]);
+  }, [data, selectedIds]);
 
   // Error state
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100 mb-2">
+        <AlertCircle className="mb-4 h-12 w-12 text-red-500" />
+        <h3 className="mb-2 text-lg font-medium text-neutral-900 dark:text-neutral-100">
           Failed to load domains
         </h3>
-        <button
-          onClick={() => refetch()}
-          className="text-blue-600 hover:text-blue-700"
-        >
+        <button onClick={() => refetch()} className="text-blue-600 hover:text-blue-700">
           Try again
         </button>
       </div>
@@ -538,19 +522,17 @@ export function DomainsListPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-            Domains
-          </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Domains</h1>
+          <p className="mt-1 text-neutral-500 dark:text-neutral-400">
             Manage your organization&apos;s email domains
           </p>
         </div>
         <Link
           href="/admin/domains/new"
           className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-lg",
+            "inline-flex items-center gap-2 rounded-lg px-4 py-2",
             "bg-blue-600 text-white hover:bg-blue-700",
             "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           )}
@@ -561,11 +543,11 @@ export function DomainsListPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4 mb-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
               placeholder="Search domains..."
@@ -573,7 +555,7 @@ export function DomainsListPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className={cn(
-                "pl-10 pr-4 py-2 w-64 text-sm rounded-lg border",
+                "w-64 rounded-lg border py-2 pl-10 pr-4 text-sm",
                 "bg-white dark:bg-neutral-800",
                 "border-neutral-200 dark:border-neutral-700",
                 "focus:outline-none focus:ring-2 focus:ring-blue-500",
@@ -590,23 +572,19 @@ export function DomainsListPage() {
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
             <>
-              <span className="text-sm text-neutral-500">
-                {selectedIds.size} selected
-              </span>
+              <span className="text-sm text-neutral-500">{selectedIds.size} selected</span>
               <button
                 onClick={handleBulkVerifyDns}
                 disabled={bulkVerifyDns.isPending}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border",
+                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
                   "bg-white dark:bg-neutral-800",
                   "border-neutral-200 dark:border-neutral-700",
                   "hover:bg-neutral-50 dark:hover:bg-neutral-700",
-                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                  "disabled:cursor-not-allowed disabled:opacity-50"
                 )}
               >
-                <RefreshCw
-                  className={cn("h-4 w-4", bulkVerifyDns.isPending && "animate-spin")}
-                />
+                <RefreshCw className={cn("h-4 w-4", bulkVerifyDns.isPending && "animate-spin")} />
                 Verify DNS
               </button>
             </>
@@ -615,11 +593,11 @@ export function DomainsListPage() {
             onClick={() => handleExport("csv")}
             disabled={exportDomains.isPending}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border",
+              "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
               "bg-white dark:bg-neutral-800",
               "border-neutral-200 dark:border-neutral-700",
               "hover:bg-neutral-50 dark:hover:bg-neutral-700",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             <Download className="h-4 w-4" />
@@ -630,7 +608,7 @@ export function DomainsListPage() {
 
       {/* Table */}
       {data?.domains && data.domains.length > 0 ? (
-        <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
           <table className="w-full">
             <TableHeader allSelected={allSelected} onSelectAll={handleSelectAll} />
             <tbody>
@@ -647,20 +625,20 @@ export function DomainsListPage() {
 
           {/* Pagination */}
           {data.totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
+            <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/50">
               <span className="text-sm text-neutral-500">
                 Showing {(data.page - 1) * data.pageSize + 1} to{" "}
                 {Math.min(data.page * data.pageSize, data.total)} of {data.total} domains
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setQuery((prev) => ({ ...prev, page: prev.page! - 1 }))}
+                  onClick={() => setQuery((prev) => ({ ...prev, page: (prev.page ?? 1) - 1 }))}
                   disabled={data.page === 1}
                   className={cn(
-                    "px-3 py-1.5 text-sm rounded border",
+                    "rounded border px-3 py-1.5 text-sm",
                     "border-neutral-200 dark:border-neutral-700",
                     "hover:bg-neutral-100 dark:hover:bg-neutral-700",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
+                    "disabled:cursor-not-allowed disabled:opacity-50"
                   )}
                 >
                   Previous
@@ -669,13 +647,13 @@ export function DomainsListPage() {
                   Page {data.page} of {data.totalPages}
                 </span>
                 <button
-                  onClick={() => setQuery((prev) => ({ ...prev, page: prev.page! + 1 }))}
+                  onClick={() => setQuery((prev) => ({ ...prev, page: (prev.page ?? 1) + 1 }))}
                   disabled={data.page === data.totalPages}
                   className={cn(
-                    "px-3 py-1.5 text-sm rounded border",
+                    "rounded border px-3 py-1.5 text-sm",
                     "border-neutral-200 dark:border-neutral-700",
                     "hover:bg-neutral-100 dark:hover:bg-neutral-700",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
+                    "disabled:cursor-not-allowed disabled:opacity-50"
                   )}
                 >
                   Next

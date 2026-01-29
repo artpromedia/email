@@ -5,7 +5,7 @@
  * 4-step wizard for adding and verifying a new domain
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -22,7 +22,6 @@ import {
   XCircle,
   Clock,
   Loader2,
-  ExternalLink,
 } from "lucide-react";
 import { cn } from "@email/ui";
 
@@ -31,16 +30,12 @@ import {
   useCheckDomainAvailability,
   useVerifyDomain,
   useVerifyDns,
-  useUpdateDomainSettings,
-  useUpdateDomainBranding,
   type AddDomainWizardStep,
   type AddDomainWizardState,
   type VerificationMethod,
   type VerificationRecord,
   type DnsRecord,
   type DnsRecordStatus,
-  type DomainSettings,
-  type DomainBranding,
 } from "@/lib/admin";
 
 // ============================================================
@@ -49,12 +44,16 @@ import {
 
 interface StepIndicatorProps {
   currentStep: AddDomainWizardStep;
-  steps: { number: AddDomainWizardStep; title: string; icon: React.ComponentType<{ className?: string }> }[];
+  steps: {
+    number: AddDomainWizardStep;
+    title: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[];
 }
 
 function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
+    <div className="mb-8 flex items-center justify-center gap-2">
       {steps.map((step, index) => {
         const isCompleted = step.number < currentStep;
         const isCurrent = step.number === currentStep;
@@ -65,26 +64,20 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
             <div className="flex flex-col items-center">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors",
+                  "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors",
                   isCompleted
-                    ? "bg-green-500 border-green-500 text-white"
+                    ? "border-green-500 bg-green-500 text-white"
                     : isCurrent
-                      ? "bg-blue-500 border-blue-500 text-white"
-                      : "bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-400"
+                      ? "border-blue-500 bg-blue-500 text-white"
+                      : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-800"
                 )}
               >
-                {isCompleted ? (
-                  <Check className="h-5 w-5" />
-                ) : (
-                  <Icon className="h-5 w-5" />
-                )}
+                {isCompleted ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
               </div>
               <span
                 className={cn(
-                  "text-xs mt-1.5 font-medium",
-                  isCurrent
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-neutral-500"
+                  "mt-1.5 text-xs font-medium",
+                  isCurrent ? "text-blue-600 dark:text-blue-400" : "text-neutral-500"
                 )}
               >
                 {step.title}
@@ -93,10 +86,8 @@ function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
             {index < steps.length - 1 && (
               <div
                 className={cn(
-                  "w-16 h-0.5 mx-2",
-                  step.number < currentStep
-                    ? "bg-green-500"
-                    : "bg-neutral-200 dark:bg-neutral-700"
+                  "mx-2 h-0.5 w-16",
+                  step.number < currentStep ? "bg-green-500" : "bg-neutral-200 dark:bg-neutral-700"
                 )}
               />
             )}
@@ -128,10 +119,10 @@ function CopyButton({ value }: CopyButtonProps) {
     <button
       onClick={handleCopy}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors",
+        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors",
         copied
-          ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400"
-          : "bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
+          : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700"
       )}
     >
       {copied ? (
@@ -200,7 +191,7 @@ function Step1EnterDomain({
     });
   }, [domain, validateDomain, checkAvailability]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const validationError = validateDomain(domain);
     if (validationError) {
@@ -212,44 +203,48 @@ function Step1EnterDomain({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="text-center mb-8">
+      <div className="mb-8 text-center">
         <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
           Enter Domain Information
         </h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-2">
+        <p className="mt-2 text-neutral-500 dark:text-neutral-400">
           Add the domain you want to manage with this email system
         </p>
       </div>
 
-      <div className="max-w-md mx-auto space-y-4">
+      <div className="mx-auto max-w-md space-y-4">
         {/* Domain Input */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+          <label
+            htmlFor="domain-input"
+            className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
             Domain Name <span className="text-red-500">*</span>
           </label>
           <input
+            id="domain-input"
             type="text"
             value={domain}
             onChange={(e) => onDomainChange(e.target.value.toLowerCase())}
             onBlur={handleDomainBlur}
             placeholder="example.com"
             className={cn(
-              "w-full px-4 py-2.5 rounded-lg border text-base",
+              "w-full rounded-lg border px-4 py-2.5 text-base",
               "bg-white dark:bg-neutral-800",
               domainError
                 ? "border-red-500 focus:ring-red-500"
-                : "border-neutral-200 dark:border-neutral-700 focus:ring-blue-500",
+                : "border-neutral-200 focus:ring-blue-500 dark:border-neutral-700",
               "focus:outline-none focus:ring-2"
             )}
           />
           {domainError && (
-            <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+            <p className="mt-1.5 flex items-center gap-1 text-sm text-red-500">
               <AlertCircle className="h-4 w-4" />
               {domainError}
             </p>
           )}
           {checkAvailability.isPending && (
-            <p className="mt-1.5 text-sm text-neutral-500 flex items-center gap-1">
+            <p className="mt-1.5 flex items-center gap-1 text-sm text-neutral-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               Checking availability...
             </p>
@@ -258,16 +253,20 @@ function Step1EnterDomain({
 
         {/* Display Name Input */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+          <label
+            htmlFor="display-name-input"
+            className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
             Display Name
           </label>
           <input
+            id="display-name-input"
             type="text"
             value={displayName}
             onChange={(e) => onDisplayNameChange(e.target.value)}
             placeholder="My Company"
             className={cn(
-              "w-full px-4 py-2.5 rounded-lg border text-base",
+              "w-full rounded-lg border px-4 py-2.5 text-base",
               "bg-white dark:bg-neutral-800",
               "border-neutral-200 dark:border-neutral-700",
               "focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -279,7 +278,7 @@ function Step1EnterDomain({
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
             <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
           </div>
         )}
@@ -288,9 +287,9 @@ function Step1EnterDomain({
           type="submit"
           disabled={isLoading || !!domainError || !domain}
           className={cn(
-            "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
-            "bg-blue-600 text-white font-medium",
-            "hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed",
+            "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5",
+            "bg-blue-600 font-medium text-white",
+            "hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50",
             "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           )}
         >
@@ -326,7 +325,7 @@ interface Step2Props {
 }
 
 function Step2VerifyOwnership({
-  domainId,
+  _domainId,
   domain,
   verificationRecords,
   selectedMethod,
@@ -356,17 +355,17 @@ function Step2VerifyOwnership({
 
   return (
     <div className="space-y-6">
-      <div className="text-center mb-8">
+      <div className="mb-8 text-center">
         <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
           Verify Domain Ownership
         </h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-2">
+        <p className="mt-2 text-neutral-500 dark:text-neutral-400">
           Prove you own <strong>{domain}</strong> by adding a verification record
         </p>
       </div>
 
       {/* Method Selection */}
-      <div className="max-w-lg mx-auto space-y-4">
+      <div className="mx-auto max-w-lg space-y-4">
         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
           Choose a verification method:
         </p>
@@ -378,29 +377,25 @@ function Step2VerifyOwnership({
                 key={record.method}
                 onClick={() => onMethodSelect(record.method)}
                 className={cn(
-                  "w-full p-4 rounded-lg border text-left transition-colors",
+                  "w-full rounded-lg border p-4 text-left transition-colors",
                   selectedMethod === record.method
                     ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                    : "border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    : "border-neutral-200 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
-                      "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                      "flex h-5 w-5 items-center justify-center rounded-full border-2",
                       selectedMethod === record.method
                         ? "border-blue-500 bg-blue-500"
                         : "border-neutral-300 dark:border-neutral-600"
                     )}
                   >
-                    {selectedMethod === record.method && (
-                      <Check className="h-3 w-3 text-white" />
-                    )}
+                    {selectedMethod === record.method && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <div>
-                    <p className="font-medium text-neutral-900 dark:text-neutral-100">
-                      {title}
-                    </p>
+                    <p className="font-medium text-neutral-900 dark:text-neutral-100">{title}</p>
                     <p className="text-sm text-neutral-500">{description}</p>
                   </div>
                 </div>
@@ -411,58 +406,69 @@ function Step2VerifyOwnership({
 
         {/* Verification Record Details */}
         {selectedRecord && (
-          <div className="mt-6 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-medium text-neutral-900 dark:text-neutral-100 mb-3">
+          <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
+            <h4 className="mb-3 font-medium text-neutral-900 dark:text-neutral-100">
               Add this record to your DNS:
             </h4>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-neutral-500 uppercase">Type</label>
-                <p className="font-mono text-sm bg-white dark:bg-neutral-900 px-3 py-2 rounded border border-neutral-200 dark:border-neutral-700">
+                <label htmlFor="dns-type" className="text-xs uppercase text-neutral-500">
+                  Type
+                </label>
+                <p
+                  id="dns-type"
+                  className="rounded border border-neutral-200 bg-white px-3 py-2 font-mono text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                >
                   {selectedRecord.recordType}
                 </p>
               </div>
               <div>
-                <label className="text-xs text-neutral-500 uppercase">Name / Host</label>
+                <label htmlFor="dns-host" className="text-xs uppercase text-neutral-500">
+                  Name / Host
+                </label>
                 <div className="flex items-center gap-2">
-                  <p className="flex-1 font-mono text-sm bg-white dark:bg-neutral-900 px-3 py-2 rounded border border-neutral-200 dark:border-neutral-700 truncate">
+                  <p
+                    id="dns-host"
+                    className="flex-1 truncate rounded border border-neutral-200 bg-white px-3 py-2 font-mono text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  >
                     {selectedRecord.recordName}
                   </p>
                   <CopyButton value={selectedRecord.recordName} />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-neutral-500 uppercase">Value</label>
+                <label htmlFor="dns-value" className="text-xs uppercase text-neutral-500">
+                  Value
+                </label>
                 <div className="flex items-center gap-2">
-                  <p className="flex-1 font-mono text-sm bg-white dark:bg-neutral-900 px-3 py-2 rounded border border-neutral-200 dark:border-neutral-700 break-all">
+                  <p
+                    id="dns-value"
+                    className="flex-1 break-all rounded border border-neutral-200 bg-white px-3 py-2 font-mono text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  >
                     {selectedRecord.recordValue}
                   </p>
                   <CopyButton value={selectedRecord.recordValue} />
                 </div>
               </div>
             </div>
-            <p className="mt-4 text-sm text-neutral-500">
-              {selectedRecord.instructions}
-            </p>
+            <p className="mt-4 text-sm text-neutral-500">{selectedRecord.instructions}</p>
           </div>
         )}
 
         {/* Verification Status */}
         {isVerified && (
-          <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <span className="text-sm text-green-700 dark:text-green-400 font-medium">
+            <span className="text-sm font-medium text-green-700 dark:text-green-400">
               Domain ownership verified!
             </span>
           </div>
         )}
 
         {verificationError && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
             <XCircle className="h-5 w-5 text-red-600" />
-            <span className="text-sm text-red-700 dark:text-red-400">
-              {verificationError}
-            </span>
+            <span className="text-sm text-red-700 dark:text-red-400">{verificationError}</span>
           </div>
         )}
 
@@ -470,7 +476,7 @@ function Step2VerifyOwnership({
         <div className="flex items-center justify-between pt-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+            className="flex items-center gap-2 px-4 py-2 text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -479,8 +485,8 @@ function Step2VerifyOwnership({
             <button
               onClick={onVerify}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-lg",
-                "bg-blue-600 text-white font-medium",
+                "flex items-center gap-2 rounded-lg px-4 py-2.5",
+                "bg-blue-600 font-medium text-white",
                 "hover:bg-blue-700"
               )}
             >
@@ -492,9 +498,9 @@ function Step2VerifyOwnership({
               onClick={onVerify}
               disabled={!selectedMethod || isVerifying}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-lg",
-                "bg-blue-600 text-white font-medium",
-                "hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                "flex items-center gap-2 rounded-lg px-4 py-2.5",
+                "bg-blue-600 font-medium text-white",
+                "hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               )}
             >
               {isVerifying ? (
@@ -532,7 +538,7 @@ interface Step3Props {
 }
 
 function Step3ConfigureDns({
-  domainId,
+  _domainId,
   domain,
   dnsRecords,
   onVerifyDns,
@@ -573,30 +579,30 @@ function Step3ConfigureDns({
 
   return (
     <div className="space-y-6">
-      <div className="text-center mb-8">
+      <div className="mb-8 text-center">
         <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
           Configure DNS Records
         </h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-2">
+        <p className="mt-2 text-neutral-500 dark:text-neutral-400">
           Add these DNS records to enable email for <strong>{domain}</strong>
         </p>
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-4">
+      <div className="mx-auto max-w-2xl space-y-4">
         {/* Required Records */}
         <div>
-          <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          <h3 className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             Required Records
           </h3>
-          <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-700">
+          <div className="divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 dark:divide-neutral-700 dark:border-neutral-700">
             {requiredRecords.map((record) => (
-              <div key={record.id} className="p-4 bg-white dark:bg-neutral-800">
-                <div className="flex items-start justify-between mb-2">
+              <div key={record.id} className="bg-white p-4 dark:bg-neutral-800">
+                <div className="mb-2 flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-neutral-900 dark:text-neutral-100">
                       {record.description}
                     </span>
-                    <span className="text-xs px-2 py-0.5 bg-neutral-100 dark:bg-neutral-700 rounded">
+                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs dark:bg-neutral-700">
                       {record.type}
                     </span>
                   </div>
@@ -621,14 +627,14 @@ function Step3ConfigureDns({
                 <div className="space-y-2 text-sm">
                   <div>
                     <span className="text-neutral-500">Expected:</span>
-                    <code className="ml-2 font-mono text-xs bg-neutral-100 dark:bg-neutral-900 px-2 py-0.5 rounded">
+                    <code className="ml-2 rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-neutral-900">
                       {record.expectedValue}
                     </code>
                   </div>
                   {record.foundValue && (
                     <div>
                       <span className="text-neutral-500">Found:</span>
-                      <code className="ml-2 font-mono text-xs bg-neutral-100 dark:bg-neutral-900 px-2 py-0.5 rounded">
+                      <code className="ml-2 rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-neutral-900">
                         {record.foundValue}
                       </code>
                     </div>
@@ -647,18 +653,18 @@ function Step3ConfigureDns({
         {/* Optional Records */}
         {optionalRecords.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+            <h3 className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
               Optional Records
             </h3>
-            <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden divide-y divide-neutral-200 dark:divide-neutral-700">
+            <div className="divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 dark:divide-neutral-700 dark:border-neutral-700">
               {optionalRecords.map((record) => (
-                <div key={record.id} className="p-4 bg-white dark:bg-neutral-800">
-                  <div className="flex items-start justify-between mb-2">
+                <div key={record.id} className="bg-white p-4 dark:bg-neutral-800">
+                  <div className="mb-2 flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-neutral-900 dark:text-neutral-100">
                         {record.description}
                       </span>
-                      <span className="text-xs px-2 py-0.5 bg-neutral-100 dark:bg-neutral-700 rounded">
+                      <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs dark:bg-neutral-700">
                         {record.type}
                       </span>
                     </div>
@@ -682,14 +688,14 @@ function Step3ConfigureDns({
 
         {/* Status Summary */}
         {allVerified ? (
-          <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <span className="text-sm text-green-700 dark:text-green-400 font-medium">
+            <span className="text-sm font-medium text-green-700 dark:text-green-400">
               All DNS records verified!
             </span>
           </div>
         ) : requiredVerified ? (
-          <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
             <AlertCircle className="h-5 w-5 text-yellow-600" />
             <span className="text-sm text-yellow-700 dark:text-yellow-400">
               Required records verified. Optional records pending.
@@ -701,7 +707,7 @@ function Step3ConfigureDns({
         <div className="flex items-center justify-between pt-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+            className="flex items-center gap-2 px-4 py-2 text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -711,11 +717,11 @@ function Step3ConfigureDns({
               onClick={onVerifyDns}
               disabled={isVerifying}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg border",
+                "flex items-center gap-2 rounded-lg border px-4 py-2",
                 "bg-white dark:bg-neutral-800",
                 "border-neutral-200 dark:border-neutral-700",
                 "hover:bg-neutral-50 dark:hover:bg-neutral-700",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
+                "disabled:cursor-not-allowed disabled:opacity-50"
               )}
             >
               <RefreshCw className={cn("h-4 w-4", isVerifying && "animate-spin")} />
@@ -725,9 +731,9 @@ function Step3ConfigureDns({
               onClick={onNext}
               disabled={!requiredVerified}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-lg",
-                "bg-blue-600 text-white font-medium",
-                "hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                "flex items-center gap-2 rounded-lg px-4 py-2.5",
+                "bg-blue-600 font-medium text-white",
+                "hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               )}
             >
               Continue
@@ -759,19 +765,19 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
 
   return (
     <div className="space-y-6">
-      <div className="text-center mb-8">
+      <div className="mb-8 text-center">
         <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
           Configure Domain Settings
         </h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-2">
+        <p className="mt-2 text-neutral-500 dark:text-neutral-400">
           Set up initial configuration for your domain
         </p>
       </div>
 
-      <div className="max-w-lg mx-auto space-y-6">
+      <div className="mx-auto max-w-lg space-y-6">
         {/* Catch-All Configuration */}
-        <div className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-          <div className="flex items-center justify-between mb-4">
+        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="font-medium text-neutral-900 dark:text-neutral-100">
                 Catch-All Emails
@@ -780,27 +786,32 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
                 Handle emails sent to non-existent addresses
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex cursor-pointer items-center">
+              <span className="sr-only">Enable catch-all email forwarding</span>
               <input
                 type="checkbox"
                 checked={catchAllEnabled}
                 onChange={(e) => setCatchAllEnabled(e.target.checked)}
-                className="sr-only peer"
+                className="peer sr-only"
               />
-              <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-blue-600"></div>
+              <div className="peer h-6 w-11 rounded-full bg-neutral-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-neutral-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-neutral-600 dark:bg-neutral-700 dark:peer-focus:ring-blue-800" />
             </label>
           </div>
 
           {catchAllEnabled && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm text-neutral-700 dark:text-neutral-300 mb-1">
+                <label
+                  htmlFor="catchall-action"
+                  className="mb-1 block text-sm text-neutral-700 dark:text-neutral-300"
+                >
                   Action
                 </label>
                 <select
+                  id="catchall-action"
                   value={catchAllAction}
                   onChange={(e) => setCatchAllAction(e.target.value as typeof catchAllAction)}
-                  className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800"
                 >
                   <option value="deliver">Deliver to mailbox</option>
                   <option value="forward">Forward to address</option>
@@ -809,15 +820,19 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
               </div>
               {catchAllAction === "forward" && (
                 <div>
-                  <label className="block text-sm text-neutral-700 dark:text-neutral-300 mb-1">
+                  <label
+                    htmlFor="catchall-forward"
+                    className="mb-1 block text-sm text-neutral-700 dark:text-neutral-300"
+                  >
                     Forward to
                   </label>
                   <input
+                    id="catchall-forward"
                     type="email"
                     value={catchAllDestination}
                     onChange={(e) => setCatchAllDestination(e.target.value)}
                     placeholder="admin@example.com"
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800"
                   />
                 </div>
               )}
@@ -826,11 +841,11 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
         </div>
 
         {/* Default User Quota */}
-        <div className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-          <h3 className="font-medium text-neutral-900 dark:text-neutral-100 mb-2">
+        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+          <h3 className="mb-2 font-medium text-neutral-900 dark:text-neutral-100">
             Default User Quota
           </h3>
-          <p className="text-sm text-neutral-500 mb-3">
+          <p className="mb-3 text-sm text-neutral-500">
             Storage limit for new users on this domain
           </p>
           <div className="flex items-center gap-3">
@@ -842,18 +857,14 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
               onChange={(e) => setDefaultQuota(Number(e.target.value))}
               className="flex-1"
             />
-            <span className="text-sm font-medium w-16 text-right">
-              {defaultQuota} GB
-            </span>
+            <span className="w-16 text-right text-sm font-medium">{defaultQuota} GB</span>
           </div>
         </div>
 
         {/* Branding */}
-        <div className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-          <h3 className="font-medium text-neutral-900 dark:text-neutral-100 mb-2">
-            Branding
-          </h3>
-          <p className="text-sm text-neutral-500 mb-3">
+        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+          <h3 className="mb-2 font-medium text-neutral-900 dark:text-neutral-100">Branding</h3>
+          <p className="mb-3 text-sm text-neutral-500">
             Set your domain&apos;s primary color (can be changed later)
           </p>
           <div className="flex items-center gap-3">
@@ -861,13 +872,13 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
               type="color"
               value={primaryColor}
               onChange={(e) => setPrimaryColor(e.target.value)}
-              className="w-10 h-10 rounded cursor-pointer border border-neutral-200 dark:border-neutral-700"
+              className="h-10 w-10 cursor-pointer rounded border border-neutral-200 dark:border-neutral-700"
             />
             <input
               type="text"
               value={primaryColor}
               onChange={(e) => setPrimaryColor(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 font-mono text-sm"
+              className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 font-mono text-sm dark:border-neutral-700 dark:bg-neutral-800"
             />
           </div>
         </div>
@@ -876,7 +887,7 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
         <div className="flex items-center justify-between pt-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+            className="flex items-center gap-2 px-4 py-2 text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -885,9 +896,9 @@ function Step4ConfigureSettings({ onFinish, onBack, isLoading }: Step4Props) {
             onClick={onFinish}
             disabled={isLoading}
             className={cn(
-              "flex items-center gap-2 px-6 py-2.5 rounded-lg",
-              "bg-green-600 text-white font-medium",
-              "hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              "flex items-center gap-2 rounded-lg px-6 py-2.5",
+              "bg-green-600 font-medium text-white",
+              "hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             {isLoading ? (
@@ -930,7 +941,11 @@ export function AddDomainWizard() {
   const verifyDns = useVerifyDns();
 
   // Steps configuration
-  const steps: { number: AddDomainWizardStep; title: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const steps: {
+    number: AddDomainWizardStep;
+    title: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
     { number: 1, title: "Domain", icon: Globe },
     { number: 2, title: "Verify", icon: Shield },
     { number: 3, title: "DNS", icon: Mail },
@@ -1027,13 +1042,13 @@ export function AddDomainWizard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-neutral-50 py-8 dark:bg-neutral-900">
+      <div className="mx-auto max-w-4xl px-4">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/admin/domains")}
-            className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 mb-4"
+            className="mb-4 flex items-center gap-2 text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Domains
@@ -1047,15 +1062,13 @@ export function AddDomainWizard() {
         <StepIndicator currentStep={state.currentStep} steps={steps} />
 
         {/* Step Content */}
-        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 md:p-8">
+        <div className="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-800 md:p-8">
           {state.currentStep === 1 && (
             <Step1EnterDomain
               domain={state.domain}
               displayName={state.displayName}
               onDomainChange={(domain) => setState((prev) => ({ ...prev, domain }))}
-              onDisplayNameChange={(displayName) =>
-                setState((prev) => ({ ...prev, displayName }))
-              }
+              onDisplayNameChange={(displayName) => setState((prev) => ({ ...prev, displayName }))}
               onNext={handleStep1Next}
               isLoading={createDomain.isPending}
               error={createDomain.error?.message}
@@ -1095,11 +1108,7 @@ export function AddDomainWizard() {
           )}
 
           {state.currentStep === 4 && (
-            <Step4ConfigureSettings
-              onFinish={handleFinish}
-              onBack={handleBack}
-              isLoading={false}
-            />
+            <Step4ConfigureSettings onFinish={handleFinish} onBack={handleBack} isLoading={false} />
           )}
         </div>
       </div>

@@ -210,7 +210,16 @@ export function DomainUsersTab({ domainId }: DomainUsersTabProps) {
               </div>
               <div>
                 <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                  {data.users.reduce((sum, u) => sum + u.emailCount, 0).toLocaleString()}
+                  {data.users
+                    .reduce(
+                      (sum: number, u) =>
+                        sum +
+                        (typeof (u as { emailCount?: number }).emailCount === "number"
+                          ? (u as { emailCount: number }).emailCount
+                          : 0),
+                      0
+                    )
+                    .toLocaleString()}
                 </div>
                 <div className="text-sm text-neutral-500 dark:text-neutral-400">Total Emails</div>
               </div>
@@ -224,7 +233,14 @@ export function DomainUsersTab({ domainId }: DomainUsersTabProps) {
               <div>
                 <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
                   {(
-                    data.users.reduce((sum, u) => sum + u.storageUsedBytes, 0) /
+                    data.users.reduce(
+                      (sum: number, u) =>
+                        sum +
+                        (typeof (u as { storageUsedBytes?: number }).storageUsedBytes === "number"
+                          ? (u as { storageUsedBytes: number }).storageUsedBytes
+                          : 0),
+                      0
+                    ) /
                     1024 /
                     1024 /
                     1024

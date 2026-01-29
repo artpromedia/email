@@ -7,8 +7,6 @@
 
 import {
   Users,
-  Mail,
-  HardDrive,
   Shield,
   CheckCircle2,
   XCircle,
@@ -33,20 +31,24 @@ interface StatCardProps {
   iconColor?: string;
 }
 
-function StatCard({ title, value, subtitle, icon: Icon, iconColor = "text-blue-500" }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconColor = "text-blue-500",
+}: StatCardProps) {
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4">
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">{title}</p>
-          <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100 mt-1">
+          <p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
             {value}
           </p>
-          {subtitle && (
-            <p className="text-xs text-neutral-500 mt-1">{subtitle}</p>
-          )}
+          {subtitle && <p className="mt-1 text-xs text-neutral-500">{subtitle}</p>}
         </div>
-        <div className={cn("p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700", iconColor)}>
+        <div className={cn("rounded-lg bg-neutral-100 p-2 dark:bg-neutral-700", iconColor)}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -90,11 +92,9 @@ function DnsStatusCard({ mx, spf, dkim, dmarc, lastChecked }: DnsStatusCardProps
   const verifiedCount = records.filter((r) => r.status === "verified").length;
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-neutral-900 dark:text-neutral-100">
-          DNS Status
-        </h3>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-medium text-neutral-900 dark:text-neutral-100">DNS Status</h3>
         <span className="text-sm text-neutral-500">
           {verifiedCount}/{records.length} verified
         </span>
@@ -113,7 +113,7 @@ function DnsStatusCard({ mx, spf, dkim, dmarc, lastChecked }: DnsStatusCardProps
         ))}
       </div>
       {lastChecked && (
-        <p className="text-xs text-neutral-500 mt-4 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+        <p className="mt-4 border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-700">
           Last checked: {new Date(lastChecked).toLocaleString()}
         </p>
       )}
@@ -144,24 +144,16 @@ function StorageProgress({ used, limit }: StorageProgressProps) {
   const isCritical = percentage > 95;
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-medium text-neutral-900 dark:text-neutral-100">
-          Storage Usage
-        </h3>
-        <span className="text-sm text-neutral-500">
-          {percentage.toFixed(1)}%
-        </span>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="font-medium text-neutral-900 dark:text-neutral-100">Storage Usage</h3>
+        <span className="text-sm text-neutral-500">{percentage.toFixed(1)}%</span>
       </div>
-      <div className="w-full h-3 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-2">
+      <div className="mb-2 h-3 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isCritical
-              ? "bg-red-500"
-              : isHigh
-                ? "bg-yellow-500"
-                : "bg-blue-500"
+            isCritical ? "bg-red-500" : isHigh ? "bg-yellow-500" : "bg-blue-500"
           )}
           style={{ width: `${percentage}%` }}
         />
@@ -191,9 +183,7 @@ function QuickInfo({ domain }: QuickInfoProps) {
     },
     {
       label: "Verified",
-      value: domain.verifiedAt
-        ? new Date(domain.verifiedAt).toLocaleDateString()
-        : "Not verified",
+      value: domain.verifiedAt ? new Date(domain.verifiedAt).toLocaleDateString() : "Not verified",
       icon: Shield,
     },
     {
@@ -204,10 +194,8 @@ function QuickInfo({ domain }: QuickInfoProps) {
   ];
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4">
-      <h3 className="font-medium text-neutral-900 dark:text-neutral-100 mb-4">
-        Quick Info
-      </h3>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+      <h3 className="mb-4 font-medium text-neutral-900 dark:text-neutral-100">Quick Info</h3>
       <div className="space-y-3">
         {infoItems.map((item) => {
           const Icon = item.icon;
@@ -216,9 +204,7 @@ function QuickInfo({ domain }: QuickInfoProps) {
               <Icon className="h-4 w-4 text-neutral-400" />
               <div className="flex-1">
                 <p className="text-xs text-neutral-500">{item.label}</p>
-                <p className="text-sm text-neutral-900 dark:text-neutral-100">
-                  {item.value}
-                </p>
+                <p className="text-sm text-neutral-900 dark:text-neutral-100">{item.value}</p>
               </div>
             </div>
           );
@@ -240,7 +226,7 @@ export function DomainOverviewTab({ domain }: DomainOverviewTabProps) {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
           value={domain.usersCount}
@@ -276,7 +262,7 @@ export function DomainOverviewTab({ domain }: DomainOverviewTabProps) {
       </div>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <DnsStatusCard
           mx={domain.dnsStatus.mx}
           spf={domain.dnsStatus.spf}
@@ -284,10 +270,7 @@ export function DomainOverviewTab({ domain }: DomainOverviewTabProps) {
           dmarc={domain.dnsStatus.dmarc}
           lastChecked={domain.dnsStatus.lastChecked}
         />
-        <StorageProgress
-          used={domain.storageUsedBytes}
-          limit={domain.storageLimitBytes}
-        />
+        <StorageProgress used={domain.storageUsedBytes} limit={domain.storageLimitBytes} />
         <QuickInfo domain={domain} />
       </div>
     </div>

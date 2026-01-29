@@ -298,7 +298,7 @@ export function useDeleteDkimKey() {
 
   return useMutation({
     mutationFn: ({ domainId, keyId }: { domainId: string; keyId: string }) =>
-      fetchJson<void>(`/domains/${domainId}/dkim-keys/${keyId}`, {
+      fetchJson<null>(`/domains/${domainId}/dkim-keys/${keyId}`, {
         method: "DELETE",
       }),
     onSuccess: (_, variables) => {
@@ -410,7 +410,7 @@ export function useDeleteDomain() {
 
   return useMutation({
     mutationFn: (domainId: string) =>
-      fetchJson<void>(`/domains/${domainId}`, {
+      fetchJson<null>(`/domains/${domainId}`, {
         method: "DELETE",
       }),
     onSuccess: () => {
@@ -446,7 +446,7 @@ export function useBulkVerifyDns() {
  */
 export function useExportDomains() {
   return useMutation({
-    mutationFn: (query: DomainListQuery = {}) => {
+    mutationFn: (query: DomainListQuery) => {
       const params = new URLSearchParams();
       if (query.status) params.set("status", query.status);
       if (query.search) params.set("search", query.search);

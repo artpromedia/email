@@ -3,12 +3,7 @@
  * React Query hooks for domain management operations
  */
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  type UseQueryOptions,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import type {
   AdminDomain,
   AdminDomainDetail,
@@ -144,13 +139,10 @@ export function useCreateDomain() {
 
   return useMutation({
     mutationFn: (request: CreateDomainRequest) =>
-      fetchJson<{ domain: AdminDomain; verificationRecords: VerificationRecord[] }>(
-        "/domains",
-        {
-          method: "POST",
-          body: JSON.stringify(request),
-        }
-      ),
+      fetchJson<{ domain: AdminDomain; verificationRecords: VerificationRecord[] }>("/domains", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: domainAdminKeys.all });
     },
@@ -163,7 +155,9 @@ export function useCreateDomain() {
 export function useCheckDomainAvailability() {
   return useMutation({
     mutationFn: (domain: string) =>
-      fetchJson<{ available: boolean; reason?: string }>(`/domains/check?domain=${encodeURIComponent(domain)}`),
+      fetchJson<{ available: boolean; reason?: string }>(
+        `/domains/check?domain=${encodeURIComponent(domain)}`
+      ),
   });
 }
 
@@ -177,8 +171,7 @@ export function useVerificationRecord(
 ) {
   return useQuery({
     queryKey: domainAdminKeys.verificationRecord(domainId, method),
-    queryFn: () =>
-      fetchJson<VerificationRecord>(`/domains/${domainId}/verification/${method}`),
+    queryFn: () => fetchJson<VerificationRecord>(`/domains/${domainId}/verification/${method}`),
     enabled: !!domainId && !!method,
     ...options,
   });
@@ -211,13 +204,7 @@ export function useUpdateDomainStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      domainId,
-      status,
-    }: {
-      domainId: string;
-      status: "active" | "suspended";
-    }) =>
+    mutationFn: ({ domainId, status }: { domainId: string; status: "active" | "suspended" }) =>
       fetchJson<AdminDomain>(`/domains/${domainId}/status`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
@@ -255,8 +242,7 @@ export function useDeleteDomain() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (domainId: string) =>
-      fetchJson<void>(`/domains/${domainId}`, { method: "DELETE" }),
+    mutationFn: (domainId: string) => fetchJson<null>(`/domains/${domainId}`, { method: "DELETE" }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: domainAdminKeys.all });
     },
@@ -277,9 +263,7 @@ export function useDnsRecords(
   return useQuery({
     queryKey: domainAdminKeys.dnsRecords(domainId),
     queryFn: () =>
-      fetchJson<{ records: DnsRecord[] }>(`/domains/${domainId}/dns`).then(
-        (r) => r.records
-      ),
+      fetchJson<{ records: DnsRecord[] }>(`/domains/${domainId}/dns`).then((r) => r.records),
     enabled: !!domainId,
     ...options,
   });
@@ -315,13 +299,10 @@ export function useBulkVerifyDns() {
 
   return useMutation({
     mutationFn: (domainIds: string[]) =>
-      fetchJson<{ results: Record<string, ConfigureDnsResponse> }>(
-        "/domains/dns/bulk-verify",
-        {
-          method: "POST",
-          body: JSON.stringify({ domainIds }),
-        }
-      ),
+      fetchJson<{ results: Record<string, ConfigureDnsResponse> }>("/domains/dns/bulk-verify", {
+        method: "POST",
+        body: JSON.stringify({ domainIds }),
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: domainAdminKeys.all });
     },
@@ -341,10 +322,7 @@ export function useDkimKeys(
 ) {
   return useQuery({
     queryKey: domainAdminKeys.dkimKeys(domainId),
-    queryFn: () =>
-      fetchJson<{ keys: DkimKey[] }>(`/domains/${domainId}/dkim`).then(
-        (r) => r.keys
-      ),
+    queryFn: () => fetchJson<{ keys: DkimKey[] }>(`/domains/${domainId}/dkim`).then((r) => r.keys),
     enabled: !!domainId,
     ...options,
   });
@@ -357,13 +335,7 @@ export function useGenerateDkimKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      domainId,
-      request,
-    }: {
-      domainId: string;
-      request: GenerateDkimKeyRequest;
-    }) =>
+    mutationFn: ({ domainId, request }: { domainId: string; request: GenerateDkimKeyRequest }) =>
       fetchJson<DkimKey>(`/domains/${domainId}/dkim`, {
         method: "POST",
         body: JSON.stringify(request),
@@ -412,7 +384,7 @@ export function useDeleteDkimKey() {
 
   return useMutation({
     mutationFn: ({ domainId, keyId }: { domainId: string; keyId: string }) =>
-      fetchJson<void>(`/domains/${domainId}/dkim/${keyId}`, {
+      fetchJson<null>(`/domains/${domainId}/dkim/${keyId}`, {
         method: "DELETE",
       }),
     onSuccess: (_, variables) => {

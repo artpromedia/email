@@ -5,7 +5,7 @@
  * Configure email policies, retention, and compliance settings
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Save, AlertCircle, CheckCircle2, Shield } from "lucide-react";
 import type { DomainPolicies } from "@email/types";
 import { cn } from "@email/ui";
@@ -28,25 +28,21 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
   const { data: currentPolicies, isLoading } = useDomainPolicies(domainId);
   const updatePolicies = useUpdateDomainPolicies();
 
-  const [policies, setPolicies] = useState<DomainPolicies>({
-    retentionDays: 0,
-    archiveAfterDays: 0,
-    deleteAfterDays: 0,
-    requireEncryption: false,
-    allowForwarding: true,
-    allowExternalSharing: true,
-    dlpEnabled: false,
-    dlpRules: [],
-    complianceMode: "none",
-  });
+  const [policies, setPolicies] = useState<DomainPolicies>(
+    currentPolicies ?? {
+      retentionDays: 0,
+      archiveAfterDays: 0,
+      deleteAfterDays: 0,
+      requireEncryption: false,
+      allowForwarding: true,
+      allowExternalSharing: true,
+      dlpEnabled: false,
+      dlpRules: [],
+      complianceMode: "none",
+    }
+  );
 
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (currentPolicies) {
-      setPolicies(currentPolicies);
-    }
-  }, [currentPolicies]);
 
   const handleSave = async () => {
     try {
