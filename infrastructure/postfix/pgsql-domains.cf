@@ -1,0 +1,10 @@
+# PostgreSQL Domain Lookup Configuration
+# /etc/postfix/pgsql-domains.cf
+
+hosts = postgres.email-system.svc.cluster.local:5432
+user = postfix
+password = ${POSTFIX_DB_PASSWORD}
+dbname = email_system
+
+# Query to check if domain is verified and active
+query = SELECT 1 FROM domains WHERE name = '%s' AND status = 'active' AND verified = true

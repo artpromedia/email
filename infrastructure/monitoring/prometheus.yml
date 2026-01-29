@@ -1,0 +1,162 @@
+# Prometheus Configuration for Multi-Domain Email System
+# Per-domain metrics and monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "enterprise-email"
+    environment: "production"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+# Scrape configurations
+scrape_configs:
+  # SMTP Server Metrics
+  - job_name: "smtp-server"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - email-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: smtp-server
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      # Extract domain label from pod
+      - source_labels: [__meta_kubernetes_pod_label_domain]
+        target_label: domain
+      - source_labels: [__meta_kubernetes_pod_label_organization]
+        target_label: organization
+
+  # IMAP Server Metrics
+  - job_name: "imap-server"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - email-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: imap-server
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_label_domain]
+        target_label: domain
+      - source_labels: [__meta_kubernetes_pod_label_organization]
+        target_label: organization
+
+  # Domain Manager Metrics
+  - job_name: "domain-manager"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - email-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: domain-manager
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+
+  # Storage Service Metrics
+  - job_name: "storage-service"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - email-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: storage-service
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_label_domain]
+        target_label: domain
+      - source_labels: [__meta_kubernetes_pod_label_organization]
+        target_label: organization
+
+  # Auth Service Metrics
+  - job_name: "auth-service"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - email-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: auth-service
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+
+  # PostgreSQL Exporter
+  - job_name: "postgresql"
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "primary-db"
+
+  # Node Exporter
+  - job_name: "node-exporter"
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+
+  # Nginx Ingress Controller
+  - job_name: "nginx-ingress"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - ingress-nginx
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        regex: ingress-nginx
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_label_domain]
+        target_label: domain
+
+  # Cert-Manager
+  - job_name: "cert-manager"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - cert-manager
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: cert-manager
+        action: keep

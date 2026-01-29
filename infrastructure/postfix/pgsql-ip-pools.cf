@@ -1,0 +1,29 @@
+# PostgreSQL IP Pool Configuration
+# /etc/postfix/pgsql-ip-pools.cf
+
+hosts = postgres.email-system.svc.cluster.local:5432
+user = postfix
+password = ${POSTFIX_DB_PASSWORD}
+dbname = email_system
+
+# Query to determine which SMTP transport (IP pool) to use for a domain
+# Returns transport name like: smtp-pool-1:, smtp-pool-2:, etc.
+query = SELECT CONCAT('smtp-', ip.pool_name, ':')
+        FROM domain_ip_pools dip
+        INNER JOIN ip_pools ip ON dip.pool_id = ip.id
+        INNER JOIN domains d ON dip.domain_id = d.id
+        WHERE d.name = (
+            SELECT domain
+            FROM (
+                SELECT '%s' AS email
+            ) AS e,
+            LATERAL (
+                SELECT SUBSTRING(email FROM POSITION('@' IN email) + 1) AS domain
+            ) AS parsed
+        )
+        AND ip.active = true
+        LIMIT 1
+
+# Fallback to shared pool if no dedicated pool
+result_format = %s
+expansion_limit = 1

@@ -1,0 +1,237 @@
+{
+  "dashboard": {
+    "title": "Multi-Domain Email System - Per Domain Overview",
+    "tags": ["email", "multi-domain", "overview"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Domain Health Status",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "count(domain_verified{status=\"active\"} == 1)",
+            "legendFormat": "Verified Domains"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "orientation": "auto"
+        }
+      },
+      {
+        "title": "Total Email Volume by Domain",
+        "type": "graph",
+        "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum by (domain) (rate(smtp_messages_total[5m]) * 60)",
+            "legendFormat": "{{domain}}"
+          }
+        ],
+        "yaxes": [{ "label": "Messages/min", "format": "short" }, { "show": false }]
+      },
+      {
+        "title": "Email Error Rate by Domain",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(smtp_messages_failed_total{domain!=\"\"}[5m]) / rate(smtp_messages_total{domain!=\"\"}[5m]) * 100",
+            "legendFormat": "{{domain}}"
+          }
+        ],
+        "yaxes": [{ "label": "Error Rate (%)", "format": "percent" }, { "show": false }],
+        "alert": {
+          "name": "High Error Rate",
+          "conditions": [
+            {
+              "evaluator": { "params": [5], "type": "gt" },
+              "operator": { "type": "and" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "params": [], "type": "avg" },
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Storage Usage by Domain",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "domain_storage_used_bytes{domain!=\"\"} / 1024 / 1024 / 1024",
+            "legendFormat": "{{domain}}"
+          }
+        ],
+        "yaxes": [{ "label": "Storage (GB)", "format": "decgbytes" }, { "show": false }]
+      },
+      {
+        "title": "Domain Storage Quota Usage",
+        "type": "gauge",
+        "gridPos": { "x": 0, "y": 16, "w": 8, "h": 6 },
+        "targets": [
+          {
+            "expr": "(domain_storage_used_bytes / domain_storage_quota_bytes) * 100",
+            "legendFormat": "{{domain}}"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      {
+        "title": "Certificate Expiration Status",
+        "type": "table",
+        "gridPos": { "x": 8, "y": 16, "w": 16, "h": 6 },
+        "targets": [
+          {
+            "expr": "(certmanager_certificate_expiration_timestamp_seconds - time()) / 86400",
+            "legendFormat": "{{domain}}",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": { "Time": true },
+              "renameByName": {
+                "domain": "Domain",
+                "Value": "Days Until Expiration"
+              }
+            }
+          }
+        ],
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Days Until Expiration" },
+              "properties": [
+                {
+                  "id": "custom.displayMode",
+                  "value": "color-background"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "red", "value": 0 },
+                      { "color": "yellow", "value": 7 },
+                      { "color": "green", "value": 30 }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "title": "DNS Health by Domain",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 22, "w": 24, "h": 4 },
+        "targets": [
+          {
+            "expr": "domain_dns_healthy{domain!=\"\"}",
+            "legendFormat": "{{domain}}"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "mappings": [
+              { "type": "value", "value": "0", "text": "Unhealthy" },
+              { "type": "value", "value": "1", "text": "Healthy" }
+            ]
+          }
+        }
+      },
+      {
+        "title": "Active Connections by Domain",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 26, "w": 12, "h": 6 },
+        "targets": [
+          {
+            "expr": "smtp_active_connections{domain!=\"\"}",
+            "legendFormat": "{{domain}} SMTP"
+          },
+          {
+            "expr": "imap_active_connections{domain!=\"\"}",
+            "legendFormat": "{{domain}} IMAP"
+          }
+        ],
+        "yaxes": [{ "label": "Connections", "format": "short" }, { "show": false }]
+      },
+      {
+        "title": "Bounce Rate by Domain",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 26, "w": 12, "h": 6 },
+        "targets": [
+          {
+            "expr": "rate(smtp_bounces_total{domain!=\"\"}[1h]) / rate(smtp_messages_total{domain!=\"\"}[1h]) * 100",
+            "legendFormat": "{{domain}}"
+          }
+        ],
+        "yaxes": [{ "label": "Bounce Rate (%)", "format": "percent" }, { "show": false }]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "domain",
+          "type": "query",
+          "query": "label_values(smtp_messages_total, domain)",
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "organization",
+          "type": "query",
+          "query": "label_values(smtp_messages_total{domain=\"$domain\"}, organization)",
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

@@ -1,0 +1,165 @@
+# Multi-Domain SMTP Configuration
+# Postfix configuration for handling multiple customer domains
+
+# ============================================================
+# VIRTUAL MAILBOX DOMAINS
+# ============================================================
+
+# Use PostgreSQL for domain lookup
+virtual_mailbox_domains = proxy:pgsql:/etc/postfix/pgsql-domains.cf
+virtual_mailbox_maps = proxy:pgsql:/etc/postfix/pgsql-mailboxes.cf
+virtual_alias_maps = proxy:pgsql:/etc/postfix/pgsql-aliases.cf
+
+# ============================================================
+# TLS/SNI CONFIGURATION
+# ============================================================
+
+# Enable SNI for proper certificate selection
+tls_server_sni_maps = hash:/etc/postfix/sni_maps
+
+# TLS certificate and key (fallback/primary)
+smtpd_tls_cert_file = /etc/ssl/certs/mail.enterprise-email.com.crt
+smtpd_tls_key_file = /etc/ssl/private/mail.enterprise-email.com.key
+
+# TLS chain files
+smtpd_tls_chain_files =
+    /etc/ssl/certs/mail.enterprise-email.com.fullchain.pem,
+    /etc/ssl/private/mail.enterprise-email.com.key
+
+# Enable TLS
+smtpd_tls_security_level = may
+smtp_tls_security_level = may
+smtpd_tls_auth_only = yes
+
+# TLS protocols and ciphers
+smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtpd_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtp_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtp_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+
+smtpd_tls_mandatory_ciphers = high
+smtpd_tls_ciphers = high
+tls_high_cipherlist = ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+
+# ============================================================
+# SMTP RESTRICTIONS
+# ============================================================
+
+# Recipient restrictions
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination,
+    check_policy_service unix:private/policy-spf,
+    check_policy_service inet:127.0.0.1:10031
+
+# Sender restrictions
+smtpd_sender_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain
+
+# HELO restrictions
+smtpd_helo_required = yes
+smtpd_helo_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_invalid_helo_hostname,
+    reject_non_fqdn_helo_hostname
+
+# ============================================================
+# SASL AUTHENTICATION
+# ============================================================
+
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain = $myhostname
+broken_sasl_auth_clients = yes
+
+# ============================================================
+# RATE LIMITING (Per Domain)
+# ============================================================
+
+# Anvil configuration for rate limiting
+anvil_rate_time_unit = 60s
+smtpd_client_connection_rate_limit = 100
+smtpd_client_message_rate_limit = 50
+smtpd_client_recipient_rate_limit = 100
+
+# Policy service for domain-based rate limiting
+smtpd_end_of_data_restrictions =
+    check_policy_service inet:127.0.0.1:10032
+
+# ============================================================
+# IP POOL MANAGEMENT
+# ============================================================
+
+# Use sender_dependent_default_transport_maps for IP pool routing
+sender_dependent_default_transport_maps = proxy:pgsql:/etc/postfix/pgsql-ip-pools.cf
+
+# Transport maps
+transport_maps = proxy:pgsql:/etc/postfix/pgsql-transports.cf
+
+# ============================================================
+# DKIM SIGNING
+# ============================================================
+
+# OpenDKIM or similar
+milter_default_action = accept
+milter_protocol = 6
+smtpd_milters = inet:127.0.0.1:8891
+non_smtpd_milters = $smtpd_milters
+
+# ============================================================
+# QUEUE MANAGEMENT
+# ============================================================
+
+# Maximum queue lifetime
+maximal_queue_lifetime = 5d
+bounce_queue_lifetime = 5d
+
+# Queue directory
+queue_directory = /var/spool/postfix
+
+# ============================================================
+# LOGGING
+# ============================================================
+
+# Verbose logging
+debug_peer_level = 2
+debug_peer_list =
+
+# ============================================================
+# MISCELLANEOUS
+# ============================================================
+
+# Hostname
+myhostname = mail.enterprise-email.com
+myorigin = $myhostname
+mydestination = localhost
+
+# Network settings
+inet_interfaces = all
+inet_protocols = ipv4
+
+# Message size limit (50MB)
+message_size_limit = 52428800
+
+# Mailbox size limit
+mailbox_size_limit = 0
+
+# Recipient limit
+smtpd_recipient_limit = 100
+
+# Virtual mailbox base
+virtual_mailbox_base = /var/mail/vhosts
+
+# Virtual UID/GID
+virtual_uid_maps = static:5000
+virtual_gid_maps = static:5000
+
+# Enable long queue IDs for tracking
+enable_long_queue_ids = yes

@@ -1,0 +1,174 @@
+# Multi-Domain Ingress Configuration
+# Handles primary domain and dynamic customer domains with TLS
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@enterprise-email.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+      - dns01:
+          route53:
+            region: us-east-1
+            hostedZoneID: HOSTED_ZONE_ID
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@enterprise-email.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+# Primary Domain Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: primary-tls
+  namespace: email-system
+spec:
+  secretName: primary-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - mail.enterprise-email.com
+    - "*.enterprise-email.com"
+    - smtp.enterprise-email.com
+    - imap.enterprise-email.com
+    - webmail.enterprise-email.com
+    - api.enterprise-email.com
+  renewBefore: 720h # 30 days
+
+---
+# Main Ingress - Primary Domain
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mail-ingress-primary
+  namespace: email-system
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    # Enable HSTS
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "DENY" always;
+spec:
+  tls:
+    - hosts:
+        - mail.enterprise-email.com
+        - webmail.enterprise-email.com
+        - api.enterprise-email.com
+      secretName: primary-tls
+  rules:
+    - host: webmail.enterprise-email.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-client
+                port:
+                  number: 80
+    - host: api.enterprise-email.com
+      http:
+        paths:
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8080
+          - path: /domains
+            pathType: Prefix
+            backend:
+              service:
+                name: domain-manager
+                port:
+                  number: 8080
+          - path: /storage
+            pathType: Prefix
+            backend:
+              service:
+                name: storage-service
+                port:
+                  number: 8080
+
+---
+# SMTP/IMAP Service - TCP LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: mail-tcp-services
+  namespace: email-system
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    # Preserve client IP
+    service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
+spec:
+  type: LoadBalancer
+  selector:
+    app: smtp-server
+  ports:
+    - name: smtp
+      protocol: TCP
+      port: 25
+      targetPort: 25
+    - name: smtp-submission
+      protocol: TCP
+      port: 587
+      targetPort: 587
+    - name: smtp-submission-ssl
+      protocol: TCP
+      port: 465
+      targetPort: 465
+    - name: imap
+      protocol: TCP
+      port: 143
+      targetPort: 143
+    - name: imaps
+      protocol: TCP
+      port: 993
+      targetPort: 993
+
+---
+# ConfigMap for Dynamic Domain Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: domain-config
+  namespace: email-system
+data:
+  primary_domain: "enterprise-email.com"
+  mail_server_hostname: "mail.enterprise-email.com"
+  # This will be updated by the domain-manager service
+  verified_domains: |
+    []

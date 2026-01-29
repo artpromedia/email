@@ -1,0 +1,161 @@
+# Cert-Manager Setup for Dynamic Multi-Domain Certificates
+# Automatically provisions certificates for customer domains
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+
+---
+# ServiceAccount for cert-manager
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+
+---
+# RBAC for cert-manager
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-manager
+rules:
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "certificaterequests", "orders", "challenges"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cert-manager
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
+
+---
+# Webhook for DNS-01 Challenge
+apiVersion: v1
+kind: Service
+metadata:
+  name: cert-manager-webhook
+  namespace: cert-manager
+spec:
+  type: ClusterIP
+  ports:
+    - name: https
+      port: 443
+      targetPort: 10250
+  selector:
+    app: cert-manager-webhook
+
+---
+# Certificate Template for Customer Domains
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: certificate-template
+  namespace: email-system
+data:
+  template.yaml: |
+    apiVersion: cert-manager.io/v1
+    kind: Certificate
+    metadata:
+      name: DOMAIN_NAME_PLACEHOLDER-tls
+      namespace: email-system
+    spec:
+      secretName: DOMAIN_NAME_PLACEHOLDER-tls
+      issuerRef:
+        name: letsencrypt-prod
+        kind: ClusterIssuer
+      dnsNames:
+        - DOMAIN_NAME_PLACEHOLDER
+        - mail.DOMAIN_NAME_PLACEHOLDER
+        - webmail.DOMAIN_NAME_PLACEHOLDER
+      renewBefore: 720h
+      usages:
+        - digital signature
+        - key encipherment
+        - server auth
+
+---
+# CronJob to sync domains and create certificates
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: domain-cert-sync
+  namespace: email-system
+spec:
+  schedule: "*/15 * * * *" # Every 15 minutes
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: domain-cert-manager
+          containers:
+            - name: sync
+              image: domain-cert-sync:latest
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: database-credentials
+                      key: url
+                - name: KUBERNETES_NAMESPACE
+                  value: email-system
+              command:
+                - /app/sync-domains
+          restartPolicy: OnFailure
+
+---
+# ServiceAccount for domain-cert-sync
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: domain-cert-manager
+  namespace: email-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: domain-cert-manager
+  namespace: email-system
+rules:
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: domain-cert-manager
+  namespace: email-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: domain-cert-manager
+subjects:
+  - kind: ServiceAccount
+    name: domain-cert-manager
+    namespace: email-system

@@ -1,0 +1,16 @@
+# PostgreSQL Mailbox Lookup Configuration
+# /etc/postfix/pgsql-mailboxes.cf
+
+hosts = postgres.email-system.svc.cluster.local:5432
+user = postfix
+password = ${POSTFIX_DB_PASSWORD}
+dbname = email_system
+
+# Query to find mailbox path
+# Returns the mailbox path for virtual delivery
+query = SELECT CONCAT(d.name, '/', u.username, '/')
+        FROM users u
+        INNER JOIN domains d ON u.domain_id = d.id
+        WHERE CONCAT(u.username, '@', d.name) = '%s'
+        AND u.status = 'active'
+        AND d.status = 'active'

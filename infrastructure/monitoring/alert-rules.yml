@@ -1,0 +1,230 @@
+# Prometheus Alert Rules for Multi-Domain Email System
+
+groups:
+  - name: domain_alerts
+    interval: 1m
+    rules:
+      # Domain DNS Record Changed
+      - alert: DomainDNSRecordChanged
+        expr: |
+          (
+            changes(domain_dns_mx_records_count[5m]) > 0
+            or changes(domain_dns_spf_valid[5m]) > 0
+            or changes(domain_dns_dkim_valid[5m]) > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: dns
+        annotations:
+          summary: "DNS records changed for domain {{ $labels.domain }}"
+          description: "DNS records have changed for {{ $labels.domain }}. This may affect email delivery."
+
+      # Domain Certificate Expiring
+      - alert: DomainCertificateExpiring
+        expr: |
+          (certmanager_certificate_expiration_timestamp_seconds - time()) < (30 * 24 * 3600)
+        labels:
+          severity: warning
+          category: tls
+        annotations:
+          summary: "TLS certificate expiring for domain {{ $labels.domain }}"
+          description: "Certificate for {{ $labels.domain }} expires in less than 30 days."
+
+      # Domain Certificate Expiring Critical
+      - alert: DomainCertificateExpiringCritical
+        expr: |
+          (certmanager_certificate_expiration_timestamp_seconds - time()) < (7 * 24 * 3600)
+        labels:
+          severity: critical
+          category: tls
+        annotations:
+          summary: "TLS certificate expiring soon for domain {{ $labels.domain }}"
+          description: "Certificate for {{ $labels.domain }} expires in less than 7 days!"
+
+      # Domain Verification Failed
+      - alert: DomainVerificationFailed
+        expr: |
+          domain_verified{status="active"} == 0
+        for: 15m
+        labels:
+          severity: critical
+          category: dns
+        annotations:
+          summary: "Domain verification failed for {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} failed DNS verification. Email delivery may be affected."
+
+      # Domain Storage Quota Exceeded
+      - alert: DomainStorageQuotaExceeded
+        expr: |
+          (domain_storage_used_bytes / domain_storage_quota_bytes) > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: "Storage quota exceeded for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has exceeded 95% of storage quota."
+
+      # Domain Storage Quota Warning
+      - alert: DomainStorageQuotaWarning
+        expr: |
+          (domain_storage_used_bytes / domain_storage_quota_bytes) > 0.80
+        for: 15m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: "Storage quota warning for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has exceeded 80% of storage quota."
+
+  - name: email_delivery_alerts
+    interval: 1m
+    rules:
+      # High Email Error Rate
+      - alert: HighEmailErrorRate
+        expr: |
+          (
+            rate(smtp_messages_failed_total{domain!=""}[5m])
+            / rate(smtp_messages_total{domain!=""}[5m])
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          category: delivery
+        annotations:
+          summary: "High error rate for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has >5% email delivery failure rate."
+
+      # Domain Sending Reputation Drop
+      - alert: DomainReputationDrop
+        expr: |
+          domain_reputation_score < 50
+        for: 30m
+        labels:
+          severity: warning
+          category: reputation
+        annotations:
+          summary: "Reputation score dropped for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} reputation score is {{ $value }}."
+
+      # Bounce Rate High
+      - alert: HighBounceRate
+        expr: |
+          (
+            rate(smtp_bounces_total{domain!=""}[1h])
+            / rate(smtp_messages_total{domain!=""}[1h])
+          ) > 0.10
+        for: 30m
+        labels:
+          severity: warning
+          category: delivery
+        annotations:
+          summary: "High bounce rate for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has >10% bounce rate in the last hour."
+
+      # Spam Complaints High
+      - alert: HighSpamComplaints
+        expr: |
+          rate(smtp_spam_complaints_total{domain!=""}[1h]) > 0.001
+        for: 30m
+        labels:
+          severity: critical
+          category: reputation
+        annotations:
+          summary: "High spam complaint rate for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has elevated spam complaints."
+
+  - name: performance_alerts
+    interval: 1m
+    rules:
+      # High SMTP Latency
+      - alert: HighSMTPLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(smtp_message_duration_seconds_bucket{domain!=""}[5m])
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High SMTP latency for domain {{ $labels.domain }}"
+          description: "95th percentile SMTP latency for {{ $labels.domain }} is {{ $value }}s."
+
+      # High IMAP Latency
+      - alert: HighIMAPLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(imap_command_duration_seconds_bucket{domain!=""}[5m])
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High IMAP latency for domain {{ $labels.domain }}"
+          description: "95th percentile IMAP latency for {{ $labels.domain }} is {{ $value }}s."
+
+      # Domain Queue Backlog
+      - alert: DomainQueueBacklog
+        expr: |
+          smtp_queue_size{domain!=""} > 1000
+        for: 15m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Email queue backlog for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has {{ $value }} messages in queue."
+
+  - name: security_alerts
+    interval: 1m
+    rules:
+      # Authentication Failures
+      - alert: HighAuthenticationFailures
+        expr: |
+          rate(auth_failures_total{domain!=""}[5m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High authentication failure rate for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has elevated authentication failures."
+
+      # Brute Force Attack
+      - alert: PossibleBruteForceAttack
+        expr: |
+          rate(auth_failures_total{domain!=""}[1m]) > 50
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Possible brute force attack on domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has very high authentication failure rate."
+
+      # SPF Failures
+      - alert: HighSPFFailures
+        expr: |
+          rate(smtp_spf_fail_total{domain!=""}[1h]) > 0.10
+        for: 30m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High SPF failure rate for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has elevated SPF validation failures."
+
+      # DKIM Failures
+      - alert: HighDKIMFailures
+        expr: |
+          rate(smtp_dkim_fail_total{domain!=""}[1h]) > 0.10
+        for: 30m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High DKIM failure rate for domain {{ $labels.domain }}"
+          description: "Domain {{ $labels.domain }} has elevated DKIM validation failures."
