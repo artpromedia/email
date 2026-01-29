@@ -310,3 +310,233 @@ export interface UnreadCountUpdate {
   folderId: string;
   count: number;
 }
+
+// ============================================================
+// COMPOSE TYPES
+// ============================================================
+
+/**
+ * Address that user can send from
+ */
+export interface SendableAddress {
+  /** Unique identifier */
+  id: string;
+  /** Email address */
+  email: string;
+  /** Display name */
+  displayName: string;
+  /** Full formatted address (Name <email>) */
+  formatted: string;
+  /** Domain ID this address belongs to */
+  domainId: string;
+  /** Domain name for display */
+  domainName: string;
+  /** Domain color for badge */
+  domainColor: string;
+  /** Type of address */
+  type: "personal" | "alias" | "shared";
+  /** Is this the user's primary address */
+  isPrimary: boolean;
+  /** Send permission type */
+  sendAs: "send-as" | "send-on-behalf" | "both";
+  /** Is currently verified and active */
+  isVerified: boolean;
+  /** Daily sending limit */
+  dailyLimit?: number;
+  /** Emails sent today */
+  sentToday?: number;
+}
+
+/**
+ * Email signature
+ */
+export interface EmailSignature {
+  id: string;
+  name: string;
+  content: string;
+  contentHtml: string;
+  /** Signature level */
+  level: "address" | "domain" | "global";
+  /** Associated address ID (if address-level) */
+  addressId?: string;
+  /** Associated domain ID (if domain-level) */
+  domainId?: string;
+  /** Is this the default for its level */
+  isDefault: boolean;
+}
+
+/**
+ * Domain email branding
+ */
+export interface EmailBranding {
+  domainId: string;
+  domainName: string;
+  /** HTML header to insert in emails */
+  headerHtml?: string;
+  /** HTML footer to insert in emails */
+  footerHtml?: string;
+  /** Logo URL for email header */
+  logoUrl?: string;
+  /** Brand color for email accents */
+  brandColor?: string;
+  /** Whether branding is enabled */
+  enabled: boolean;
+}
+
+/**
+ * Email recipient with metadata
+ */
+export interface EmailRecipient {
+  email: string;
+  name?: string;
+  /** Is this an internal (same organization) address */
+  isInternal: boolean;
+  /** Domain if internal */
+  internalDomainId?: string;
+  /** Is a valid email format */
+  isValid: boolean;
+  /** Validation error if any */
+  error?: string;
+}
+
+/**
+ * Recipient hint for cross-domain awareness
+ */
+export interface RecipientHint {
+  email: string;
+  /** Type of hint */
+  type: "internal" | "external" | "same-domain" | "recent" | "contact";
+  /** Display message */
+  message: string;
+  /** Domain info if internal */
+  domainInfo?: {
+    id: string;
+    name: string;
+    color: string;
+  };
+}
+
+/**
+ * Compose email draft
+ */
+export interface ComposeDraft {
+  id: string;
+  /** From address ID */
+  fromAddressId: string;
+  /** From address (full object for display) */
+  fromAddress?: SendableAddress;
+  /** To recipients */
+  to: EmailRecipient[];
+  /** CC recipients */
+  cc: EmailRecipient[];
+  /** BCC recipients */
+  bcc: EmailRecipient[];
+  /** Email subject */
+  subject: string;
+  /** Plain text body */
+  body: string;
+  /** HTML body */
+  bodyHtml: string;
+  /** Selected signature ID */
+  signatureId?: string;
+  /** Attachments */
+  attachments: ComposeAttachment[];
+  /** Is reply/forward */
+  replyType?: "reply" | "reply-all" | "forward";
+  /** Original email ID if reply/forward */
+  originalEmailId?: string;
+  /** Send mode for shared mailboxes */
+  sendMode: "send-as" | "send-on-behalf";
+  /** Priority */
+  priority: "normal" | "high" | "low";
+  /** Request read receipt */
+  requestReadReceipt: boolean;
+  /** Created timestamp */
+  createdAt: Date;
+  /** Last modified timestamp */
+  updatedAt: Date;
+}
+
+/**
+ * Compose attachment
+ */
+export interface ComposeAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  /** Upload progress (0-100) */
+  progress?: number;
+  /** Upload status */
+  status: "pending" | "uploading" | "complete" | "error";
+  /** Error message if failed */
+  error?: string;
+  /** Server file ID after upload */
+  fileId?: string;
+}
+
+/**
+ * Send permission validation result
+ */
+export interface SendPermissionResult {
+  /** Is allowed to send */
+  allowed: boolean;
+  /** Error message if not allowed */
+  error?: string;
+  /** Error code for specific handling */
+  errorCode?: "no_permission" | "domain_unverified" | "limit_exceeded" | "address_disabled";
+  /** Remaining daily quota */
+  remainingQuota?: number;
+  /** When quota resets */
+  quotaResetAt?: Date;
+}
+
+/**
+ * Send email request
+ */
+export interface SendEmailRequest {
+  /** From address ID */
+  fromAddressId: string;
+  /** Send mode for shared mailboxes */
+  sendMode: "send-as" | "send-on-behalf";
+  /** To recipients */
+  to: string[];
+  /** CC recipients */
+  cc?: string[];
+  /** BCC recipients */
+  bcc?: string[];
+  /** Subject */
+  subject: string;
+  /** Plain text body */
+  body: string;
+  /** HTML body */
+  bodyHtml?: string;
+  /** Attachment file IDs */
+  attachmentIds?: string[];
+  /** Priority */
+  priority?: "normal" | "high" | "low";
+  /** Request read receipt */
+  requestReadReceipt?: boolean;
+  /** Reply to email ID */
+  inReplyTo?: string;
+  /** Forward of email ID */
+  forwardOf?: string;
+}
+
+/**
+ * Compose context for smart defaults
+ */
+export interface ComposeContext {
+  /** Mode of compose */
+  mode: "new" | "reply" | "reply-all" | "forward";
+  /** Original email if replying/forwarding */
+  originalEmail?: EmailListItem;
+  /** Current domain context */
+  currentDomainId?: string;
+  /** Current mailbox context */
+  currentMailboxId?: string;
+  /** Pre-filled recipients */
+  prefillTo?: string[];
+  /** Pre-filled subject */
+  prefillSubject?: string;
+}
