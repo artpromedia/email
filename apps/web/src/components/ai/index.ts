@@ -4,7 +4,11 @@
  */
 
 // Smart Reply
-export { SmartReplySuggestions, QuickReplySuggestions, type ReplySuggestion } from "./SmartReplySuggestions";
+export {
+  SmartReplySuggestions,
+  QuickReplySuggestions,
+  type ReplySuggestion,
+} from "./SmartReplySuggestions";
 
 // Priority Detection
 export {
@@ -17,12 +21,7 @@ export {
 } from "./PriorityIndicator";
 
 // Email Summarization
-export {
-  EmailSummary,
-  ThreadSummary,
-  ActionItemsList,
-  TldrBadge,
-} from "./EmailSummary";
+export { EmailSummary, ThreadSummary, ActionItemsList, TldrBadge } from "./EmailSummary";
 
 // Draft Assistant
 export {

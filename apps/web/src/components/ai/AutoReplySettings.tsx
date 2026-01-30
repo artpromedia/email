@@ -98,7 +98,12 @@ interface ModeToggleProps {
 }
 
 export function AutoReplyModeToggle({ currentMode, onChange, disabled }: ModeToggleProps) {
-  const modes: Array<{ value: AutoReplyMode; label: string; description: string; icon: React.ReactNode }> = [
+  const modes: {
+    value: AutoReplyMode;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+  }[] = [
     {
       value: "off",
       label: "Off",
@@ -145,7 +150,7 @@ export function AutoReplyModeToggle({ currentMode, onChange, disabled }: ModeTog
                   ? "border-amber-500 bg-amber-50 ring-2 ring-amber-500/20 dark:bg-amber-900/20"
                   : "border-violet-500 bg-violet-50 ring-2 ring-violet-500/20 dark:bg-violet-900/20"
                 : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600",
-              disabled && "opacity-50 cursor-not-allowed"
+              disabled && "cursor-not-allowed opacity-50"
             )}
           >
             <div
@@ -225,7 +230,9 @@ export function AutoReplyRuleList({ rules, onEdit, onDelete, onToggle, onCreate 
         <div className="rounded-lg border border-dashed border-neutral-300 p-8 text-center dark:border-neutral-700">
           <Bot className="mx-auto mb-3 h-10 w-10 text-neutral-400" />
           <p className="font-medium text-neutral-600 dark:text-neutral-400">No rules yet</p>
-          <p className="text-sm text-neutral-500">Create your first auto-reply rule to get started</p>
+          <p className="text-sm text-neutral-500">
+            Create your first auto-reply rule to get started
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -317,12 +324,12 @@ interface RuleEditorProps {
 }
 
 export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: RuleEditorProps) {
-  const [name, setName] = useState(rule?.name || "");
-  const [priority, setPriority] = useState(rule?.priority || 1);
-  const [conditions, setConditions] = useState<RuleCondition[]>(rule?.conditions || []);
-  const [responseTemplate, setResponseTemplate] = useState(rule?.responseTemplate || "");
+  const [name, setName] = useState(rule?.name ?? "");
+  const [priority, setPriority] = useState(rule?.priority ?? 1);
+  const [conditions, setConditions] = useState<RuleCondition[]>(rule?.conditions ?? []);
+  const [responseTemplate, setResponseTemplate] = useState(rule?.responseTemplate ?? "");
   const [safeguards, setSafeguards] = useState<RuleSafeguards>(
-    rule?.safeguards || {
+    rule?.safeguards ?? {
       excludeVip: true,
       excludeDomains: [],
       maxRepliesPerSender: 3,
@@ -334,7 +341,7 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const conditionTypes: Array<{ value: RuleCondition["type"]; label: string; icon: React.ReactNode }> = [
+  const conditionTypes: { value: RuleCondition["type"]; label: string; icon: React.ReactNode }[] = [
     { value: "sender", label: "Sender", icon: <Users className="h-4 w-4" /> },
     { value: "subject", label: "Subject", icon: <Mail className="h-4 w-4" /> },
     { value: "keyword", label: "Keyword", icon: <Tag className="h-4 w-4" /> },
@@ -343,16 +350,11 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
   ];
 
   const addCondition = () => {
-    setConditions([
-      ...conditions,
-      { type: "sender", operator: "contains", value: "" },
-    ]);
+    setConditions([...conditions, { type: "sender", operator: "contains", value: "" }]);
   };
 
   const updateCondition = (index: number, updates: Partial<RuleCondition>) => {
-    setConditions(
-      conditions.map((c, i) => (i === index ? { ...c, ...updates } : c))
-    );
+    setConditions(conditions.map((c, i) => (i === index ? { ...c, ...updates } : c)));
   };
 
   const removeCondition = (index: number) => {
@@ -381,8 +383,8 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        setValidationError(data.error || "Validation failed");
+        const data = (await response.json()) as { error?: string };
+        setValidationError(data.error ?? "Validation failed");
         return false;
       }
 
@@ -425,10 +427,14 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
       {/* Basic Info */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <label
+            htmlFor="rule-name"
+            className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
             Rule Name
           </label>
           <input
+            id="rule-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -437,10 +443,14 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <label
+            htmlFor="rule-priority"
+            className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
             Priority (1 = highest)
           </label>
           <input
+            id="rule-priority"
             type="number"
             value={priority}
             onChange={(e) => setPriority(parseInt(e.target.value) || 1)}
@@ -454,13 +464,10 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
       {/* Conditions */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             Conditions (all must match)
-          </label>
-          <button
-            onClick={addCondition}
-            className="text-sm text-violet-600 hover:text-violet-700"
-          >
+          </span>
+          <button onClick={addCondition} className="text-sm text-violet-600 hover:text-violet-700">
             + Add Condition
           </button>
         </div>
@@ -493,7 +500,9 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
                 <select
                   value={condition.operator}
                   onChange={(e) =>
-                    updateCondition(index, { operator: e.target.value as RuleCondition["operator"] })
+                    updateCondition(index, {
+                      operator: e.target.value as RuleCondition["operator"],
+                    })
                   }
                   className="rounded border px-2 py-1 text-sm dark:border-neutral-600 dark:bg-neutral-800"
                 >
@@ -526,10 +535,14 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
 
       {/* Response Template */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+        <label
+          htmlFor="response-template"
+          className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+        >
           Response Template
         </label>
         <textarea
+          id="response-template"
           value={responseTemplate}
           onChange={(e) => setResponseTemplate(e.target.value)}
           placeholder="Write your response template here. Use {sender_name}, {subject}, {date} as placeholders..."
@@ -565,9 +578,7 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
             <input
               type="checkbox"
               checked={safeguards.workingHoursOnly}
-              onChange={(e) =>
-                setSafeguards({ ...safeguards, workingHoursOnly: e.target.checked })
-              }
+              onChange={(e) => setSafeguards({ ...safeguards, workingHoursOnly: e.target.checked })}
               className="rounded border-neutral-300"
             />
             <span className="text-sm text-neutral-700 dark:text-neutral-300">
@@ -579,9 +590,7 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
             <input
               type="checkbox"
               checked={safeguards.requireApproval}
-              onChange={(e) =>
-                setSafeguards({ ...safeguards, requireApproval: e.target.checked })
-              }
+              onChange={(e) => setSafeguards({ ...safeguards, requireApproval: e.target.checked })}
               className="rounded border-neutral-300"
             />
             <span className="text-sm text-neutral-700 dark:text-neutral-300">
@@ -591,10 +600,14 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+              <label
+                htmlFor="max-replies"
+                className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400"
+              >
                 Max replies per sender
               </label>
               <input
+                id="max-replies"
                 type="number"
                 value={safeguards.maxRepliesPerSender}
                 onChange={(e) =>
@@ -608,10 +621,14 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+              <label
+                htmlFor="cooldown"
+                className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400"
+              >
                 Cooldown (minutes)
               </label>
               <input
+                id="cooldown"
                 type="number"
                 value={safeguards.cooldownMinutes}
                 onChange={(e) =>
@@ -700,10 +717,7 @@ export function AutoReplyAuditLog({ entries, isLoading, onLoadMore, hasMore }: A
       ) : (
         <div className="space-y-2">
           {entries.map((entry) => (
-            <div
-              key={entry.id}
-              className="rounded-lg border p-3 dark:border-neutral-700"
-            >
+            <div key={entry.id} className="rounded-lg border p-3 dark:border-neutral-700">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -727,9 +741,7 @@ export function AutoReplyAuditLog({ entries, isLoading, onLoadMore, hasMore }: A
                   </div>
 
                   {entry.blockedReason && (
-                    <div className="mt-1 text-xs text-red-500">
-                      Blocked: {entry.blockedReason}
-                    </div>
+                    <div className="mt-1 text-xs text-red-500">Blocked: {entry.blockedReason}</div>
                   )}
 
                   <div className="mt-2 rounded bg-neutral-50 p-2 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
@@ -751,11 +763,7 @@ export function AutoReplyAuditLog({ entries, isLoading, onLoadMore, hasMore }: A
               disabled={isLoading}
               className="w-full rounded-lg border py-2 text-sm text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
             >
-              {isLoading ? (
-                <RefreshCw className="mx-auto h-4 w-4 animate-spin" />
-              ) : (
-                "Load More"
-              )}
+              {isLoading ? <RefreshCw className="mx-auto h-4 w-4 animate-spin" /> : "Load More"}
             </button>
           )}
         </div>
@@ -789,16 +797,16 @@ export function AutoReplySettings({ userId, orgId }: AutoReplySettingsProps) {
       // Load stats which includes mode and rules
       const response = await fetch(`/api/ai/auto-reply/stats/${userId}`);
       if (response.ok) {
-        const data = await response.json();
-        setMode(data.mode || "off");
-        setRules(data.rules || []);
+        const data = (await response.json()) as { mode?: AutoReplyMode; rules?: AutoReplyRule[] };
+        setMode(data.mode ?? "off");
+        setRules(data.rules ?? []);
       }
 
       // Load audit log
       const auditResponse = await fetch(`/api/ai/auto-reply/audit/${userId}?limit=20`);
       if (auditResponse.ok) {
-        const auditData = await auditResponse.json();
-        setAuditLog(auditData.entries || []);
+        const auditData = (await auditResponse.json()) as { entries?: AuditLogEntry[] };
+        setAuditLog(auditData.entries ?? []);
       }
     } catch {
       // Handle error
@@ -808,7 +816,7 @@ export function AutoReplySettings({ userId, orgId }: AutoReplySettingsProps) {
   }, [userId]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const handleSaveRule = (rule: AutoReplyRule) => {
@@ -843,7 +851,7 @@ export function AutoReplySettings({ userId, orgId }: AutoReplySettingsProps) {
     return (
       <div className="rounded-xl border bg-white p-6 dark:border-neutral-700 dark:bg-neutral-800">
         <AutoReplyRuleEditor
-          rule={editingRule || undefined}
+          rule={editingRule ?? undefined}
           onSave={handleSaveRule}
           onCancel={() => {
             setEditingRule(null);
@@ -860,10 +868,7 @@ export function AutoReplySettings({ userId, orgId }: AutoReplySettingsProps) {
     <div className="space-y-6">
       {/* Mode Selector */}
       <div className="rounded-xl border bg-white p-6 dark:border-neutral-700 dark:bg-neutral-800">
-        <AutoReplyModeToggle
-          currentMode={mode}
-          onChange={setMode}
-        />
+        <AutoReplyModeToggle currentMode={mode} onChange={setMode} />
       </div>
 
       {/* Tabs */}
