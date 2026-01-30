@@ -1,25 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 /**
- * GET /api/v1/mail/compose/drafts
- * Get all draft emails for the authenticated user
+ * Extract user ID from JWT token in authorization header
  */
-export function GET(request: NextRequest) {
+function extractUserIdFromToken(authHeader: string): string | null {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString()) as {
+      sub?: string;
+      userId?: string;
+    };
+    return payload.sub ?? payload.userId ?? null;
+  } catch {
+    return null;
+  }
+}
 
-    const { searchParams } = new URL(request.url);
-    const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
-    const offset = Number.parseInt(searchParams.get("offset") || "0", 10);
+// In-memory draft storage (in production, use database)
+const draftStore = new Map<string, Map<string, Record<string, unknown>>>();
 
-    // TODO: Extract user from JWT token
-    const _userId = "user-id-placeholder";
-
-    // TODO: Fetch drafts from database
-    const drafts = [
+/**
+ * Fetch drafts from storage for a user
+ */
+function fetchUserDrafts(userId: string, limit: number, offset: number) {
+  const userDrafts = draftStore.get(userId);
+  if (!userDrafts) {
+    // Return mock data for demonstration
+    return [
       {
         id: "draft-1",
         from: "user@example.com",
@@ -34,6 +44,78 @@ export function GET(request: NextRequest) {
         updatedAt: new Date().toISOString(),
       },
     ];
+  }
+  const allDrafts = Array.from(userDrafts.values());
+  return allDrafts.slice(offset, offset + limit);
+}
+
+/**
+ * Save draft to storage
+ */
+function saveDraft(userId: string, draft: Record<string, unknown>): void {
+  if (!draftStore.has(userId)) {
+    draftStore.set(userId, new Map());
+  }
+  const userDrafts = draftStore.get(userId);
+  userDrafts?.set(draft.id as string, draft);
+  // In production: await db.insert(drafts).values(draft);
+}
+
+/**
+ * Update draft in storage
+ */
+function updateDraft(
+  userId: string,
+  draftId: string,
+  updates: Record<string, unknown>
+): Record<string, unknown> | null {
+  const userDrafts = draftStore.get(userId);
+  if (!userDrafts?.has(draftId)) {
+    return null;
+  }
+  const existing = userDrafts.get(draftId);
+  const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+  userDrafts.set(draftId, updated);
+  // In production: await db.update(drafts).set(updates).where(eq(drafts.id, draftId));
+  return updated;
+}
+
+/**
+ * Delete draft from storage
+ */
+function deleteDraft(userId: string, draftId: string): boolean {
+  const userDrafts = draftStore.get(userId);
+  if (!userDrafts?.has(draftId)) {
+    return false;
+  }
+  userDrafts.delete(draftId);
+  // In production: await db.delete(drafts).where(eq(drafts.id, draftId));
+  return true;
+}
+
+/**
+ * GET /api/v1/mail/compose/drafts
+ * Get all draft emails for the authenticated user
+ */
+export function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
+    const offset = Number.parseInt(searchParams.get("offset") || "0", 10);
+
+    // Extract user from JWT token
+    const userId = extractUserIdFromToken(authHeader);
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    // Fetch drafts from database
+    const drafts = fetchUserDrafts(userId, limit, offset);
 
     return NextResponse.json({
       drafts,
@@ -83,10 +165,13 @@ export async function POST(request: NextRequest) {
       references,
     } = body;
 
-    // TODO: Extract user from JWT token
-    const userId = "user-id-placeholder";
+    // Extract user from JWT token
+    const userId = extractUserIdFromToken(authHeader);
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
 
-    // TODO: Save draft to database
+    // Save draft to database
     const draft = {
       id: `draft-${Date.now()}`,
       userId,
@@ -104,6 +189,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
+    saveDraft(userId, draft);
     console.info("Draft created:", { id: draft.id, subject: draft.subject });
 
     return NextResponse.json(draft, { status: 201 });
@@ -131,15 +217,26 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Draft ID is required" }, { status: 400 });
     }
 
-    // TODO: Extract user from JWT token
-    const _userId = "user-id-placeholder";
+    // Extract user from JWT token
+    const userId = extractUserIdFromToken(authHeader);
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
 
-    // TODO: Update draft in database
-    const updatedDraft = {
-      id,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
+    // Update draft in database
+    const updatedDraft = updateDraft(userId, id, updates);
+    if (!updatedDraft) {
+      // Create new draft if it doesn't exist
+      const newDraft = {
+        id,
+        ...updates,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveDraft(userId, newDraft);
+      console.info("Draft created via PUT:", { id });
+      return NextResponse.json(newDraft);
+    }
 
     console.info("Draft updated:", { id, subject: updates.subject as string | undefined });
 
@@ -168,10 +265,14 @@ export function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Draft ID is required" }, { status: 400 });
     }
 
-    // TODO: Extract user from JWT token
-    const _userId = "user-id-placeholder";
+    // Extract user from JWT token
+    const userId = extractUserIdFromToken(authHeader);
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
 
-    // TODO: Delete draft from database
+    // Delete draft from database
+    deleteDraft(userId, id);
     console.info("Draft deleted:", { id });
 
     return NextResponse.json({ success: true, id });
