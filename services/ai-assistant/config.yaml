@@ -1,0 +1,75 @@
+server:
+  port: 8090
+  environment: development
+  shutdown_timeout: 30s
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  database: enterprise_email
+  ssl_mode: disable
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+providers:
+  openai:
+    enabled: true
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4-turbo-preview
+    embedding_model: text-embedding-ada-002
+    max_tokens: 4096
+    temperature: 0.3
+
+  anthropic:
+    enabled: false
+    api_key: ${ANTHROPIC_API_KEY}
+    model: claude-3-sonnet-20240229
+    max_tokens: 4096
+    temperature: 0.3
+
+  ollama:
+    enabled: false
+    base_url: http://localhost:11434
+    model: llama2
+    embedding_model: nomic-embed-text
+
+  default_analysis_provider: openai
+  default_embedding_provider: openai
+  default_smart_reply_provider: openai
+  fallback_chain: openai,anthropic,ollama
+  request_timeout: 30s
+
+cache:
+  analysis_ttl: 24h
+  embedding_ttl: 168h # 7 days
+  smart_reply_ttl: 1h
+  max_analysis_entries: 100000
+  max_embedding_entries: 500000
+
+rate_limit:
+  org_tokens_per_min: 100000
+  org_requests_per_min: 1000
+  user_tokens_per_min: 10000
+  user_requests_per_min: 100
+  burst_multiplier: 1.5
+  degradation_threshold: 0.8
+
+analysis:
+  max_body_length: 100000
+  max_concurrent: 50
+  batch_size: 10
+  urgent_threshold: 0.8
+  extract_action_items: true
+  detect_questions: true
+
+embedding:
+  dimensions: 1536
+  max_text_length: 8191
+  batch_size: 100
+  max_concurrent: 20
