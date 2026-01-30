@@ -158,10 +158,7 @@ function StorageProgress({ used, limit }: Readonly<StorageProgressProps>) {
       </div>
       <div className="mb-2 h-3 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
         <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            getProgressBarColor(percentage)
-          )}
+          className={cn("h-full rounded-full transition-all", getProgressBarColor(percentage))}
           style={{ width: `${percentage}%` }}
         />
       </div>

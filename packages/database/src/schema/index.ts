@@ -20,6 +20,9 @@ export * from "./distribution-lists";
 // Routing
 export * from "./routing";
 
+// AI Features
+export * from "./ai";
+
 // Audit & Security
 export * from "./audit";
 

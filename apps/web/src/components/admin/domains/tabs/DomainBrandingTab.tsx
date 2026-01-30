@@ -29,7 +29,7 @@ interface DomainBrandingTabProps {
 // ============================================================
 
 interface ColorPickerProps {
-  readonly readonly label: string;
+  readonly label: string;
   readonly value: string;
   readonly onChange: (color: string) => void;
 }
@@ -281,7 +281,8 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
                   }}
                 >
                   chosen colors
-                </a>.
+                </a>
+                .
               </p>
             </div>
           </div>
