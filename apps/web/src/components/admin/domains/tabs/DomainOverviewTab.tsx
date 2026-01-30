@@ -24,11 +24,11 @@ import type { AdminDomainDetail, DnsRecordStatus } from "@/lib/admin";
 // ============================================================
 
 interface StatCardProps {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor?: string;
+  readonly title: string;
+  readonly value: string | number;
+  readonly subtitle?: string;
+  readonly icon: React.ComponentType<{ className?: string }>;
+  readonly iconColor?: string;
 }
 
 function StatCard({
@@ -61,14 +61,14 @@ function StatCard({
 // ============================================================
 
 interface DnsStatusCardProps {
-  mx: DnsRecordStatus;
-  spf: DnsRecordStatus;
-  dkim: DnsRecordStatus;
-  dmarc: DnsRecordStatus;
-  lastChecked?: Date;
+  readonly mx: DnsRecordStatus;
+  readonly spf: DnsRecordStatus;
+  readonly dkim: DnsRecordStatus;
+  readonly dmarc: DnsRecordStatus;
+  readonly lastChecked?: Date;
 }
 
-function DnsStatusCard({ mx, spf, dkim, dmarc, lastChecked }: DnsStatusCardProps) {
+function DnsStatusCard({ mx, spf, dkim, dmarc, lastChecked }: Readonly<DnsStatusCardProps>) {
   const records = [
     { name: "MX Record", status: mx, description: "Receive emails" },
     { name: "SPF Record", status: spf, description: "Prevent spoofing" },
@@ -126,8 +126,8 @@ function DnsStatusCard({ mx, spf, dkim, dmarc, lastChecked }: DnsStatusCardProps
 // ============================================================
 
 interface StorageProgressProps {
-  used: number;
-  limit: number;
+  readonly used: number;
+  readonly limit: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -135,13 +135,20 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function StorageProgress({ used, limit }: StorageProgressProps) {
+/**
+ * Get progress bar color based on usage percentage
+ */
+function getProgressBarColor(percentage: number): string {
+  if (percentage > 95) return "bg-red-500";
+  if (percentage > 80) return "bg-yellow-500";
+  return "bg-blue-500";
+}
+
+function StorageProgress({ used, limit }: Readonly<StorageProgressProps>) {
   const percentage = Math.min((used / limit) * 100, 100);
-  const isHigh = percentage > 80;
-  const isCritical = percentage > 95;
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
@@ -153,7 +160,7 @@ function StorageProgress({ used, limit }: StorageProgressProps) {
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isCritical ? "bg-red-500" : isHigh ? "bg-yellow-500" : "bg-blue-500"
+            getProgressBarColor(percentage)
           )}
           style={{ width: `${percentage}%` }}
         />
@@ -171,10 +178,10 @@ function StorageProgress({ used, limit }: StorageProgressProps) {
 // ============================================================
 
 interface QuickInfoProps {
-  domain: AdminDomainDetail;
+  readonly domain: AdminDomainDetail;
 }
 
-function QuickInfo({ domain }: QuickInfoProps) {
+function QuickInfo({ domain }: Readonly<QuickInfoProps>) {
   const infoItems = [
     {
       label: "Created",
@@ -219,10 +226,19 @@ function QuickInfo({ domain }: QuickInfoProps) {
 // ============================================================
 
 interface DomainOverviewTabProps {
-  domain: AdminDomainDetail;
+  readonly domain: AdminDomainDetail;
 }
 
-export function DomainOverviewTab({ domain }: DomainOverviewTabProps) {
+/**
+ * Get status color based on domain status
+ */
+function getStatusColor(status: string): string {
+  if (status === "active") return "text-green-500";
+  if (status === "pending") return "text-yellow-500";
+  return "text-red-500";
+}
+
+export function DomainOverviewTab({ domain }: Readonly<DomainOverviewTabProps>) {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
@@ -251,13 +267,7 @@ export function DomainOverviewTab({ domain }: DomainOverviewTabProps) {
           title="Status"
           value={domain.status.charAt(0).toUpperCase() + domain.status.slice(1)}
           icon={CheckCircle2}
-          iconColor={
-            domain.status === "active"
-              ? "text-green-500"
-              : domain.status === "pending"
-                ? "text-yellow-500"
-                : "text-red-500"
-          }
+          iconColor={getStatusColor(domain.status)}
         />
       </div>
 

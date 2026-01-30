@@ -22,14 +22,18 @@ import {
 // ============================================================
 
 interface DkimKeysTabProps {
-  domainId: string;
+  readonly domainId: string;
 }
 
 // ============================================================
 // COPY BUTTON
 // ============================================================
 
-function CopyButton({ text }: { text: string }) {
+interface CopyButtonProps {
+  readonly text: string;
+}
+
+function CopyButton({ text }: Readonly<CopyButtonProps>) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -64,12 +68,12 @@ function CopyButton({ text }: { text: string }) {
 // ============================================================
 
 interface DkimKeyCardProps {
-  dkimKey: DkimKey;
-  onActivate: (id: string) => void;
-  onDelete: (id: string) => void;
+  readonly dkimKey: DkimKey;
+  readonly onActivate: (id: string) => void;
+  readonly onDelete: (id: string) => void;
 }
 
-function DkimKeyCard({ dkimKey, onActivate, onDelete }: DkimKeyCardProps) {
+function DkimKeyCard({ dkimKey, onActivate, onDelete }: Readonly<DkimKeyCardProps>) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
       <div className="flex items-start justify-between">

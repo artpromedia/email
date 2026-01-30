@@ -21,7 +21,7 @@ import {
 // ============================================================
 
 interface DomainBrandingTabProps {
-  domainId: string;
+  readonly domainId: string;
 }
 
 // ============================================================
@@ -29,12 +29,12 @@ interface DomainBrandingTabProps {
 // ============================================================
 
 interface ColorPickerProps {
-  label: string;
-  value: string;
-  onChange: (color: string) => void;
+  readonly readonly label: string;
+  readonly value: string;
+  readonly onChange: (color: string) => void;
 }
 
-function ColorPicker({ label, value, onChange }: ColorPickerProps) {
+function ColorPicker({ label, value, onChange }: Readonly<ColorPickerProps>) {
   return (
     <div>
       <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -271,8 +271,9 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
               </div>
               <p className="text-sm">
                 This is sample body text in your{" "}
-                <span
-                  role="link"
+                <a
+                  href="#preview-link"
+                  onClick={(e) => e.preventDefault()}
                   style={{
                     color: branding.linkColor,
                     textDecoration: "underline",
@@ -280,8 +281,7 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
                   }}
                 >
                   chosen colors
-                </span>
-                .
+                </a>.
               </p>
             </div>
           </div>
