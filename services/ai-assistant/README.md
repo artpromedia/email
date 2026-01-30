@@ -1,6 +1,7 @@
 # AI Assistant Service
 
-Enterprise email AI assistant service providing email analysis, smart replies, and semantic search capabilities.
+Enterprise email AI assistant service providing email analysis, smart replies, and semantic search
+capabilities.
 
 ## Features
 
@@ -62,12 +63,14 @@ RATE_LIMIT_USER_TOKENS_PER_MIN=10000
 ## API Endpoints
 
 ### Health Check
+
 ```
 GET /health
 GET /health/ready
 ```
 
 ### Email Analysis
+
 ```
 POST /api/v1/ai/analyze
 Content-Type: application/json
@@ -90,6 +93,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```json
 {
   "summary": "John Doe is requesting to reschedule a meeting to 3pm tomorrow.",
@@ -114,6 +118,7 @@ Response:
 ```
 
 ### Generate Embedding
+
 ```
 POST /api/v1/ai/embeddings
 Content-Type: application/json
@@ -127,6 +132,7 @@ Content-Type: application/json
 ```
 
 ### Batch Embeddings
+
 ```
 POST /api/v1/ai/embeddings/batch
 Content-Type: application/json
@@ -142,11 +148,13 @@ Content-Type: application/json
 ```
 
 ### Usage Statistics
+
 ```
 GET /api/v1/usage?org_id=uuid&user_id=uuid
 ```
 
 ### Provider Status
+
 ```
 GET /api/v1/providers/status
 ```
@@ -169,6 +177,7 @@ GET /api/v1/providers/status
 ## Error Handling
 
 The service implements:
+
 - Automatic retry with exponential backoff
 - Provider failover (OpenAI → Anthropic → Ollama)
 - **Never blocks email delivery on AI failure**
@@ -190,6 +199,7 @@ docker run -p 8090:8090 \
 ## Metrics
 
 Prometheus metrics available at `/metrics`:
+
 - `ai_requests_total` - Total AI requests by provider/feature
 - `ai_request_duration_seconds` - Request latency histogram
 - `ai_tokens_used_total` - Token usage by provider
