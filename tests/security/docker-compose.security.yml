@@ -1,0 +1,105 @@
+# Security Testing Infrastructure
+# Provides OWASP ZAP, vulnerability scanning, and penetration testing tools
+
+services:
+  # OWASP ZAP - Dynamic Application Security Testing (DAST)
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    container_name: email-zap
+    hostname: zap
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
+    ports:
+      - "8080:8080"  # ZAP API
+      - "8090:8090"  # ZAP Proxy
+    volumes:
+      - zap_data:/zap/wrk
+      - ./zap-scripts:/zap/scripts:ro
+      - ./reports:/zap/reports
+    environment:
+      ZAP_PORT: 8080
+    networks:
+      - security-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/JSON/core/view/version/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Trivy - Container and Dependency Vulnerability Scanner
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: email-trivy
+    volumes:
+      - trivy_cache:/root/.cache/
+      - ./reports:/reports
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - security-network
+    entrypoint: ["sleep", "infinity"]
+
+  # Nuclei - Fast vulnerability scanner
+  nuclei:
+    image: projectdiscovery/nuclei:latest
+    container_name: email-nuclei
+    volumes:
+      - nuclei_templates:/root/nuclei-templates
+      - ./reports:/reports
+    networks:
+      - security-network
+    entrypoint: ["sleep", "infinity"]
+
+  # SQLMap - SQL Injection Testing
+  sqlmap:
+    image: paoloo/sqlmap:latest
+    container_name: email-sqlmap
+    volumes:
+      - ./reports:/reports
+    networks:
+      - security-network
+    entrypoint: ["sleep", "infinity"]
+
+  # Nikto - Web Server Scanner
+  nikto:
+    image: securecodebox/nikto:latest
+    container_name: email-nikto
+    volumes:
+      - ./reports:/reports
+    networks:
+      - security-network
+    entrypoint: ["sleep", "infinity"]
+
+  # SSLyze - SSL/TLS Configuration Analyzer
+  sslyze:
+    image: nablac0d3/sslyze:latest
+    container_name: email-sslyze
+    volumes:
+      - ./reports:/reports
+    networks:
+      - security-network
+    entrypoint: ["sleep", "infinity"]
+
+  # Dependency Check - OWASP Dependency Check
+  dependency-check:
+    image: owasp/dependency-check:latest
+    container_name: email-dependency-check
+    volumes:
+      - dependency_check_data:/usr/share/dependency-check/data
+      - ../../:/src:ro
+      - ./reports:/reports
+    networks:
+      - security-network
+    entrypoint: ["sleep", "infinity"]
+
+volumes:
+  zap_data:
+    driver: local
+  trivy_cache:
+    driver: local
+  nuclei_templates:
+    driver: local
+  dependency_check_data:
+    driver: local
+
+networks:
+  security-network:
+    driver: bridge

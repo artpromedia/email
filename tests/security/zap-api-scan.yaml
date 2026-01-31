@@ -1,0 +1,139 @@
+# OWASP ZAP API Scan Configuration
+# Defines rules and configuration for automated API security testing
+
+env:
+  contexts:
+    - name: "Email Platform API"
+      urls:
+        - "${TARGET_URL}/api/*"
+      includePaths:
+        - "${TARGET_URL}/api/.*"
+      excludePaths:
+        - "${TARGET_URL}/api/health"
+        - "${TARGET_URL}/api/metrics"
+      authentication:
+        method: "script"
+        script: "auth-script.js"
+        loginUrl: "${TARGET_URL}/api/auth/login"
+
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: spider
+    parameters:
+      context: "Email Platform API"
+      maxDuration: 5
+      maxDepth: 10
+      maxChildren: 20
+
+  - type: spiderAjax
+    parameters:
+      context: "Email Platform API"
+      maxDuration: 5
+      maxCrawlDepth: 5
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 10
+
+  - type: activeScan
+    parameters:
+      context: "Email Platform API"
+      maxRuleDurationInMins: 5
+      maxScanDurationInMins: 30
+      policy: "API-Scan-Policy"
+
+  - type: report
+    parameters:
+      template: "modern"
+      reportFile: "zap-api-report"
+      reportDir: "/zap/reports"
+
+# Alert filters - reduce noise from known false positives
+alertFilters:
+  - ruleId: 10096  # Timestamp Disclosure
+    newRisk: "Info"
+    context: "Email Platform API"
+
+  - ruleId: 10027  # Information Disclosure - Suspicious Comments
+    newRisk: "Info"
+    context: "Email Platform API"
+
+# Scan policy configuration
+policies:
+  - name: "API-Scan-Policy"
+    rules:
+      # SQL Injection
+      - id: 40018
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # Cross Site Scripting (Reflected)
+      - id: 40012
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # Cross Site Scripting (Persistent)
+      - id: 40014
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # Path Traversal
+      - id: 6
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # Remote File Inclusion
+      - id: 7
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # Server Side Include
+      - id: 40009
+        strength: "MEDIUM"
+        threshold: "MEDIUM"
+
+      # External Redirect
+      - id: 20019
+        strength: "MEDIUM"
+        threshold: "MEDIUM"
+
+      # LDAP Injection
+      - id: 40015
+        strength: "MEDIUM"
+        threshold: "MEDIUM"
+
+      # XML External Entity Attack
+      - id: 90023
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # SSTI (Server Side Template Injection)
+      - id: 90035
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # Command Injection
+      - id: 90020
+        strength: "HIGH"
+        threshold: "LOW"
+
+      # CORS Misconfiguration
+      - id: 40040
+        strength: "MEDIUM"
+        threshold: "MEDIUM"
+
+      # JWT Vulnerabilities
+      - id: 100025
+        strength: "HIGH"
+        threshold: "LOW"
+
+# Custom scripts for authentication
+scripts:
+  - name: "auth-script.js"
+    type: "authentication"
+    engine: "ECMAScript"
+    file: "/zap/scripts/auth-script.js"
