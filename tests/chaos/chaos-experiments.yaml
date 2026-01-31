@@ -1,0 +1,656 @@
+# Chaos Engineering Experiments for Enterprise Email System
+# Uses Chaos Toolkit / Litmus Chaos compatible format
+#
+# Run experiments with:
+#   chaos run chaos-experiments.yaml
+
+version: "1.0.0"
+title: "Enterprise Email System Resilience Tests"
+description: "Chaos experiments to validate system resilience and fault tolerance"
+
+tags:
+  - email
+  - resilience
+  - chaos
+
+configuration:
+  kubernetes_namespace:
+    type: env
+    key: CHAOS_NAMESPACE
+    default: enterprise-email
+
+  primary_domain:
+    type: env
+    key: PRIMARY_DOMAIN
+    default: mail.example.com
+
+  chaos_duration:
+    type: env
+    key: CHAOS_DURATION
+    default: 300
+
+# ============================================================
+# EXPERIMENT 1: Database Failover
+# ============================================================
+experiments:
+  - name: "database-primary-failure"
+    title: "Database Primary Failure and Failover"
+    description: "Simulate primary database failure to test failover to replica"
+    tags:
+      - database
+      - failover
+      - critical
+
+    steady-state-hypothesis:
+      title: "System can process emails"
+      probes:
+        - name: "api-health-check"
+          type: probe
+          tolerance: 200
+          provider:
+            type: http
+            url: "http://localhost:3000/api/health"
+            method: GET
+            timeout: 10
+
+        - name: "database-connection"
+          type: probe
+          tolerance: true
+          provider:
+            type: python
+            module: chaoslib.probes.database
+            func: can_connect
+            arguments:
+              url: "${DATABASE_URL}"
+
+        - name: "email-send-works"
+          type: probe
+          tolerance: 200
+          provider:
+            type: http
+            url: "http://localhost:3000/api/emails/test-send"
+            method: POST
+            timeout: 30
+
+    method:
+      - type: action
+        name: "pause-primary-database"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - pause
+            - enterprise-email-postgres
+        pauses:
+          after: 10
+
+      - type: probe
+        name: "verify-failover-to-replica"
+        tolerance: true
+        provider:
+          type: http
+          url: "http://localhost:3000/api/health/db"
+          method: GET
+          timeout: 10
+
+      - type: action
+        name: "wait-for-recovery"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "60"
+
+      - type: action
+        name: "resume-primary-database"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - unpause
+            - enterprise-email-postgres
+
+    rollbacks:
+      - type: action
+        name: "ensure-primary-running"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - unpause
+            - enterprise-email-postgres
+
+# ============================================================
+# EXPERIMENT 2: Redis Cache Failure
+# ============================================================
+  - name: "redis-failure"
+    title: "Redis Cache Failure"
+    description: "Simulate Redis failure to test degraded mode operation"
+    tags:
+      - redis
+      - cache
+      - degraded
+
+    steady-state-hypothesis:
+      title: "System operates normally"
+      probes:
+        - name: "api-responds"
+          type: probe
+          tolerance: 200
+          provider:
+            type: http
+            url: "http://localhost:3000/api/health"
+            method: GET
+
+        - name: "rate-limiting-works"
+          type: probe
+          tolerance: 200
+          provider:
+            type: http
+            url: "http://localhost:3000/api/auth/login"
+            method: POST
+
+    method:
+      - type: action
+        name: "stop-redis"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - stop
+            - enterprise-email-redis
+        pauses:
+          after: 5
+
+      - type: probe
+        name: "api-still-responds"
+        tolerance: [200, 503]  # May return service unavailable
+        provider:
+          type: http
+          url: "http://localhost:3000/api/health"
+          method: GET
+          timeout: 10
+
+      - type: probe
+        name: "email-listing-works"
+        tolerance: [200, 500]  # May degrade but shouldn't crash
+        provider:
+          type: http
+          url: "http://localhost:3000/api/emails"
+          method: GET
+          timeout: 30
+          headers:
+            Authorization: "Bearer ${TEST_TOKEN}"
+
+      - type: action
+        name: "wait-during-outage"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "120"
+
+      - type: action
+        name: "restart-redis"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - start
+            - enterprise-email-redis
+
+    rollbacks:
+      - type: action
+        name: "ensure-redis-running"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - start
+            - enterprise-email-redis
+
+# ============================================================
+# EXPERIMENT 3: Network Partition
+# ============================================================
+  - name: "network-partition"
+    title: "Network Partition Between Services"
+    description: "Simulate network partition to test service isolation"
+    tags:
+      - network
+      - partition
+      - isolation
+
+    steady-state-hypothesis:
+      title: "All services communicate"
+      probes:
+        - name: "smtp-reachable"
+          type: probe
+          tolerance: true
+          provider:
+            type: python
+            module: chaoslib.probes.network
+            func: port_is_open
+            arguments:
+              host: localhost
+              port: 25
+
+        - name: "imap-reachable"
+          type: probe
+          tolerance: true
+          provider:
+            type: python
+            module: chaoslib.probes.network
+            func: port_is_open
+            arguments:
+              host: localhost
+              port: 143
+
+    method:
+      - type: action
+        name: "partition-smtp-from-database"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - network
+            - disconnect
+            - email-network
+            - enterprise-email-smtp
+        pauses:
+          after: 5
+
+      - type: probe
+        name: "smtp-handles-partition"
+        tolerance: true
+        provider:
+          type: python
+          module: chaoslib.probes.smtp
+          func: can_receive_email
+          arguments:
+            host: localhost
+            port: 25
+            timeout: 30
+
+      - type: action
+        name: "wait-during-partition"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "60"
+
+      - type: action
+        name: "restore-smtp-network"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - network
+            - connect
+            - email-network
+            - enterprise-email-smtp
+
+    rollbacks:
+      - type: action
+        name: "ensure-network-connected"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - network
+            - connect
+            - email-network
+            - enterprise-email-smtp
+
+# ============================================================
+# EXPERIMENT 4: High CPU Load
+# ============================================================
+  - name: "high-cpu-load"
+    title: "High CPU Load on API Server"
+    description: "Simulate high CPU usage to test performance degradation"
+    tags:
+      - cpu
+      - performance
+      - stress
+
+    steady-state-hypothesis:
+      title: "API responds within SLA"
+      probes:
+        - name: "api-response-time"
+          type: probe
+          tolerance: 500  # 500ms threshold
+          provider:
+            type: http
+            url: "http://localhost:3000/api/health"
+            method: GET
+            timeout: 5
+
+    method:
+      - type: action
+        name: "inject-cpu-stress"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - exec
+            - enterprise-email-web
+            - stress-ng
+            - --cpu
+            - "4"
+            - --timeout
+            - "120s"
+        background: true
+        pauses:
+          after: 10
+
+      - type: probe
+        name: "api-still-responds"
+        tolerance: 2000  # Allow degraded but responsive
+        provider:
+          type: http
+          url: "http://localhost:3000/api/health"
+          method: GET
+          timeout: 30
+
+      - type: probe
+        name: "critical-endpoints-work"
+        tolerance: 5000
+        provider:
+          type: http
+          url: "http://localhost:3000/api/emails?limit=10"
+          method: GET
+          timeout: 30
+          headers:
+            Authorization: "Bearer ${TEST_TOKEN}"
+
+      - type: action
+        name: "wait-for-stress-completion"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "120"
+
+# ============================================================
+# EXPERIMENT 5: Memory Pressure
+# ============================================================
+  - name: "memory-pressure"
+    title: "Memory Pressure on Services"
+    description: "Simulate memory pressure to test OOM handling"
+    tags:
+      - memory
+      - oom
+      - stress
+
+    steady-state-hypothesis:
+      title: "Services are running"
+      probes:
+        - name: "all-containers-running"
+          type: probe
+          tolerance: true
+          provider:
+            type: process
+            path: docker
+            arguments:
+              - ps
+              - --filter
+              - name=enterprise-email
+              - --format
+              - "{{.Status}}"
+
+    method:
+      - type: action
+        name: "inject-memory-stress"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - exec
+            - enterprise-email-web
+            - stress-ng
+            - --vm
+            - "2"
+            - --vm-bytes
+            - "512M"
+            - --timeout
+            - "60s"
+        background: true
+        pauses:
+          after: 10
+
+      - type: probe
+        name: "service-survives"
+        tolerance: true
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - ps
+            - --filter
+            - name=enterprise-email-web
+            - --format
+            - "{{.Status}}"
+
+      - type: action
+        name: "wait-for-stress-completion"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "70"
+
+# ============================================================
+# EXPERIMENT 6: Disk I/O Saturation
+# ============================================================
+  - name: "disk-io-saturation"
+    title: "Disk I/O Saturation"
+    description: "Simulate slow disk I/O to test timeouts and queuing"
+    tags:
+      - disk
+      - io
+      - performance
+
+    steady-state-hypothesis:
+      title: "Email storage works"
+      probes:
+        - name: "can-store-attachment"
+          type: probe
+          tolerance: 201
+          provider:
+            type: http
+            url: "http://localhost:3000/api/test/attachment"
+            method: POST
+            timeout: 30
+
+    method:
+      - type: action
+        name: "saturate-disk-io"
+        provider:
+          type: process
+          path: docker
+          arguments:
+            - exec
+            - enterprise-email-storage
+            - fio
+            - --name=chaos
+            - --rw=randrw
+            - --size=1G
+            - --runtime=60
+            - --time_based
+        background: true
+        pauses:
+          after: 10
+
+      - type: probe
+        name: "storage-still-works"
+        tolerance: [200, 201, 503]  # May queue or degrade
+        provider:
+          type: http
+          url: "http://localhost:3000/api/test/attachment"
+          method: POST
+          timeout: 120
+
+      - type: action
+        name: "wait-for-io-completion"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "70"
+
+# ============================================================
+# EXPERIMENT 7: DNS Failure
+# ============================================================
+  - name: "dns-failure"
+    title: "DNS Resolution Failure"
+    description: "Simulate DNS failure to test email delivery fallback"
+    tags:
+      - dns
+      - network
+      - email
+
+    steady-state-hypothesis:
+      title: "Email delivery works"
+      probes:
+        - name: "can-resolve-domains"
+          type: probe
+          tolerance: true
+          provider:
+            type: python
+            module: chaoslib.probes.dns
+            func: can_resolve
+            arguments:
+              hostname: gmail.com
+
+    method:
+      - type: action
+        name: "block-dns"
+        provider:
+          type: process
+          path: iptables
+          arguments:
+            - -A
+            - OUTPUT
+            - -p
+            - udp
+            - --dport
+            - "53"
+            - -j
+            - DROP
+        pauses:
+          after: 5
+
+      - type: probe
+        name: "smtp-handles-dns-failure"
+        tolerance: true
+        provider:
+          type: python
+          module: chaoslib.probes.email
+          func: email_queued
+          arguments:
+            queue_path: /var/spool/postfix
+
+      - type: action
+        name: "wait-during-dns-outage"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "60"
+
+      - type: action
+        name: "restore-dns"
+        provider:
+          type: process
+          path: iptables
+          arguments:
+            - -D
+            - OUTPUT
+            - -p
+            - udp
+            - --dport
+            - "53"
+            - -j
+            - DROP
+
+    rollbacks:
+      - type: action
+        name: "ensure-dns-allowed"
+        provider:
+          type: process
+          path: iptables
+          arguments:
+            - -D
+            - OUTPUT
+            - -p
+            - udp
+            - --dport
+            - "53"
+            - -j
+            - DROP
+
+# ============================================================
+# EXPERIMENT 8: Certificate Expiry Simulation
+# ============================================================
+  - name: "certificate-issues"
+    title: "TLS Certificate Issues"
+    description: "Simulate certificate problems to test SMTP handling"
+    tags:
+      - tls
+      - certificate
+      - security
+
+    steady-state-hypothesis:
+      title: "TLS connections work"
+      probes:
+        - name: "smtp-tls-works"
+          type: probe
+          tolerance: true
+          provider:
+            type: python
+            module: chaoslib.probes.tls
+            func: can_establish_tls
+            arguments:
+              host: localhost
+              port: 465
+
+    method:
+      - type: action
+        name: "rotate-to-expired-cert"
+        provider:
+          type: process
+          path: /scripts/chaos/use-expired-cert.sh
+        pauses:
+          after: 5
+
+      - type: probe
+        name: "starttls-fallback-works"
+        tolerance: true
+        provider:
+          type: python
+          module: chaoslib.probes.smtp
+          func: smtp_accepts_starttls
+          arguments:
+            host: localhost
+            port: 25
+
+      - type: action
+        name: "wait-during-cert-issue"
+        provider:
+          type: process
+          path: sleep
+          arguments:
+            - "60"
+
+      - type: action
+        name: "restore-valid-cert"
+        provider:
+          type: process
+          path: /scripts/chaos/use-valid-cert.sh
+
+    rollbacks:
+      - type: action
+        name: "ensure-valid-cert"
+        provider:
+          type: process
+          path: /scripts/chaos/use-valid-cert.sh
