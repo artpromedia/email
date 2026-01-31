@@ -143,7 +143,8 @@ mydestination = localhost
 
 # Network settings
 inet_interfaces = all
-inet_protocols = ipv4
+# Enable both IPv4 and IPv6 for modern email delivery compatibility
+inet_protocols = all
 
 # Message size limit (50MB)
 message_size_limit = 52428800

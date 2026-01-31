@@ -9,7 +9,8 @@ server:
     - "https://mail.yourdomain.com"
 
 database:
-  url: "postgres://postgres:postgres@localhost:5432/enterprise_email?sslmode=disable"
+  # NOTE: Production deployments MUST use DATABASE_URL env var with sslmode=require
+  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/enterprise_email?sslmode=require}"
   max_conns: 25
   min_conns: 5
   max_conn_lifetime: "1h"

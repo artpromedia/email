@@ -7,7 +7,8 @@ server:
     - "${ALLOWED_ORIGINS}"
 
 database:
-  url: "${DATABASE_URL:-postgres://enterprise:enterprise@localhost:5432/enterprise_email?sslmode=disable}"
+  # NOTE: Production deployments MUST set DATABASE_URL with sslmode=require
+  url: "${DATABASE_URL:-postgres://enterprise:enterprise@localhost:5432/enterprise_email?sslmode=require}"
   maxConns: 25
   minConns: 5
 
