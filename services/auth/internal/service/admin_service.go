@@ -4,6 +4,8 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -17,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminService handles admin operations.
@@ -36,6 +39,12 @@ func NewAdminService(repo *repository.Repository, redis *redis.Client, cfg *conf
 		emailService: NewEmailService(&cfg.Email),
 	}
 }
+
+// Redis key patterns
+const (
+	passwordResetKeyPattern = "password_reset:%s"
+	emailVerifyHostPattern  = "Host: _email-verify.%s\n"
+)
 
 // Admin errors
 var (
@@ -763,42 +772,246 @@ func (s *AdminService) UnsuspendUser(ctx context.Context, userID uuid.UUID) erro
 	return s.repo.UpdateUser(ctx, user)
 }
 
-// AdminResetPassword triggers a password reset for a user.
+// Password reset constants
+const (
+	passwordResetExpiry        = 1 * time.Hour  // Tokens expire in 1 hour
+	passwordResetRateLimitMax  = 3              // Max 3 requests per hour per email
+	passwordResetRateLimitWindow = 1 * time.Hour
+	passwordResetTokenBytes    = 32             // 256-bit secure token
+)
+
+// Password reset errors
+var (
+	ErrPasswordResetRateLimited = errors.New("too many password reset requests")
+	ErrPasswordResetTokenExpired = errors.New("password reset token expired or invalid")
+)
+
+// AdminResetPassword triggers a password reset for a user with rate limiting.
+// Rate limited to 3 requests per hour per email address.
 func (s *AdminService) AdminResetPassword(ctx context.Context, userID uuid.UUID) error {
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return ErrUserNotFound
 	}
 
-	// Generate reset token
-	resetToken := generateVerificationToken()
-	hashedToken := hashToken(resetToken)
+	// Check rate limit (3 per hour per email)
+	rateLimitKey := fmt.Sprintf("password_reset_limit:%s", user.Email)
+	count, err := s.redis.Incr(ctx, rateLimitKey).Result()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to check password reset rate limit")
+		// Continue on Redis errors to avoid blocking legitimate requests
+	} else {
+		// Set expiry on first request
+		if count == 1 {
+			s.redis.Expire(ctx, rateLimitKey, passwordResetRateLimitWindow)
+		}
 
-	// Store in Redis
-	key := fmt.Sprintf("password_reset:%s", hashedToken)
-	err = s.redis.Set(ctx, key, user.ID.String(), 24*time.Hour).Err()
+		if count > passwordResetRateLimitMax {
+			log.Warn().
+				Str("email", user.Email).
+				Int64("count", count).
+				Msg("Password reset rate limit exceeded")
+			return ErrPasswordResetRateLimited
+		}
+	}
+
+	// Generate cryptographically secure reset token (32 bytes = 256 bits)
+	tokenBytes := make([]byte, passwordResetTokenBytes)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return fmt.Errorf("failed to generate reset token: %w", err)
+	}
+	resetToken := hex.EncodeToString(tokenBytes)
+
+	// Hash token for storage (prevents token theft from Redis)
+	hashedToken := secureHashToken(resetToken)
+
+	// Store token with 1 hour expiry
+	tokenKey := fmt.Sprintf(passwordResetKeyPattern, hashedToken)
+	tokenData := fmt.Sprintf("%s:%d", user.ID.String(), time.Now().Unix())
+	err = s.redis.Set(ctx, tokenKey, tokenData, passwordResetExpiry).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store reset token: %w", err)
 	}
 
-	// TODO: Send password reset email
+	// Get password reset URL from config
+	resetURL := s.config.Email.PasswordResetURL
+	if resetURL == "" {
+		// Fallback to constructing from verification URL
+		resetURL = strings.Replace(s.config.Email.VerificationURL, "/verify-email", "/reset-password", 1)
+	}
+
 	// Send password reset email
-	resetURL := s.config.Email.VerificationURL // Should be a separate password reset URL in production
-	resetURL = strings.Replace(resetURL, "/verify-email", "/reset-password", 1)
 	if s.emailService != nil {
 		if err := s.emailService.SendPasswordResetEmail(user.Email, user.DisplayName, resetToken, resetURL); err != nil {
 			log.Error().Err(err).
 				Str("user_id", user.ID.String()).
 				Str("email", user.Email).
 				Msg("Failed to send password reset email")
-			// Continue anyway - token is stored
+			// Don't return error - token is stored, email may retry
+		}
+	}
+
+	// Audit log
+	log.Info().
+		Str("user_id", user.ID.String()).
+		Str("email", user.Email).
+		Str("initiated_by", "admin").
+		Msg("Password reset email sent")
+
+	return nil
+}
+
+// RequestPasswordReset handles user-initiated password reset requests.
+// This is separate from admin-triggered resets to allow different rate limits.
+func (s *AdminService) RequestPasswordReset(ctx context.Context, email string) error {
+	// Always return success to prevent email enumeration
+	// But only actually send if user exists
+
+	// Check rate limit first (even before user lookup)
+	rateLimitKey := fmt.Sprintf("password_reset_limit:%s", email)
+	count, err := s.redis.Incr(ctx, rateLimitKey).Result()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to check password reset rate limit")
+	} else {
+		if count == 1 {
+			s.redis.Expire(ctx, rateLimitKey, passwordResetRateLimitWindow)
+		}
+
+		if count > passwordResetRateLimitMax {
+			log.Warn().
+				Str("email", email).
+				Int64("count", count).
+				Msg("Password reset rate limit exceeded")
+			// Return nil to prevent enumeration - don't reveal rate limit was hit
+			return nil
+		}
+	}
+
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		// User not found - return nil to prevent email enumeration
+		log.Debug().
+			Str("email", email).
+			Msg("Password reset requested for non-existent email")
+		return nil
+	}
+
+	// Generate secure token
+	tokenBytes := make([]byte, passwordResetTokenBytes)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return fmt.Errorf("failed to generate reset token: %w", err)
+	}
+	resetToken := hex.EncodeToString(tokenBytes)
+	hashedToken := secureHashToken(resetToken)
+
+	// Store token
+	tokenKey := fmt.Sprintf(passwordResetKeyPattern, hashedToken)
+	tokenData := fmt.Sprintf("%s:%d", user.ID.String(), time.Now().Unix())
+	err = s.redis.Set(ctx, tokenKey, tokenData, passwordResetExpiry).Err()
+	if err != nil {
+		return fmt.Errorf("failed to store reset token: %w", err)
+	}
+
+	// Get password reset URL
+	resetURL := s.config.Email.PasswordResetURL
+	if resetURL == "" {
+		resetURL = strings.Replace(s.config.Email.VerificationURL, "/verify-email", "/reset-password", 1)
+	}
+
+	// Send email
+	if s.emailService != nil {
+		if err := s.emailService.SendPasswordResetEmail(user.Email, user.DisplayName, resetToken, resetURL); err != nil {
+			log.Error().Err(err).
+				Str("email", email).
+				Msg("Failed to send password reset email")
 		}
 	}
 
 	log.Info().
-		Str("user_id", user.ID.String()).
+		Str("email", email).
+		Str("initiated_by", "user").
+		Msg("Password reset email sent")
+
+	return nil
+}
+
+// ValidatePasswordResetToken validates a password reset token and returns the user ID.
+func (s *AdminService) ValidatePasswordResetToken(ctx context.Context, token string) (uuid.UUID, error) {
+	hashedToken := secureHashToken(token)
+	tokenKey := fmt.Sprintf(passwordResetKeyPattern, hashedToken)
+
+	tokenData, err := s.redis.Get(ctx, tokenKey).Result()
+	if err != nil {
+		return uuid.Nil, ErrPasswordResetTokenExpired
+	}
+
+	// Parse token data (userID:timestamp)
+	parts := strings.Split(tokenData, ":")
+	if len(parts) != 2 {
+		return uuid.Nil, ErrPasswordResetTokenExpired
+	}
+
+	userID, err := uuid.Parse(parts[0])
+	if err != nil {
+		return uuid.Nil, ErrPasswordResetTokenExpired
+	}
+
+	// Check timestamp (extra validation beyond Redis TTL)
+	timestamp, err := parseTimestamp(parts[1])
+	if err != nil || time.Since(timestamp) > passwordResetExpiry {
+		// Delete expired token
+		s.redis.Del(ctx, tokenKey)
+		return uuid.Nil, ErrPasswordResetTokenExpired
+	}
+
+	return userID, nil
+}
+
+// CompletePasswordReset validates the token and resets the password.
+func (s *AdminService) CompletePasswordReset(ctx context.Context, token, newPassword string) error {
+	userID, err := s.ValidatePasswordResetToken(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	// Get user
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	// Hash new password (using secure bcrypt)
+	hashedPassword, err := hashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password
+	user.PasswordHash = hashedPassword
+	user.UpdatedAt = time.Now()
+	user.PasswordChangedAt = sql.NullTime{Time: time.Now(), Valid: true}
+
+	err = s.repo.UpdateUser(ctx, user)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	// Invalidate the used token
+	hashedToken := secureHashToken(token)
+	tokenKey := fmt.Sprintf(passwordResetKeyPattern, hashedToken)
+	s.redis.Del(ctx, tokenKey)
+
+	// Invalidate all existing sessions for security
+	sessionPattern := fmt.Sprintf("session:%s:*", userID.String())
+	sessionKeys, _ := s.redis.Keys(ctx, sessionPattern).Result()
+	if len(sessionKeys) > 0 {
+		s.redis.Del(ctx, sessionKeys...)
+	}
+
+	log.Info().
+		Str("user_id", userID.String()).
 		Str("email", user.Email).
-		Msg("Password reset triggered by admin")
+		Msg("Password reset completed successfully")
 
 	return nil
 }
@@ -839,6 +1052,35 @@ func hashToken(token string) string {
 	bytes := make([]byte, 16)
 	copy(bytes, token)
 	return hex.EncodeToString(bytes)
+}
+
+// secureHashToken creates a SHA-256 hash of a token for secure storage.
+// This prevents token theft if Redis is compromised.
+func secureHashToken(token string) string {
+	h := sha256.New()
+	h.Write([]byte(token))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// hashPassword hashes a password using bcrypt.
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// parseTimestamp parses a Unix timestamp string.
+func parseTimestamp(s string) (time.Time, error) {
+	ts, err := time.Parse("10", s)
+	if err != nil {
+		// Try parsing as Unix timestamp
+		var unix int64
+		_, err = fmt.Sscanf(s, "%d", &unix)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return time.Unix(unix, 0), nil
+	}
+	return ts, nil
 }
 
 func timePtr(t time.Time) *time.Time {
@@ -886,24 +1128,20 @@ func verifyDNSCNAME(domain string, expectedToken string) (bool, []string) {
 }
 
 func getDNSInstructions(domain, token, method string) string {
+	txtInstructions := fmt.Sprintf(
+		"Add a TXT record to your DNS:\n"+
+			emailVerifyHostPattern+
+			"Value: email-verify=%s",
+		domain, token)
+
 	switch method {
-	case "dns_txt":
-		return fmt.Sprintf(
-			"Add a TXT record to your DNS:\n"+
-				"Host: _email-verify.%s\n"+
-				"Value: email-verify=%s",
-			domain, token)
 	case "dns_cname":
 		return fmt.Sprintf(
 			"Add a CNAME record to your DNS:\n"+
-				"Host: _email-verify.%s\n"+
+				emailVerifyHostPattern+
 				"Points to: %s.verify.email.example.com",
 			domain, token)
+	case "dns_txt":
+		return txtInstructions
 	default:
-		return fmt.Sprintf(
-			"Add a TXT record to your DNS:\n"+
-				"Host: _email-verify.%s\n"+
-				"Value: email-verify=%s",
-			domain, token)
-	}
-}
+		return txtInstructions

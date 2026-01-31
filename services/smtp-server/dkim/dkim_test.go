@@ -1,8 +1,12 @@
 package dkim
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"fmt"
 	"net/mail"
 	"strings"
 	"testing"
@@ -12,6 +16,22 @@ import (
 
 	"smtp-server/domain"
 )
+
+// mockDNSResolver is a mock DNS resolver for testing DKIM verification
+type mockDNSResolver struct {
+	records map[string][]string
+	err     error
+}
+
+func (m *mockDNSResolver) LookupTXT(ctx context.Context, name string) ([]string, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	if records, ok := m.records[name]; ok {
+		return records, nil
+	}
+	return nil, fmt.Errorf("no records found for %s", name)
+}
 
 func TestDefaultSignatureConfig(t *testing.T) {
 	config := DefaultSignatureConfig()
@@ -645,5 +665,702 @@ func TestSigner_SignMessage_ValidMessage(t *testing.T) {
 	// Verify original message is preserved
 	if !strings.Contains(signedStr, "From: sender@example.com") {
 		t.Error("SignMessage() should preserve original message")
+	}
+}
+
+// Helper function to generate a test key pair and DNS record
+func generateTestKeyPair(t *testing.T) (*rsa.PrivateKey, string) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("Failed to generate RSA key: %v", err)
+	}
+
+	// Generate public key in DER format
+	pubDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		t.Fatalf("Failed to marshal public key: %v", err)
+	}
+
+	pubB64 := base64.StdEncoding.EncodeToString(pubDER)
+	dnsRecord := fmt.Sprintf("v=DKIM1; k=rsa; p=%s", pubB64)
+
+	return privateKey, dnsRecord
+}
+
+func TestVerifier_VerifyMessage_ValidSignature(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate test key pair
+	privateKey, dnsRecord := generateTestKeyPair(t)
+
+	// Set up mock DNS resolver
+	resolver := &mockDNSResolver{
+		records: map[string][]string{
+			"default._domainkey.example.com": {dnsRecord},
+		},
+	}
+
+	// Create signer and sign a message
+	provider := &mockKeyProvider{
+		keys: map[string]*domain.DKIMKey{
+			"example.com": {
+				ID:         "key-123",
+				Selector:   "default",
+				Algorithm:  "rsa-sha256",
+				PrivateKey: privateKey,
+			},
+		},
+	}
+	signer := NewSigner(provider, logger)
+
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	signed, err := signer.SignMessage("example.com", message, nil)
+	if err != nil {
+		t.Fatalf("SignMessage() error = %v", err)
+	}
+
+	// Create verifier and verify the signature
+	verifier := NewVerifierWithResolver(logger, resolver)
+
+	results, err := verifier.VerifyMessage(signed)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	if results[0].Status != VerificationPass {
+		t.Errorf("VerifyMessage() status = %v, want %v, error: %v",
+			results[0].Status, VerificationPass, results[0].Error)
+	}
+
+	if !results[0].Valid {
+		t.Error("VerifyMessage() result should be valid")
+	}
+
+	if results[0].Domain != "example.com" {
+		t.Errorf("VerifyMessage() domain = %v, want example.com", results[0].Domain)
+	}
+
+	if results[0].Selector != "default" {
+		t.Errorf("VerifyMessage() selector = %v, want default", results[0].Selector)
+	}
+}
+
+func TestVerifier_VerifyMessage_InvalidSignature(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate two different key pairs
+	privateKey, _ := generateTestKeyPair(t)
+	_, differentDnsRecord := generateTestKeyPair(t) // Different key in DNS
+
+	// Set up mock DNS resolver with a DIFFERENT key
+	resolver := &mockDNSResolver{
+		records: map[string][]string{
+			"default._domainkey.example.com": {differentDnsRecord},
+		},
+	}
+
+	// Create signer and sign a message with the first key
+	provider := &mockKeyProvider{
+		keys: map[string]*domain.DKIMKey{
+			"example.com": {
+				ID:         "key-123",
+				Selector:   "default",
+				Algorithm:  "rsa-sha256",
+				PrivateKey: privateKey,
+			},
+		},
+	}
+	signer := NewSigner(provider, logger)
+
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	signed, err := signer.SignMessage("example.com", message, nil)
+	if err != nil {
+		t.Fatalf("SignMessage() error = %v", err)
+	}
+
+	// Create verifier - should fail because DNS has different key
+	verifier := NewVerifierWithResolver(logger, resolver)
+
+	results, err := verifier.VerifyMessage(signed)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	if results[0].Status != VerificationFail {
+		t.Errorf("VerifyMessage() status = %v, want %v", results[0].Status, VerificationFail)
+	}
+
+	if results[0].Valid {
+		t.Error("VerifyMessage() result should not be valid")
+	}
+}
+
+func TestVerifier_VerifyMessage_DNSFailure(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate test key pair
+	privateKey, _ := generateTestKeyPair(t)
+
+	// Set up mock DNS resolver that returns an error
+	resolver := &mockDNSResolver{
+		err: fmt.Errorf("DNS lookup failed: connection refused"),
+	}
+
+	// Create signer and sign a message
+	provider := &mockKeyProvider{
+		keys: map[string]*domain.DKIMKey{
+			"example.com": {
+				ID:         "key-123",
+				Selector:   "default",
+				Algorithm:  "rsa-sha256",
+				PrivateKey: privateKey,
+			},
+		},
+	}
+	signer := NewSigner(provider, logger)
+
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	signed, err := signer.SignMessage("example.com", message, nil)
+	if err != nil {
+		t.Fatalf("SignMessage() error = %v", err)
+	}
+
+	// Create verifier - should return permerror due to DNS failure
+	verifier := NewVerifierWithResolver(logger, resolver)
+
+	results, err := verifier.VerifyMessage(signed)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	// DNS failure should result in permerror or temperror
+	if results[0].Status != VerificationPermFail && results[0].Status != VerificationTempFail {
+		t.Errorf("VerifyMessage() status = %v, want permerror or temperror", results[0].Status)
+	}
+
+	if results[0].Valid {
+		t.Error("VerifyMessage() result should not be valid")
+	}
+}
+
+func TestVerifier_VerifyMessage_ExpiredSignature(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate test key pair
+	privateKey, dnsRecord := generateTestKeyPair(t)
+
+	// Set up mock DNS resolver
+	resolver := &mockDNSResolver{
+		records: map[string][]string{
+			"default._domainkey.example.com": {dnsRecord},
+		},
+	}
+
+	// Create a message with an expired DKIM signature
+	// We'll manually craft a message with x= in the past
+	expiredTime := time.Now().Add(-1 * time.Hour).Unix()
+	signTime := time.Now().Add(-2 * time.Hour).Unix()
+
+	// The signature is invalid anyway, but we're testing expiration check
+	expiredMessage := fmt.Sprintf(`DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=default; t=%d; x=%d; h=from:to:subject:date; bh=test; b=test
+From: sender@example.com
+To: recipient@example.com
+Subject: Test
+Date: Mon, 01 Jan 2024 00:00:00 +0000
+
+This is the body.`, signTime, expiredTime)
+
+	// Create verifier
+	verifier := NewVerifierWithResolver(logger, resolver)
+
+	results, err := verifier.VerifyMessage([]byte(expiredMessage))
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	// Should fail due to expiration
+	if results[0].Status != VerificationFail {
+		t.Errorf("VerifyMessage() status = %v, want %v", results[0].Status, VerificationFail)
+	}
+
+	if results[0].Error == nil || !strings.Contains(results[0].Error.Error(), "expired") {
+		t.Errorf("VerifyMessage() error should mention expiration, got: %v", results[0].Error)
+	}
+
+	_ = privateKey // Silence unused variable warning
+}
+
+func TestVerifier_VerifyMessage_RevokedKey(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate test key pair
+	privateKey, _ := generateTestKeyPair(t)
+
+	// Set up mock DNS resolver with REVOKED key (empty p= value)
+	resolver := &mockDNSResolver{
+		records: map[string][]string{
+			"default._domainkey.example.com": {"v=DKIM1; k=rsa; p="}, // Empty p= means revoked
+		},
+	}
+
+	// Create signer and sign a message
+	provider := &mockKeyProvider{
+		keys: map[string]*domain.DKIMKey{
+			"example.com": {
+				ID:         "key-123",
+				Selector:   "default",
+				Algorithm:  "rsa-sha256",
+				PrivateKey: privateKey,
+			},
+		},
+	}
+	signer := NewSigner(provider, logger)
+
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	signed, err := signer.SignMessage("example.com", message, nil)
+	if err != nil {
+		t.Fatalf("SignMessage() error = %v", err)
+	}
+
+	// Create verifier - should fail because key is revoked
+	verifier := NewVerifierWithResolver(logger, resolver)
+
+	results, err := verifier.VerifyMessage(signed)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	if results[0].Status != VerificationPermFail {
+		t.Errorf("VerifyMessage() status = %v, want %v", results[0].Status, VerificationPermFail)
+	}
+
+	if results[0].Error == nil || !strings.Contains(results[0].Error.Error(), "revoked") {
+		t.Errorf("VerifyMessage() error should mention revoked, got: %v", results[0].Error)
+	}
+}
+
+func TestVerifier_VerifyMessage_BodyModified(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate test key pair
+	privateKey, dnsRecord := generateTestKeyPair(t)
+
+	// Set up mock DNS resolver
+	resolver := &mockDNSResolver{
+		records: map[string][]string{
+			"default._domainkey.example.com": {dnsRecord},
+		},
+	}
+
+	// Create signer and sign a message
+	provider := &mockKeyProvider{
+		keys: map[string]*domain.DKIMKey{
+			"example.com": {
+				ID:         "key-123",
+				Selector:   "default",
+				Algorithm:  "rsa-sha256",
+				PrivateKey: privateKey,
+			},
+		},
+	}
+	signer := NewSigner(provider, logger)
+
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	signed, err := signer.SignMessage("example.com", message, nil)
+	if err != nil {
+		t.Fatalf("SignMessage() error = %v", err)
+	}
+
+	// Modify the body after signing
+	modifiedMessage := strings.Replace(string(signed), "This is the body.", "This is the MODIFIED body.", 1)
+
+	// Create verifier - should fail because body was modified
+	verifier := NewVerifierWithResolver(logger, resolver)
+
+	results, err := verifier.VerifyMessage([]byte(modifiedMessage))
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	if results[0].Status != VerificationFail {
+		t.Errorf("VerifyMessage() status = %v, want %v", results[0].Status, VerificationFail)
+	}
+
+	if results[0].Error == nil || !strings.Contains(results[0].Error.Error(), "body hash") {
+		t.Errorf("VerifyMessage() error should mention body hash, got: %v", results[0].Error)
+	}
+}
+
+func TestVerifier_VerifyMessage_NoSignature(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Message without DKIM signature
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	verifier := NewVerifier(logger)
+
+	results, err := verifier.VerifyMessage(message)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	// Should return nil (no signatures to verify)
+	if results != nil {
+		t.Errorf("VerifyMessage() should return nil for message without signature, got: %v", results)
+	}
+}
+
+func TestVerifier_VerifyMessage_MissingRequiredParam(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Message with DKIM signature missing required parameter (no h= header list)
+	message := []byte(`DKIM-Signature: v=1; a=rsa-sha256; d=example.com; s=default; bh=test; b=test
+From: sender@example.com
+To: recipient@example.com
+Subject: Test
+
+This is the body.`)
+
+	verifier := NewVerifier(logger)
+
+	results, err := verifier.VerifyMessage(message)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	if results[0].Status != VerificationPermFail {
+		t.Errorf("VerifyMessage() status = %v, want %v", results[0].Status, VerificationPermFail)
+	}
+
+	if results[0].Error == nil || !strings.Contains(results[0].Error.Error(), "missing required parameter") {
+		t.Errorf("VerifyMessage() error should mention missing parameter, got: %v", results[0].Error)
+	}
+}
+
+func TestVerifier_VerifyMessage_UnsupportedAlgorithm(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Message with unsupported algorithm
+	message := []byte(`DKIM-Signature: v=1; a=ed25519-sha256; d=example.com; s=default; h=from; bh=test; b=test
+From: sender@example.com
+To: recipient@example.com
+Subject: Test
+
+This is the body.`)
+
+	verifier := NewVerifier(logger)
+
+	results, err := verifier.VerifyMessage(message)
+	if err != nil {
+		t.Fatalf("VerifyMessage() error = %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("VerifyMessage() returned no results")
+	}
+
+	if results[0].Status != VerificationPermFail {
+		t.Errorf("VerifyMessage() status = %v, want %v", results[0].Status, VerificationPermFail)
+	}
+
+	if results[0].Error == nil || !strings.Contains(results[0].Error.Error(), "unsupported algorithm") {
+		t.Errorf("VerifyMessage() error should mention unsupported algorithm, got: %v", results[0].Error)
+	}
+}
+
+func TestVerifier_PublicKeyCache(t *testing.T) {
+	logger := zap.NewNop()
+
+	// Generate test key pair
+	privateKey, dnsRecord := generateTestKeyPair(t)
+
+	lookupCount := 0
+	resolver := &mockDNSResolver{
+		records: map[string][]string{
+			"default._domainkey.example.com": {dnsRecord},
+		},
+	}
+
+	// Create custom resolver that counts lookups
+	countingResolver := &countingDNSResolver{
+		delegate: resolver,
+		count:    &lookupCount,
+	}
+
+	// Create signer and sign a message
+	provider := &mockKeyProvider{
+		keys: map[string]*domain.DKIMKey{
+			"example.com": {
+				ID:         "key-123",
+				Selector:   "default",
+				Algorithm:  "rsa-sha256",
+				PrivateKey: privateKey,
+			},
+		},
+	}
+	signer := NewSigner(provider, logger)
+
+	message := []byte("From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\nDate: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\nThis is the body.")
+
+	signed, err := signer.SignMessage("example.com", message, nil)
+	if err != nil {
+		t.Fatalf("SignMessage() error = %v", err)
+	}
+
+	// Create verifier
+	verifier := NewVerifierWithResolver(logger, countingResolver)
+
+	// Verify same message multiple times
+	for i := 0; i < 3; i++ {
+		results, err := verifier.VerifyMessage(signed)
+		if err != nil {
+			t.Fatalf("VerifyMessage() error = %v", err)
+		}
+		if len(results) == 0 || results[0].Status != VerificationPass {
+			t.Fatalf("VerifyMessage() iteration %d failed", i)
+		}
+	}
+
+	// Should only have done 1 DNS lookup due to caching
+	if lookupCount != 1 {
+		t.Errorf("Expected 1 DNS lookup due to caching, got %d", lookupCount)
+	}
+}
+
+type countingDNSResolver struct {
+	delegate DNSResolver
+	count    *int
+}
+
+func (c *countingDNSResolver) LookupTXT(ctx context.Context, name string) ([]string, error) {
+	*c.count++
+	return c.delegate.LookupTXT(ctx, name)
+}
+
+func TestParseDKIMRecord(t *testing.T) {
+	tests := []struct {
+		name    string
+		record  string
+		wantErr bool
+		check   func(*DKIMRecord) error
+	}{
+		{
+			name:    "valid record",
+			record:  "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ...",
+			wantErr: false,
+			check: func(r *DKIMRecord) error {
+				if r.Version != "DKIM1" {
+					return fmt.Errorf("version = %s, want DKIM1", r.Version)
+				}
+				if r.KeyType != "rsa" {
+					return fmt.Errorf("keyType = %s, want rsa", r.KeyType)
+				}
+				return nil
+			},
+		},
+		{
+			name:    "record with flags",
+			record:  "v=DKIM1; k=rsa; t=y; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ...",
+			wantErr: false,
+			check: func(r *DKIMRecord) error {
+				if r.Flags != "y" {
+					return fmt.Errorf("flags = %s, want y", r.Flags)
+				}
+				return nil
+			},
+		},
+		{
+			name:    "default key type",
+			record:  "v=DKIM1; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ...",
+			wantErr: false,
+			check: func(r *DKIMRecord) error {
+				if r.KeyType != "rsa" {
+					return fmt.Errorf("keyType = %s, want rsa (default)", r.KeyType)
+				}
+				return nil
+			},
+		},
+		{
+			name:    "unsupported version",
+			record:  "v=DKIM2; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ...",
+			wantErr: true,
+		},
+		{
+			name:    "unsupported key type",
+			record:  "v=DKIM1; k=ed25519; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ...",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			record, err := parseDKIMRecord(tt.record)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseDKIMRecord() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && tt.check != nil {
+				if err := tt.check(record); err != nil {
+					t.Errorf("parseDKIMRecord() %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestParsePublicKey(t *testing.T) {
+	// Generate a test key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("Failed to generate RSA key: %v", err)
+	}
+
+	// Test PKIX format
+	pubDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		t.Fatalf("Failed to marshal public key: %v", err)
+	}
+	pubB64 := base64.StdEncoding.EncodeToString(pubDER)
+
+	parsed, err := parsePublicKey(pubB64)
+	if err != nil {
+		t.Errorf("parsePublicKey(PKIX) error = %v", err)
+	}
+	if parsed == nil {
+		t.Error("parsePublicKey(PKIX) returned nil")
+	}
+
+	// Test with whitespace
+	pubB64WithWS := pubB64[:20] + " \t\n" + pubB64[20:]
+	parsed, err = parsePublicKey(pubB64WithWS)
+	if err != nil {
+		t.Errorf("parsePublicKey with whitespace error = %v", err)
+	}
+	if parsed == nil {
+		t.Error("parsePublicKey with whitespace returned nil")
+	}
+
+	// Test invalid base64
+	_, err = parsePublicKey("not-valid-base64!!!")
+	if err == nil {
+		t.Error("parsePublicKey should fail for invalid base64")
+	}
+
+	// Test invalid key data
+	_, err = parsePublicKey(base64.StdEncoding.EncodeToString([]byte("not a key")))
+	if err == nil {
+		t.Error("parsePublicKey should fail for invalid key data")
+	}
+}
+
+func TestIsDNSTempError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantTemp bool
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			wantTemp: false,
+		},
+		{
+			name:     "timeout error",
+			err:      fmt.Errorf("DNS lookup timeout"),
+			wantTemp: true,
+		},
+		{
+			name:     "temporary error",
+			err:      fmt.Errorf("temporary failure"),
+			wantTemp: true,
+		},
+		{
+			name:     "permanent error",
+			err:      fmt.Errorf("no such domain"),
+			wantTemp: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isDNSTempError(tt.err); got != tt.wantTemp {
+				t.Errorf("isDNSTempError() = %v, want %v", got, tt.wantTemp)
+			}
+		})
+	}
+}
+
+func TestExtractDomainFromHeader(t *testing.T) {
+	tests := []struct {
+		name   string
+		header string
+		want   string
+	}{
+		{
+			name:   "simple email",
+			header: "user@example.com",
+			want:   "example.com",
+		},
+		{
+			name:   "email with name",
+			header: "John Doe <john@example.com>",
+			want:   "example.com",
+		},
+		{
+			name:   "email with whitespace",
+			header: "  user@example.com  ",
+			want:   "example.com",
+		},
+		{
+			name:   "no @ symbol",
+			header: "invalid-email",
+			want:   "",
+		},
+		{
+			name:   "subdomain",
+			header: "user@mail.example.com",
+			want:   "mail.example.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := extractDomainFromHeader(tt.header); got != tt.want {
+				t.Errorf("extractDomainFromHeader() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

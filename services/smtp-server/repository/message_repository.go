@@ -14,6 +14,33 @@ import (
 	"smtp-server/domain"
 )
 
+// Repository errors
+var (
+	ErrQuotaExceeded = errors.New("mailbox quota exceeded")
+)
+
+// QuotaStatus represents the quota status for a mailbox
+type QuotaStatus struct {
+	MailboxID    string
+	Email        string
+	UsedBytes    int64
+	QuotaBytes   int64
+	UsagePercent float64
+}
+
+// QuotaThreshold represents a quota warning threshold
+type QuotaThreshold struct {
+	Percent     float64
+	Description string
+}
+
+// QuotaThresholds defines the warning thresholds for quota notifications
+var QuotaThresholds = []QuotaThreshold{
+	{Percent: 80, Description: "80% usage"},
+	{Percent: 90, Description: "90% usage"},
+	{Percent: 95, Description: "95% usage - critical"},
+}
+
 // MessageRepository handles message queue database operations
 type MessageRepository struct {
 	db     *pgxpool.Pool
@@ -519,6 +546,97 @@ func (r *MessageRepository) UpdateMailboxUsage(ctx context.Context, mailboxID st
 	return nil
 }
 
+// AtomicQuotaCheckAndUpdate performs an atomic quota check and update.
+// Returns:
+// - newUsedBytes: the new total used bytes after the update
+// - quotaBytes: the mailbox quota limit (0 = unlimited)
+// - error: ErrQuotaExceeded if quota would be exceeded, or other error
+func (r *MessageRepository) AtomicQuotaCheckAndUpdate(ctx context.Context, mailboxID string, additionalBytes int64) (newUsedBytes, quotaBytes int64, err error) {
+	// Use a single atomic UPDATE with RETURNING to prevent race conditions
+	// The WHERE clause ensures quota is not exceeded
+	query := `
+		UPDATE mailboxes
+		SET used_bytes = used_bytes + $2, updated_at = NOW()
+		WHERE id = $1
+			AND (quota_bytes = 0 OR used_bytes + $2 <= quota_bytes)
+		RETURNING used_bytes, quota_bytes
+	`
+
+	err = r.db.QueryRow(ctx, query, mailboxID, additionalBytes).Scan(&newUsedBytes, &quotaBytes)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Either mailbox doesn't exist or quota would be exceeded
+			// Fetch current values to determine which
+			var currentUsed, quota int64
+			fetchQuery := `SELECT used_bytes, quota_bytes FROM mailboxes WHERE id = $1`
+			fetchErr := r.db.QueryRow(ctx, fetchQuery, mailboxID).Scan(&currentUsed, &quota)
+			if fetchErr != nil {
+				if errors.Is(fetchErr, pgx.ErrNoRows) {
+					return 0, 0, fmt.Errorf("mailbox not found: %s", mailboxID)
+				}
+				return 0, 0, fmt.Errorf("fetch mailbox: %w", fetchErr)
+			}
+			// Mailbox exists, so quota was exceeded
+			return currentUsed, quota, ErrQuotaExceeded
+		}
+		return 0, 0, fmt.Errorf("update mailbox usage: %w", err)
+	}
+
+	return newUsedBytes, quotaBytes, nil
+}
+
+// GetMailboxQuotaStatus returns the current quota status for a mailbox.
+func (r *MessageRepository) GetMailboxQuotaStatus(ctx context.Context, mailboxID string) (*QuotaStatus, error) {
+	query := `
+		SELECT id, email_address, used_bytes, quota_bytes,
+		       CASE WHEN quota_bytes > 0 THEN (used_bytes::float / quota_bytes::float * 100) ELSE 0 END as usage_percent
+		FROM mailboxes
+		WHERE id = $1
+	`
+
+	var status QuotaStatus
+	err := r.db.QueryRow(ctx, query, mailboxID).Scan(
+		&status.MailboxID, &status.Email, &status.UsedBytes, &status.QuotaBytes, &status.UsagePercent,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("mailbox not found: %s", mailboxID)
+		}
+		return nil, fmt.Errorf("get quota status: %w", err)
+	}
+
+	return &status, nil
+}
+
+// GetMailboxesNearQuota returns mailboxes that have exceeded the given usage percentage threshold.
+func (r *MessageRepository) GetMailboxesNearQuota(ctx context.Context, thresholdPercent float64) ([]*QuotaStatus, error) {
+	query := `
+		SELECT id, email_address, used_bytes, quota_bytes,
+		       (used_bytes::float / quota_bytes::float * 100) as usage_percent
+		FROM mailboxes
+		WHERE quota_bytes > 0
+			AND (used_bytes::float / quota_bytes::float * 100) >= $1
+		ORDER BY usage_percent DESC
+	`
+
+	rows, err := r.db.Query(ctx, query, thresholdPercent)
+	if err != nil {
+		return nil, fmt.Errorf("query mailboxes near quota: %w", err)
+	}
+	defer rows.Close()
+
+	var statuses []*QuotaStatus
+	for rows.Next() {
+		var status QuotaStatus
+		if err := rows.Scan(&status.MailboxID, &status.Email, &status.UsedBytes, &status.QuotaBytes, &status.UsagePercent); err != nil {
+			return nil, fmt.Errorf("scan quota status: %w", err)
+		}
+		statuses = append(statuses, &status)
+	}
+
+	return statuses, rows.Err()
+}
+
 // RecordMailboxMessage records a message in the mailbox messages table
 func (r *MessageRepository) RecordMailboxMessage(ctx context.Context, mailboxID string, msg *domain.Message, storagePath string, size int64) error {
 	query := `
@@ -540,4 +658,25 @@ func (r *MessageRepository) RecordMailboxMessage(ctx context.Context, mailboxID 
 	}
 
 	return nil
+}
+
+// GetMailboxOwnerEmail returns the email address of the user who owns the mailbox.
+func (r *MessageRepository) GetMailboxOwnerEmail(ctx context.Context, mailboxID string) (string, error) {
+	query := `
+		SELECT u.email
+		FROM mailboxes m
+		JOIN users u ON m.user_id = u.id
+		WHERE m.id = $1
+	`
+
+	var email string
+	err := r.db.QueryRow(ctx, query, mailboxID).Scan(&email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", fmt.Errorf("mailbox owner not found: %s", mailboxID)
+		}
+		return "", fmt.Errorf("get mailbox owner: %w", err)
+	}
+
+	return email, nil
 }

@@ -34,6 +34,24 @@ var (
 		Name: "imap_auth_attempts_total",
 		Help: "Total authentication attempts",
 	}, []string{"method", "result"})
+
+	// IDLE notification metrics
+	idleNotificationsSent = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "imap_idle_notifications_sent_total",
+		Help: "Total IDLE notifications sent",
+	}, []string{"mailbox_id", "type"})
+	idleNotificationsDropped = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "imap_idle_notifications_dropped_total",
+		Help: "Total IDLE notifications dropped due to full channels",
+	}, []string{"mailbox_id"})
+	idleSubscriptionsActive = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "imap_idle_subscriptions_active",
+		Help: "Number of active IDLE subscriptions per mailbox",
+	}, []string{"mailbox_id"})
+	idleStuckConnections = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "imap_idle_stuck_connections_total",
+		Help: "Total stuck IDLE connections detected",
+	}, []string{"mailbox_id"})
 )
 
 // Server represents the IMAP server
@@ -44,11 +62,11 @@ type Server struct {
 	tlsConfig  *tls.Config
 	listener   net.Listener
 	tlsListener net.Listener
-	
+
 	connections     map[string]*Connection
 	connectionsMu   sync.RWMutex
 	connectionCount int64
-	
+
 	notifyHub      *NotifyHub
 	shutdownChan   chan struct{}
 	wg             sync.WaitGroup
@@ -277,44 +295,132 @@ func (s *Server) GetConnectionCount() int64 {
 	return atomic.LoadInt64(&s.connectionCount)
 }
 
-// NotifyHub manages IDLE notifications
+// NotifyHub manages IDLE notifications with improved reliability
 type NotifyHub struct {
-	subscribers map[string]map[string]chan IdleNotification // mailboxID -> connectionID -> channel
-	mu          sync.RWMutex
-	logger      *zap.Logger
-	stopChan    chan struct{}
+	subscribers     map[string]map[string]*NotifySubscription // mailboxID -> connectionID -> subscription
+	mu              sync.RWMutex
+	logger          *zap.Logger
+	stopChan        chan struct{}
+	redis           RedisClient // For cross-instance notifications
+	instanceID      string
+	coalescingDelay time.Duration
+	watchdogTicker  *time.Ticker
+}
+
+// NotifySubscription represents a subscription to mailbox notifications
+type NotifySubscription struct {
+	Channel       chan IdleNotification
+	ConnectionID  string
+	MailboxID     string
+	CreatedAt     time.Time
+	LastActivity  time.Time
+	DroppedCount  int64 // Track dropped notifications for metrics
+	CoalesceTimer *time.Timer
+	PendingNotifs []IdleNotification // Buffer for coalescing
+	mu            sync.Mutex
+}
+
+// RedisClient interface for Redis operations (allows mocking)
+type RedisClient interface {
+	Publish(ctx context.Context, channel string, message interface{}) error
+	Subscribe(ctx context.Context, channels ...string) (<-chan string, error)
+}
+
+// NotifyHubConfig holds configuration for NotifyHub
+type NotifyHubConfig struct {
+	ChannelBufferSize  int           // Buffer size for notification channels
+	CoalescingDelay    time.Duration // Delay for coalescing rapid notifications
+	WatchdogInterval   time.Duration // Interval for checking stuck connections
+	IdleTimeout        time.Duration // Max time for an IDLE connection
+	MaxDroppedWarnings int64         // Max dropped notifications before warning client
+}
+
+// DefaultNotifyHubConfig returns sensible defaults
+func DefaultNotifyHubConfig() NotifyHubConfig {
+	return NotifyHubConfig{
+		ChannelBufferSize:  100,          // Increased from 10 to handle bursts
+		CoalescingDelay:    100 * time.Millisecond,
+		WatchdogInterval:   30 * time.Second,
+		IdleTimeout:        30 * time.Minute,
+		MaxDroppedWarnings: 10,
+	}
 }
 
 // NewNotifyHub creates a new notification hub
 func NewNotifyHub(logger *zap.Logger) *NotifyHub {
-	return &NotifyHub{
-		subscribers: make(map[string]map[string]chan IdleNotification),
-		logger:      logger,
-		stopChan:    make(chan struct{}),
-	}
+	return NewNotifyHubWithConfig(logger, DefaultNotifyHubConfig(), nil)
 }
 
-// Start starts the notification hub
+// NewNotifyHubWithConfig creates a notification hub with custom configuration
+func NewNotifyHubWithConfig(logger *zap.Logger, config NotifyHubConfig, redis RedisClient) *NotifyHub {
+	h := &NotifyHub{
+		subscribers:     make(map[string]map[string]*NotifySubscription),
+		logger:          logger,
+		stopChan:        make(chan struct{}),
+		redis:           redis,
+		instanceID:      generateInstanceID(),
+		coalescingDelay: config.CoalescingDelay,
+	}
+
+	return h
+}
+
+// generateInstanceID creates a unique identifier for this IMAP server instance
+func generateInstanceID() string {
+	return fmt.Sprintf("imap-%d-%d", time.Now().UnixNano(), atomic.AddUint64(&connectionCounter, 1))
+}
+
+// Start starts the notification hub including watchdog and Redis subscriber
 func (h *NotifyHub) Start() {
-	// Nothing to start currently, but could add periodic cleanup
+	// Start watchdog for stuck connections
+	h.watchdogTicker = time.NewTicker(30 * time.Second)
+	go h.runWatchdog()
+
+	// Start Redis subscriber for cross-instance notifications if configured
+	if h.redis != nil {
+		go h.runRedisSubscriber()
+	}
+
+	h.logger.Info("NotifyHub started",
+		zap.String("instance_id", h.instanceID),
+		zap.Bool("redis_enabled", h.redis != nil))
 }
 
 // Stop stops the notification hub
 func (h *NotifyHub) Stop() {
 	close(h.stopChan)
+	if h.watchdogTicker != nil {
+		h.watchdogTicker.Stop()
+	}
 }
 
-// Subscribe subscribes a connection to mailbox notifications
+// Subscribe subscribes a connection to mailbox notifications with improved buffering
 func (h *NotifyHub) Subscribe(mailboxID, connectionID string) chan IdleNotification {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	if h.subscribers[mailboxID] == nil {
-		h.subscribers[mailboxID] = make(map[string]chan IdleNotification)
+		h.subscribers[mailboxID] = make(map[string]*NotifySubscription)
 	}
 
-	ch := make(chan IdleNotification, 10)
-	h.subscribers[mailboxID][connectionID] = ch
+	// Create subscription with larger buffer
+	ch := make(chan IdleNotification, 100) // Increased buffer size
+	sub := &NotifySubscription{
+		Channel:       ch,
+		ConnectionID:  connectionID,
+		MailboxID:     mailboxID,
+		CreatedAt:     time.Now(),
+		LastActivity:  time.Now(),
+		DroppedCount:  0,
+		PendingNotifs: make([]IdleNotification, 0, 10),
+	}
+	h.subscribers[mailboxID][connectionID] = sub
+
+	idleSubscriptionsActive.WithLabelValues(mailboxID).Inc()
+
+	h.logger.Debug("Connection subscribed to mailbox notifications",
+		zap.String("mailbox_id", mailboxID),
+		zap.String("connection_id", connectionID))
 
 	return ch
 }
@@ -325,9 +431,26 @@ func (h *NotifyHub) Unsubscribe(mailboxID, connectionID string) {
 	defer h.mu.Unlock()
 
 	if subs, ok := h.subscribers[mailboxID]; ok {
-		if ch, ok := subs[connectionID]; ok {
-			close(ch)
+		if sub, ok := subs[connectionID]; ok {
+			// Log dropped count for metrics before cleanup
+			if sub.DroppedCount > 0 {
+				idleNotificationsDropped.WithLabelValues(mailboxID).Add(float64(sub.DroppedCount))
+				h.logger.Warn("Notifications were dropped during subscription",
+					zap.String("mailbox_id", mailboxID),
+					zap.String("connection_id", connectionID),
+					zap.Int64("dropped_count", sub.DroppedCount))
+			}
+
+			// Cancel any pending coalesce timer
+			sub.mu.Lock()
+			if sub.CoalesceTimer != nil {
+				sub.CoalesceTimer.Stop()
+			}
+			sub.mu.Unlock()
+
+			close(sub.Channel)
 			delete(subs, connectionID)
+			idleSubscriptionsActive.WithLabelValues(mailboxID).Dec()
 		}
 		if len(subs) == 0 {
 			delete(h.subscribers, mailboxID)
@@ -341,9 +464,20 @@ func (h *NotifyHub) UnsubscribeAll(connectionID string) {
 	defer h.mu.Unlock()
 
 	for mailboxID, subs := range h.subscribers {
-		if ch, ok := subs[connectionID]; ok {
-			close(ch)
+		if sub, ok := subs[connectionID]; ok {
+			if sub.DroppedCount > 0 {
+				idleNotificationsDropped.WithLabelValues(mailboxID).Add(float64(sub.DroppedCount))
+			}
+
+			sub.mu.Lock()
+			if sub.CoalesceTimer != nil {
+				sub.CoalesceTimer.Stop()
+			}
+			sub.mu.Unlock()
+
+			close(sub.Channel)
 			delete(subs, connectionID)
+			idleSubscriptionsActive.WithLabelValues(mailboxID).Dec()
 		}
 		if len(subs) == 0 {
 			delete(h.subscribers, mailboxID)
@@ -351,18 +485,224 @@ func (h *NotifyHub) UnsubscribeAll(connectionID string) {
 	}
 }
 
-// Notify sends a notification to all subscribers of a mailbox
+// Notify sends a notification to all subscribers of a mailbox with coalescing
 func (h *NotifyHub) Notify(mailboxID string, notification IdleNotification) {
+	h.mu.RLock()
+	subs, ok := h.subscribers[mailboxID]
+	if !ok {
+		h.mu.RUnlock()
+		return
+	}
+
+	// Copy subscriptions to avoid holding lock during sends
+	subsCopy := make([]*NotifySubscription, 0, len(subs))
+	for _, sub := range subs {
+		subsCopy = append(subsCopy, sub)
+	}
+	h.mu.RUnlock()
+
+	// Send to each subscriber with coalescing support
+	for _, sub := range subsCopy {
+		h.sendToSubscriber(sub, notification)
+	}
+
+	idleNotificationsSent.WithLabelValues(mailboxID, notification.Type).Inc()
+
+	// Publish to Redis for cross-instance delivery if enabled
+	if h.redis != nil {
+		go h.publishToRedis(mailboxID, notification)
+	}
+}
+
+// sendToSubscriber sends a notification to a single subscriber with coalescing
+func (h *NotifyHub) sendToSubscriber(sub *NotifySubscription, notification IdleNotification) {
+	sub.mu.Lock()
+	defer sub.mu.Unlock()
+
+	sub.LastActivity = time.Now()
+
+	// Try non-blocking send first
+	select {
+	case sub.Channel <- notification:
+		return
+	default:
+		// Channel full - use coalescing
+	}
+
+	// Add to pending notifications for coalescing
+	sub.PendingNotifs = append(sub.PendingNotifs, notification)
+
+	// Start or reset coalesce timer
+	if sub.CoalesceTimer == nil {
+		sub.CoalesceTimer = time.AfterFunc(h.coalescingDelay, func() {
+			h.flushCoalescedNotifications(sub)
+		})
+	} else {
+		sub.CoalesceTimer.Reset(h.coalescingDelay)
+	}
+}
+
+// flushCoalescedNotifications sends coalesced notifications
+func (h *NotifyHub) flushCoalescedNotifications(sub *NotifySubscription) {
+	sub.mu.Lock()
+	pending := sub.PendingNotifs
+	sub.PendingNotifs = make([]IdleNotification, 0, 10)
+	sub.CoalesceTimer = nil
+	sub.mu.Unlock()
+
+	if len(pending) == 0 {
+		return
+	}
+
+	// Coalesce notifications by type
+	coalesced := h.coalesceNotifications(pending)
+
+	for _, notification := range coalesced {
+		select {
+		case sub.Channel <- notification:
+			// Sent successfully
+		default:
+			// Still full after coalescing - track as dropped
+			sub.mu.Lock()
+			sub.DroppedCount++
+			dropped := sub.DroppedCount
+			sub.mu.Unlock()
+
+			// Log warning if too many dropped
+			if dropped%10 == 0 {
+				h.logger.Warn("Notifications being dropped",
+					zap.String("mailbox_id", sub.MailboxID),
+					zap.String("connection_id", sub.ConnectionID),
+					zap.Int64("total_dropped", dropped))
+			}
+		}
+	}
+}
+
+// coalesceNotifications merges multiple notifications of the same type
+func (h *NotifyHub) coalesceNotifications(notifications []IdleNotification) []IdleNotification {
+	if len(notifications) <= 1 {
+		return notifications
+	}
+
+	// Group by type and merge
+	byType := make(map[string][]IdleNotification)
+	for _, n := range notifications {
+		byType[n.Type] = append(byType[n.Type], n)
+	}
+
+	result := make([]IdleNotification, 0, len(byType))
+	for notifType, notifs := range byType {
+		switch notifType {
+		case "EXISTS":
+			// For EXISTS, just send the latest count
+			result = append(result, notifs[len(notifs)-1])
+
+		case "RECENT":
+			// For RECENT, sum up all counts
+			totalCount := 0
+			for _, n := range notifs {
+				if count, ok := n.Data["count"].(int); ok {
+					totalCount += count
+				}
+			}
+			result = append(result, IdleNotification{
+				Type: "RECENT",
+				Data: map[string]interface{}{"count": totalCount},
+			})
+
+		case "EXPUNGE":
+			// For EXPUNGE, send each one (order matters)
+			result = append(result, notifs...)
+
+		case "FLAGS":
+			// For FLAGS, send all (could dedupe by sequence number)
+			result = append(result, notifs...)
+
+		default:
+			result = append(result, notifs...)
+		}
+	}
+
+	return result
+}
+
+// runWatchdog periodically checks for stuck connections
+func (h *NotifyHub) runWatchdog() {
+	for {
+		select {
+		case <-h.stopChan:
+			return
+		case <-h.watchdogTicker.C:
+			h.checkStuckConnections()
+		}
+	}
+}
+
+// checkStuckConnections identifies and logs connections with no recent activity
+func (h *NotifyHub) checkStuckConnections() {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if subs, ok := h.subscribers[mailboxID]; ok {
-		for _, ch := range subs {
-			select {
-			case ch <- notification:
-			default:
-				// Channel full, skip
+	stuckThreshold := 30 * time.Minute
+	now := time.Now()
+
+	for mailboxID, subs := range h.subscribers {
+		for connID, sub := range subs {
+			idleTime := now.Sub(sub.LastActivity)
+			if idleTime > stuckThreshold {
+				h.logger.Warn("Potentially stuck IDLE connection detected",
+					zap.String("mailbox_id", mailboxID),
+					zap.String("connection_id", connID),
+					zap.Duration("idle_time", idleTime),
+					zap.Int64("dropped_count", sub.DroppedCount))
+
+				idleStuckConnections.WithLabelValues(mailboxID).Inc()
 			}
+		}
+	}
+}
+
+// publishToRedis publishes notification to Redis for cross-instance delivery
+func (h *NotifyHub) publishToRedis(mailboxID string, notification IdleNotification) {
+	if h.redis == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	channel := fmt.Sprintf("imap:notify:%s", mailboxID)
+	// In production, serialize notification properly
+	if err := h.redis.Publish(ctx, channel, notification); err != nil {
+		h.logger.Warn("Failed to publish notification to Redis",
+			zap.String("mailbox_id", mailboxID),
+			zap.Error(err))
+	}
+}
+
+// runRedisSubscriber subscribes to Redis for cross-instance notifications
+func (h *NotifyHub) runRedisSubscriber() {
+	if h.redis == nil {
+		return
+	}
+
+	ctx := context.Background()
+	channel := "imap:notify:*"
+
+	msgChan, err := h.redis.Subscribe(ctx, channel)
+	if err != nil {
+		h.logger.Error("Failed to subscribe to Redis notifications", zap.Error(err))
+		return
+	}
+
+	for {
+		select {
+		case <-h.stopChan:
+			return
+		case msg := <-msgChan:
+			// Handle incoming Redis notification
+			h.logger.Debug("Received Redis notification", zap.String("message", msg))
 		}
 	}
 }

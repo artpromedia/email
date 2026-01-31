@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/smtp"
@@ -235,12 +236,25 @@ func (w *Worker) deliverToMailbox(ctx context.Context, msg *domain.Message, targ
 	}
 }
 
-// storeInMailbox stores a message in a user's mailbox
+// storeInMailbox stores a message in a user's mailbox with atomic quota enforcement
 func (w *Worker) storeInMailbox(ctx context.Context, msg *domain.Message, mailbox *domain.Mailbox, data []byte) error {
-	// Check mailbox quota
-	newSize := mailbox.UsedBytes + int64(len(data))
-	if mailbox.QuotaBytes > 0 && newSize > mailbox.QuotaBytes {
-		return fmt.Errorf("mailbox quota exceeded: %d/%d bytes", newSize, mailbox.QuotaBytes)
+	messageSize := int64(len(data))
+
+	// Atomic quota check and update - prevents race conditions
+	newUsedBytes, quotaBytes, err := w.manager.AtomicQuotaCheckAndUpdate(ctx, mailbox.ID, messageSize)
+	if err != nil {
+		if errors.Is(err, w.manager.ErrQuotaExceeded()) {
+			// Record quota exceeded metric
+			w.manager.RecordQuotaExceeded(mailbox.ID, mailbox.Email)
+			return fmt.Errorf("mailbox quota exceeded: %d/%d bytes used", mailbox.UsedBytes, mailbox.QuotaBytes)
+		}
+		return fmt.Errorf("quota check failed: %w", err)
+	}
+
+	// Check for quota warning thresholds and send notifications if needed
+	if quotaBytes > 0 {
+		usagePercent := float64(newUsedBytes) / float64(quotaBytes) * 100
+		w.checkQuotaWarnings(ctx, mailbox, usagePercent)
 	}
 
 	// Store message in mailbox storage
@@ -252,29 +266,69 @@ func (w *Worker) storeInMailbox(ctx context.Context, msg *domain.Message, mailbo
 	)
 
 	if err := w.manager.StoreMailboxMessage(ctx, storagePath, data); err != nil {
+		// Rollback quota update on storage failure
+		if rollbackErr := w.manager.UpdateMailboxUsage(ctx, mailbox.ID, -messageSize); rollbackErr != nil {
+			w.logger.Error("Failed to rollback quota update",
+				zap.String("mailbox_id", mailbox.ID),
+				zap.Error(rollbackErr))
+		}
 		return fmt.Errorf("store message: %w", err)
 	}
 
-	// Update mailbox used storage
-	if err := w.manager.UpdateMailboxUsage(ctx, mailbox.ID, int64(len(data))); err != nil {
-		w.logger.Warn("Failed to update mailbox usage",
-			zap.String("mailbox_id", mailbox.ID),
-			zap.Error(err))
-	}
-
 	// Record message in mailbox messages table
-	if err := w.manager.RecordMailboxMessage(ctx, mailbox.ID, msg, storagePath, int64(len(data))); err != nil {
+	if err := w.manager.RecordMailboxMessage(ctx, mailbox.ID, msg, storagePath, messageSize); err != nil {
 		w.logger.Warn("Failed to record mailbox message",
 			zap.String("mailbox_id", mailbox.ID),
 			zap.Error(err))
 	}
 
+	// Record quota metrics
+	w.manager.RecordQuotaUsage(mailbox.ID, mailbox.Email, newUsedBytes, quotaBytes)
+
 	w.logger.Debug("Message stored in mailbox",
 		zap.String("message_id", msg.ID),
 		zap.String("mailbox", mailbox.Email),
-		zap.Int64("size", int64(len(data))))
+		zap.Int64("size", messageSize),
+		zap.Int64("used_bytes", newUsedBytes),
+		zap.Int64("quota_bytes", quotaBytes))
 
 	return nil
+}
+
+// checkQuotaWarnings checks if quota warning thresholds have been crossed
+func (w *Worker) checkQuotaWarnings(ctx context.Context, mailbox *domain.Mailbox, usagePercent float64) {
+	// Check each threshold and send warnings
+	for _, threshold := range []struct {
+		percent     float64
+		description string
+	}{
+		{95, "95% - Critical"},
+		{90, "90%"},
+		{80, "80%"},
+	} {
+		if usagePercent >= threshold.percent {
+			// Check if we've already sent this warning recently (within 24 hours)
+			warningKey := fmt.Sprintf("quota_warning:%s:%.0f", mailbox.ID, threshold.percent)
+			if !w.manager.HasRecentQuotaWarning(ctx, warningKey) {
+				// Send quota warning email
+				if err := w.manager.SendQuotaWarningEmail(ctx, mailbox, threshold.percent, threshold.description); err != nil {
+					w.logger.Warn("Failed to send quota warning email",
+						zap.String("mailbox", mailbox.Email),
+						zap.Float64("threshold", threshold.percent),
+						zap.Error(err))
+				} else {
+					// Mark warning as sent
+					w.manager.MarkQuotaWarningSent(ctx, warningKey)
+					w.logger.Info("Quota warning sent",
+						zap.String("mailbox", mailbox.Email),
+						zap.Float64("usage_percent", usagePercent),
+						zap.String("threshold", threshold.description))
+				}
+			}
+			// Only send the highest applicable warning
+			break
+		}
+	}
 }
 
 func (w *Worker) deliverExternal(ctx context.Context, msg *domain.Message, targetDomain string) error {

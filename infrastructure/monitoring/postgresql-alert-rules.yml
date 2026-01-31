@@ -1,0 +1,328 @@
+# PostgreSQL High Availability Alert Rules
+# For use with Prometheus/Alertmanager
+
+groups:
+  - name: postgresql-cluster-health
+    interval: 30s
+    rules:
+      # =================================================================
+      # CRITICAL: Cluster has no leader - immediate page
+      # =================================================================
+      - alert: PostgresNoLeader
+        expr: sum(patroni_master{scope="email-cluster"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL cluster has no leader"
+          description: "The email-cluster PostgreSQL cluster has no active primary node. Writes are blocked."
+          runbook_url: "https://docs.company.com/runbooks/postgresql#no-leader"
+          dashboard_url: "https://grafana.company.com/d/postgresql-ha"
+
+      # =================================================================
+      # CRITICAL: Multiple leaders detected - split brain risk
+      # =================================================================
+      - alert: PostgresMultipleLeaders
+        expr: sum(patroni_master{scope="email-cluster"}) > 1
+        for: 30s
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL cluster has multiple leaders - SPLIT BRAIN RISK"
+          description: "{{ $value }} nodes report being primary. Immediate investigation required."
+          runbook_url: "https://docs.company.com/runbooks/postgresql#split-brain"
+
+      # =================================================================
+      # CRITICAL: Node down
+      # =================================================================
+      - alert: PostgresNodeDown
+        expr: patroni_postgres_running{scope="email-cluster"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL node {{ $labels.instance }} is down"
+          description: "Patroni reports PostgreSQL is not running on {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/postgresql#node-down"
+
+      # =================================================================
+      # WARNING: Insufficient replicas
+      # =================================================================
+      - alert: PostgresInsufficientReplicas
+        expr: sum(patroni_replica{scope="email-cluster"}) < 2
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL cluster has fewer than 2 replicas"
+          description: "Only {{ $value }} replicas are available. Cluster resilience is reduced."
+          runbook_url: "https://docs.company.com/runbooks/postgresql#insufficient-replicas"
+
+  - name: postgresql-replication
+    interval: 30s
+    rules:
+      # =================================================================
+      # WARNING: Replication lag > 10MB
+      # =================================================================
+      - alert: PostgresReplicationLag
+        expr: patroni_replication_lag{scope="email-cluster"} > 10485760
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication lag > 10MB"
+          description: "Replica {{ $labels.instance }} has {{ $value | humanize1024 }}B replication lag"
+          runbook_url: "https://docs.company.com/runbooks/postgresql#replication-lag"
+
+      # =================================================================
+      # CRITICAL: Replication lag > 100MB
+      # =================================================================
+      - alert: PostgresReplicationLagCritical
+        expr: patroni_replication_lag{scope="email-cluster"} > 104857600
+        for: 2m
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication lag > 100MB - CRITICAL"
+          description: "Replica {{ $labels.instance }} has {{ $value | humanize1024 }}B lag. May not be eligible for failover."
+          runbook_url: "https://docs.company.com/runbooks/postgresql#critical-lag"
+
+      # =================================================================
+      # CRITICAL: Replication stopped
+      # =================================================================
+      - alert: PostgresReplicationStopped
+        expr: |
+          changes(patroni_replication_lag{scope="email-cluster"}[10m]) == 0
+          and patroni_replication_lag{scope="email-cluster"} > 0
+        for: 10m
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication appears stuck"
+          description: "Replication lag on {{ $labels.instance }} has not changed in 10 minutes"
+          runbook_url: "https://docs.company.com/runbooks/postgresql#stuck-replication"
+
+  - name: postgresql-performance
+    interval: 60s
+    rules:
+      # =================================================================
+      # WARNING: High connection count
+      # =================================================================
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count{datname="enterprise_email"} > 150
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL connection count high"
+          description: "{{ $value }} connections to enterprise_email (max 200)"
+
+      # =================================================================
+      # CRITICAL: Connection count critical
+      # =================================================================
+      - alert: PostgresConnectionsCritical
+        expr: pg_stat_activity_count{datname="enterprise_email"} > 180
+        for: 2m
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL connection count CRITICAL"
+          description: "{{ $value }} connections - approaching max_connections (200)"
+
+      # =================================================================
+      # WARNING: Long-running queries
+      # =================================================================
+      - alert: PostgresLongRunningQuery
+        expr: pg_stat_activity_max_tx_duration{datname="enterprise_email"} > 300
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL long-running query detected"
+          description: "Query running for {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+
+      # =================================================================
+      # WARNING: Deadlocks detected
+      # =================================================================
+      - alert: PostgresDeadlocks
+        expr: rate(pg_stat_database_deadlocks{datname="enterprise_email"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: '{{ $value | printf "%.2f" }} deadlocks/sec in last 5 minutes'
+
+      # =================================================================
+      # WARNING: High disk usage
+      # =================================================================
+      - alert: PostgresDiskUsageHigh
+        expr: |
+          (pg_database_size_bytes{datname="enterprise_email"} /
+           node_filesystem_size_bytes{mountpoint="/var/lib/postgresql"}) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL disk usage > 80%"
+          description: "Database disk usage at {{ $value | humanizePercentage }}"
+
+  - name: etcd-health
+    interval: 30s
+    rules:
+      # =================================================================
+      # CRITICAL: etcd has no leader
+      # =================================================================
+      - alert: EtcdNoLeader
+        expr: etcd_server_has_leader == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+          service: etcd
+        annotations:
+          summary: "etcd cluster has no leader"
+          description: "etcd instance {{ $labels.instance }} reports no leader. Patroni cannot function."
+          runbook_url: "https://docs.company.com/runbooks/postgresql#etcd-no-leader"
+
+      # =================================================================
+      # WARNING: etcd member down
+      # =================================================================
+      - alert: EtcdMemberDown
+        expr: up{job="etcd"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+          service: etcd
+        annotations:
+          summary: "etcd member {{ $labels.instance }} is down"
+          description: "etcd cluster is operating with reduced redundancy"
+
+      # =================================================================
+      # WARNING: etcd high fsync latency
+      # =================================================================
+      - alert: EtcdHighFsyncLatency
+        expr: histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: etcd
+        annotations:
+          summary: "etcd fsync latency high"
+          description: "99th percentile fsync latency is {{ $value | humanizeDuration }}"
+
+  - name: haproxy-health
+    interval: 30s
+    rules:
+      # =================================================================
+      # CRITICAL: No healthy PostgreSQL backends
+      # =================================================================
+      - alert: HAProxyNoHealthyBackends
+        expr: haproxy_backend_active_servers{proxy="postgres-primary"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+          service: haproxy
+        annotations:
+          summary: "HAProxy has no healthy PostgreSQL primary backends"
+          description: "No PostgreSQL primary node available. Writes are blocked."
+
+      # =================================================================
+      # WARNING: HAProxy backend server down
+      # =================================================================
+      - alert: HAProxyBackendDown
+        expr: haproxy_server_status{proxy=~"postgres.*"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+          service: haproxy
+        annotations:
+          summary: "HAProxy backend {{ $labels.server }} is down"
+          description: "PostgreSQL node {{ $labels.server }} is not responding to HAProxy health checks"
+
+      # =================================================================
+      # WARNING: HAProxy connection queue
+      # =================================================================
+      - alert: HAProxyHighConnectionQueue
+        expr: haproxy_backend_current_queue{proxy=~"postgres.*"} > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: haproxy
+        annotations:
+          summary: "HAProxy connection queue building up"
+          description: "{{ $value }} connections queued for {{ $labels.proxy }}"
+
+  - name: postgresql-maintenance
+    interval: 300s
+    rules:
+      # =================================================================
+      # WARNING: Pending restart required
+      # =================================================================
+      - alert: PostgresPendingRestart
+        expr: patroni_pending_restart{scope="email-cluster"} == 1
+        for: 1h
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL node requires restart"
+          description: "Node {{ $labels.instance }} has pending configuration changes requiring restart"
+
+      # =================================================================
+      # WARNING: Vacuum not running
+      # =================================================================
+      - alert: PostgresVacuumNotRunning
+        expr: time() - pg_stat_user_tables_last_autovacuum > 86400
+        for: 1h
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL autovacuum not running"
+          description: "Table {{ $labels.relname }} has not been vacuumed in over 24 hours"
+
+      # =================================================================
+      # WARNING: Transaction ID wraparound approaching
+      # =================================================================
+      - alert: PostgresXidWraparound
+        expr: pg_database_age{datname="enterprise_email"} > 1500000000
+        for: 1h
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL transaction ID wraparound approaching"
+          description: "Database age is {{ $value }}. Wraparound occurs at 2 billion."

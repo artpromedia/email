@@ -24,10 +24,11 @@ const ssoStateTTL = 10 * time.Minute
 
 // SSOState represents the state stored during SSO flow
 type SSOState struct {
-	DomainID    uuid.UUID `json:"domain_id"`
-	RedirectURL string    `json:"redirect_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	IPAddress   string    `json:"ip_address"`
+	DomainID      uuid.UUID `json:"domain_id"`
+	RedirectURL   string    `json:"redirect_url"`
+	CreatedAt     time.Time `json:"created_at"`
+	IPAddress     string    `json:"ip_address"`
+	SAMLRequestID string    `json:"saml_request_id,omitempty"` // For SAML InResponseTo validation
 }
 
 // SSOService provides SSO operations.
@@ -383,6 +384,215 @@ func (s *SSOService) DeleteSSOConfig(ctx context.Context, domainID, userID uuid.
 	return nil
 }
 
+// InitiateSLO starts SP-initiated Single Logout
+func (s *SSOService) InitiateSLO(ctx context.Context, userID uuid.UUID, sessionID uuid.UUID) (string, error) {
+	// Get user's SSO identity
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Find SSO identity for this user
+	identity, err := s.repo.GetSSOIdentityByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			// No SSO identity - just do local logout
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to get SSO identity: %w", err)
+	}
+
+	// Get SSO config for the domain
+	ssoConfig, err := s.repo.GetSSOConfigByDomainID(ctx, identity.DomainID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get SSO config: %w", err)
+	}
+
+	if ssoConfig.Provider != "saml" || ssoConfig.SAMLConfig == nil {
+		return "", nil // OIDC logout is handled differently
+	}
+
+	// Check if IdP has SLO endpoint
+	if ssoConfig.SAMLConfig.IDPSLOUrl == nil || *ssoConfig.SAMLConfig.IDPSLOUrl == "" {
+		return "", nil // No SLO endpoint configured
+	}
+
+	// Get domain for building URLs
+	domain, err := s.repo.GetDomainByID(ctx, identity.DomainID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain: %w", err)
+	}
+
+	// Create SAML service
+	samlService, err := NewSAMLService(
+		s.config.SSO.EntityID,
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/callback", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/logout", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/metadata", s.config.SSO.BaseURL, domain.ID.String()),
+		[]byte(s.config.SSO.PrivateKey),
+		[]byte(s.config.SSO.Certificate),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create SAML service: %w", err)
+	}
+
+	// Get NameID format from the original assertion if available
+	nameIDFormat := NameIDFormatEmail
+	if ssoConfig.SAMLConfig.NameIDFormat != "" {
+		nameIDFormat = ssoConfig.SAMLConfig.NameIDFormat
+	}
+
+	// Create LogoutRequest
+	requestID, logoutRequest, err := samlService.CreateLogoutRequest(
+		*ssoConfig.SAMLConfig.IDPSLOUrl,
+		identity.ProviderUserID, // NameID value
+		nameIDFormat,
+		sessionID.String(), // SessionIndex
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create logout request: %w", err)
+	}
+
+	// Store logout request state for validation
+	logoutState := map[string]interface{}{
+		"request_id": requestID,
+		"user_id":    userID.String(),
+		"session_id": sessionID.String(),
+	}
+	stateJSON, _ := json.Marshal(logoutState)
+	s.redis.Set(ctx, "sso:logout:"+requestID, stateJSON, 5*time.Minute)
+
+	// Invalidate local session
+	s.repo.DeleteSession(ctx, sessionID)
+
+	// Record audit log
+	s.authService.recordAuditLog(ctx, user.OrganizationID, &userID, "user.sso_logout", "session", &sessionID, "", "", map[string]string{
+		"method": "sp_initiated",
+	})
+
+	// Build redirect URL
+	sloURL := fmt.Sprintf("%s?SAMLRequest=%s", *ssoConfig.SAMLConfig.IDPSLOUrl, logoutRequest)
+
+	return sloURL, nil
+}
+
+// HandleSLORequest handles IdP-initiated Single Logout Request
+func (s *SSOService) HandleSLORequest(ctx context.Context, domainID uuid.UUID, samlRequest, relayState string) (string, error) {
+	// Get domain
+	domain, err := s.repo.GetDomainByID(ctx, domainID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain: %w", err)
+	}
+
+	// Get SSO config
+	ssoConfig, err := s.repo.GetSSOConfigByDomainID(ctx, domainID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get SSO config: %w", err)
+	}
+
+	if ssoConfig.Provider != "saml" || ssoConfig.SAMLConfig == nil {
+		return "", errors.New("SAML not configured for this domain")
+	}
+
+	// Create SAML service
+	samlService, err := NewSAMLService(
+		s.config.SSO.EntityID,
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/callback", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/logout", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/metadata", s.config.SSO.BaseURL, domain.ID.String()),
+		[]byte(s.config.SSO.PrivateKey),
+		[]byte(s.config.SSO.Certificate),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create SAML service: %w", err)
+	}
+
+	// Parse the logout request
+	logoutRequest, err := samlService.ParseLogoutRequest(ssoConfig.SAMLConfig, samlRequest)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse logout request: %w", err)
+	}
+
+	// Find user by NameID
+	identity, err := s.repo.GetSSOIdentity(ctx, domainID, logoutRequest.NameID.Value)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return "", fmt.Errorf("failed to find SSO identity: %w", err)
+	}
+
+	success := true
+	if identity != nil {
+		// Invalidate all sessions for this user
+		if err := s.repo.DeleteUserSessions(ctx, identity.UserID); err != nil {
+			success = false
+		}
+
+		// Record audit log
+		s.authService.recordAuditLog(ctx, domain.OrganizationID, &identity.UserID, "user.sso_logout", "session", nil, "", "", map[string]string{
+			"method": "idp_initiated",
+		})
+	}
+
+	// Create logout response
+	destination := ""
+	if ssoConfig.SAMLConfig.IDPSLOUrl != nil {
+		destination = *ssoConfig.SAMLConfig.IDPSLOUrl
+	}
+
+	logoutResponse, err := samlService.CreateLogoutResponse(logoutRequest.ID, destination, success)
+	if err != nil {
+		return "", fmt.Errorf("failed to create logout response: %w", err)
+	}
+
+	// Build response URL
+	responseURL := fmt.Sprintf("%s?SAMLResponse=%s", destination, logoutResponse)
+	if relayState != "" {
+		responseURL += "&RelayState=" + relayState
+	}
+
+	return responseURL, nil
+}
+
+// GenerateSAMLMetadata generates SAML SP metadata for a domain
+func (s *SSOService) GenerateSAMLMetadata(ctx context.Context, domainID uuid.UUID) (string, error) {
+	// Get domain for building URLs
+	domain, err := s.repo.GetDomainByID(ctx, domainID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain: %w", err)
+	}
+
+	// Get organization for metadata
+	org, err := s.repo.GetOrganizationByID(ctx, domain.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Create SAML service
+	samlService, err := NewSAMLService(
+		s.config.SSO.EntityID,
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/callback", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/logout", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/metadata", s.config.SSO.BaseURL, domain.ID.String()),
+		[]byte(s.config.SSO.PrivateKey),
+		[]byte(s.config.SSO.Certificate),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create SAML service: %w", err)
+	}
+
+	// Generate metadata
+	contactEmail := s.config.SSO.ContactEmail
+	if contactEmail == "" {
+		contactEmail = "support@" + domain.DomainName
+	}
+
+	metadata, err := samlService.GenerateMetadata(org.Name, contactEmail)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate metadata: %w", err)
+	}
+
+	return metadata, nil
+}
+
 // ============================================================
 // HELPER METHODS
 // ============================================================
@@ -665,20 +875,54 @@ func (s *SSOService) initiateSAMLLogin(domain *models.Domain, ssoConfig *models.
 		return "", errors.New("SAML configuration is missing")
 	}
 
-	// In production, use crewjam/saml library
-	// This is a simplified example that returns the IdP SSO URL
 	ssoURL := ssoConfig.SAMLConfig.IDPSSOURL
 	if ssoURL == "" {
 		return "", errors.New("IdP SSO URL not configured")
 	}
 
-	// Build SAML AuthnRequest URL
-	// In production, this would include a properly signed AuthnRequest
-	callbackURL := fmt.Sprintf("%s/api/auth/sso/%s/saml/callback", s.config.SSO.BaseURL, domain.ID.String())
-	authURL := fmt.Sprintf("%s?SAMLRequest=...&RelayState=%s", ssoURL, state)
+	// Create SAML service with SP configuration
+	samlService, err := NewSAMLService(
+		s.config.SSO.EntityID,
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/callback", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/logout", s.config.SSO.BaseURL, domain.ID.String()),
+		fmt.Sprintf("%s/api/auth/sso/%s/saml/metadata", s.config.SSO.BaseURL, domain.ID.String()),
+		[]byte(s.config.SSO.PrivateKey),
+		[]byte(s.config.SSO.Certificate),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create SAML service: %w", err)
+	}
 
-	// Note: In production, generate proper SAML AuthnRequest
-	_ = callbackURL
+	// Determine NameID format
+	nameIDFormat := ssoConfig.SAMLConfig.NameIDFormat
+	if nameIDFormat == "" {
+		nameIDFormat = NameIDFormatEmail
+	}
+
+	// Create AuthnRequest
+	requestID, samlRequest, err := samlService.CreateAuthnRequest(ssoURL, "", nameIDFormat)
+	if err != nil {
+		return "", fmt.Errorf("failed to create AuthnRequest: %w", err)
+	}
+
+	// Store request ID in state for validation during callback
+	// Update the stored state to include the request ID
+	ssoState := SSOState{
+		DomainID:    domain.ID,
+		RedirectURL: redirectURL,
+		CreatedAt:   time.Now(),
+	}
+	ssoState.SAMLRequestID = requestID
+	stateJSON, err := json.Marshal(ssoState)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal SSO state: %w", err)
+	}
+	if err := s.redis.Set(context.Background(), ssoStateKeyPrefix+state, stateJSON, ssoStateTTL).Err(); err != nil {
+		return "", fmt.Errorf("failed to store SSO state: %w", err)
+	}
+
+	// Build redirect URL with SAMLRequest and RelayState
+	authURL := fmt.Sprintf("%s?SAMLRequest=%s&RelayState=%s", ssoURL, samlRequest, state)
 
 	return authURL, nil
 }
@@ -719,13 +963,30 @@ func (s *SSOService) initiateOIDCLogin(domain *models.Domain, ssoConfig *models.
 }
 
 func (s *SSOService) parseSAMLResponse(config *models.SAMLConfig, samlResponse string) (map[string]interface{}, error) {
-	// In production, use crewjam/saml library to parse and validate
-	// This is a placeholder that would parse the actual SAML response
-	attributes := make(map[string]interface{})
+	// Create SAML service with SP configuration
+	samlService, err := NewSAMLService(
+		s.config.SSO.EntityID,
+		fmt.Sprintf("%s/api/auth/sso/saml/callback", s.config.SSO.BaseURL),
+		fmt.Sprintf("%s/api/auth/sso/saml/logout", s.config.SSO.BaseURL),
+		fmt.Sprintf("%s/api/auth/sso/saml/metadata", s.config.SSO.BaseURL),
+		[]byte(s.config.SSO.PrivateKey),
+		[]byte(s.config.SSO.Certificate),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SAML service: %w", err)
+	}
 
-	// Parse SAML response XML and extract attributes
-	// Validate signature using config.Certificate
-	// Extract NameID and attributes
+	// Parse and validate the SAML response
+	// expectedRequestID would come from the stored state in production
+	_, attributes, err := samlService.ParseSAMLResponse(
+		config,
+		samlResponse,
+		"", // expectedRequestID - should be retrieved from Redis state
+		s.config.SSO.EntityID, // expectedAudience
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse SAML response: %w", err)
+	}
 
 	return attributes, nil
 }

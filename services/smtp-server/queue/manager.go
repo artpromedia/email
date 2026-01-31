@@ -11,12 +11,42 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"smtp-server/config"
 	"smtp-server/domain"
 	"smtp-server/repository"
+)
+
+// Prometheus metrics for quota monitoring
+var (
+	quotaExceededTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "smtp_mailbox_quota_exceeded_total",
+		Help: "Total number of quota exceeded events",
+	}, []string{"mailbox_id", "email"})
+
+	mailboxUsedBytes = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "smtp_mailbox_used_bytes",
+		Help: "Current used storage in bytes per mailbox",
+	}, []string{"mailbox_id", "email"})
+
+	mailboxQuotaBytes = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "smtp_mailbox_quota_bytes",
+		Help: "Storage quota in bytes per mailbox",
+	}, []string{"mailbox_id", "email"})
+
+	mailboxQuotaUsagePercent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "smtp_mailbox_quota_usage_percent",
+		Help: "Quota usage percentage per mailbox",
+	}, []string{"mailbox_id", "email"})
+
+	quotaWarningsSent = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "smtp_quota_warnings_sent_total",
+		Help: "Total quota warning emails sent",
+	}, []string{"mailbox_id", "threshold"})
 )
 
 // Manager handles message queue operations
@@ -453,4 +483,132 @@ func (m *Manager) UpdateMailboxUsage(ctx context.Context, mailboxID string, addi
 // RecordMailboxMessage records a message in the mailbox messages table
 func (m *Manager) RecordMailboxMessage(ctx context.Context, mailboxID string, msg *domain.Message, storagePath string, size int64) error {
 	return m.msgRepo.RecordMailboxMessage(ctx, mailboxID, msg, storagePath, size)
+}
+
+// AtomicQuotaCheckAndUpdate performs atomic quota verification and update.
+// Returns newUsedBytes, quotaBytes, and error (repository.ErrQuotaExceeded if exceeded).
+func (m *Manager) AtomicQuotaCheckAndUpdate(ctx context.Context, mailboxID string, additionalBytes int64) (int64, int64, error) {
+	return m.msgRepo.AtomicQuotaCheckAndUpdate(ctx, mailboxID, additionalBytes)
+}
+
+// ErrQuotaExceeded returns the quota exceeded error for comparison.
+func (m *Manager) ErrQuotaExceeded() error {
+	return repository.ErrQuotaExceeded
+}
+
+// RecordQuotaExceeded records a quota exceeded event metric.
+func (m *Manager) RecordQuotaExceeded(mailboxID, email string) {
+	quotaExceededTotal.WithLabelValues(mailboxID, email).Inc()
+	m.logger.Info("Quota exceeded",
+		zap.String("mailbox_id", mailboxID),
+		zap.String("email", email))
+}
+
+// RecordQuotaUsage records current quota usage metrics.
+func (m *Manager) RecordQuotaUsage(mailboxID, email string, usedBytes, quotaBytes int64) {
+	mailboxUsedBytes.WithLabelValues(mailboxID, email).Set(float64(usedBytes))
+	if quotaBytes > 0 {
+		mailboxQuotaBytes.WithLabelValues(mailboxID, email).Set(float64(quotaBytes))
+		usagePercent := float64(usedBytes) / float64(quotaBytes) * 100
+		mailboxQuotaUsagePercent.WithLabelValues(mailboxID, email).Set(usagePercent)
+	}
+}
+
+// HasRecentQuotaWarning checks if a quota warning was sent recently (within 24 hours).
+func (m *Manager) HasRecentQuotaWarning(ctx context.Context, warningKey string) bool {
+	exists, err := m.redis.Exists(ctx, warningKey).Result()
+	if err != nil {
+		m.logger.Warn("Failed to check quota warning key", zap.Error(err))
+		return false
+	}
+	return exists > 0
+}
+
+// MarkQuotaWarningSent marks a quota warning as sent (expires in 24 hours).
+func (m *Manager) MarkQuotaWarningSent(ctx context.Context, warningKey string) {
+	err := m.redis.Set(ctx, warningKey, "1", 24*time.Hour).Err()
+	if err != nil {
+		m.logger.Warn("Failed to mark quota warning sent", zap.Error(err))
+	}
+}
+
+// SendQuotaWarningEmail sends a quota warning email to the mailbox owner.
+func (m *Manager) SendQuotaWarningEmail(ctx context.Context, mailbox *domain.Mailbox, usagePercent float64, description string) error {
+	// Get user email for notification
+	userEmail, err := m.msgRepo.GetMailboxOwnerEmail(ctx, mailbox.ID)
+	if err != nil {
+		return fmt.Errorf("get mailbox owner: %w", err)
+	}
+
+	// Create warning email
+	subject := fmt.Sprintf("Storage Warning: Your mailbox is at %s capacity", description)
+	body := fmt.Sprintf(`Your mailbox %s is approaching its storage limit.
+
+Current Usage: %.1f%%
+Used: %s of %s
+
+Please consider:
+- Deleting old emails and attachments
+- Emptying your trash folder
+- Archiving old messages
+
+If you need more storage, please contact your administrator.
+
+This is an automated message. Please do not reply.`,
+		mailbox.Email,
+		usagePercent,
+		formatBytes(mailbox.UsedBytes),
+		formatBytes(mailbox.QuotaBytes),
+	)
+
+	// Queue the warning email
+	return m.queueSystemEmail(ctx, userEmail, subject, body)
+}
+
+// queueSystemEmail queues a system notification email.
+func (m *Manager) queueSystemEmail(ctx context.Context, to, subject, body string) error {
+	msg := &domain.Message{
+		ID:          generateMessageID(),
+		FromAddress: "noreply@" + m.config.Server.DefaultDomain,
+		Recipients:  []string{to},
+		Subject:     subject,
+		Headers: map[string]string{
+			"X-System-Email": "quota-warning",
+			"X-Priority":     "1",
+		},
+		Status:    "pending",
+		Priority:  1, // High priority
+		CreatedAt: time.Now(),
+	}
+
+	// Store body and create message
+	bodyPath := filepath.Join(m.config.Storage.QueueDir, msg.ID+".eml")
+	if err := os.WriteFile(bodyPath, []byte(body), 0600); err != nil {
+		return fmt.Errorf("write message body: %w", err)
+	}
+	msg.RawMessagePath = bodyPath
+	msg.BodySize = int64(len(body))
+
+	return m.msgRepo.CreateMessage(ctx, msg)
+}
+
+// formatBytes formats bytes into human-readable format.
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// generateMessageID generates a unique message ID.
+func generateMessageID() string {
+	h := sha256.New()
+	h.Write([]byte(time.Now().String()))
+	return hex.EncodeToString(h.Sum(nil))[:32]
 }

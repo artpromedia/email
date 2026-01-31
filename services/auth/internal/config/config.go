@@ -76,22 +76,27 @@ type SecurityConfig struct {
 // SSOConfig holds SSO-related configuration.
 type SSOConfig struct {
 	BaseURL            string
+	EntityID           string // SAML SP Entity ID
 	SAMLCertPath       string
 	SAMLKeyPath        string
+	Certificate        string // SP certificate (PEM)
+	PrivateKey         string // SP private key (PEM)
 	OIDCCallbackPath   string
 	SAMLCallbackPath   string
 	DefaultRedirectURL string
+	ContactEmail       string // Contact email for SAML metadata
 }
 
 // EmailConfig holds email service configuration.
 type EmailConfig struct {
-	SMTPHost        string
-	SMTPPort        int
-	SMTPUser        string
-	SMTPPassword    string
-	FromAddress     string
-	FromName        string
-	VerificationURL string
+	SMTPHost         string
+	SMTPPort         int
+	SMTPUser         string
+	SMTPPassword     string
+	FromAddress      string
+	FromName         string
+	VerificationURL  string
+	PasswordResetURL string // URL for password reset page
 }
 
 // Load creates a Config from environment variables.
@@ -144,20 +149,25 @@ func Load() *Config {
 		},
 		SSO: SSOConfig{
 			BaseURL:            getEnv("SSO_BASE_URL", "http://localhost:8080"),
+			EntityID:           getEnv("SSO_ENTITY_ID", ""),
 			SAMLCertPath:       getEnv("SAML_CERT_PATH", ""),
 			SAMLKeyPath:        getEnv("SAML_KEY_PATH", ""),
+			Certificate:        getEnv("SSO_CERTIFICATE", ""),
+			PrivateKey:         getEnv("SSO_PRIVATE_KEY", ""),
 			OIDCCallbackPath:   getEnv("OIDC_CALLBACK_PATH", "/api/auth/sso/oidc/callback"),
 			SAMLCallbackPath:   getEnv("SAML_CALLBACK_PATH", "/api/auth/sso/saml/callback"),
 			DefaultRedirectURL: getEnv("SSO_DEFAULT_REDIRECT", "http://localhost:3000/dashboard"),
+			ContactEmail:       getEnv("SSO_CONTACT_EMAIL", ""),
 		},
 		Email: EmailConfig{
-			SMTPHost:        getEnv("SMTP_HOST", "localhost"),
-			SMTPPort:        getEnvInt("SMTP_PORT", 587),
-			SMTPUser:        getEnv("SMTP_USER", ""),
-			SMTPPassword:    getEnv("SMTP_PASSWORD", ""),
-			FromAddress:     getEnv("EMAIL_FROM_ADDRESS", "noreply@example.com"),
-			FromName:        getEnv("EMAIL_FROM_NAME", "Enterprise Email"),
-			VerificationURL: getEnv("EMAIL_VERIFICATION_URL", "http://localhost:3000/verify"),
+			SMTPHost:         getEnv("SMTP_HOST", "localhost"),
+			SMTPPort:         getEnvInt("SMTP_PORT", 587),
+			SMTPUser:         getEnv("SMTP_USER", ""),
+			SMTPPassword:     getEnv("SMTP_PASSWORD", ""),
+			FromAddress:      getEnv("EMAIL_FROM_ADDRESS", "noreply@example.com"),
+			FromName:         getEnv("EMAIL_FROM_NAME", "Enterprise Email"),
+			VerificationURL:  getEnv("EMAIL_VERIFICATION_URL", "http://localhost:3000/verify"),
+			PasswordResetURL: getEnv("EMAIL_PASSWORD_RESET_URL", "http://localhost:3000/reset-password"),
 		},
 	}
 }

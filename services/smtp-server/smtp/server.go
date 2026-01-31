@@ -3,15 +3,19 @@ package smtp
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/emersion/go-smtp"
+	"github.com/go-redis/redis/v8"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	"smtp-server/auth"
 	"smtp-server/config"
 	"smtp-server/dkim"
 	"smtp-server/dmarc"
@@ -22,22 +26,23 @@ import (
 
 // Server is the multi-domain SMTP server
 type Server struct {
-	config        *config.Config
-	domainCache   *domain.Cache
-	spfValidator  *spf.Validator
+	config         *config.Config
+	domainCache    *domain.Cache
+	spfValidator   *spf.Validator
 	dmarcValidator *dmarc.Validator
-	dkimSigner    *dkim.Signer
-	dkimVerifier  *dkim.Verifier
-	queueManager  *queue.Manager
-	logger        *zap.Logger
-	metrics       *Metrics
+	dkimSigner     *dkim.Signer
+	dkimVerifier   *dkim.Verifier
+	queueManager   *queue.Manager
+	authenticator  *auth.Authenticator
+	logger         *zap.Logger
+	metrics        *Metrics
 
-	smtpServer    *smtp.Server
+	smtpServer       *smtp.Server
 	submissionServer *smtp.Server
-	tlsConfig     *tls.Config
+	tlsConfig        *tls.Config
 
-	mu            sync.RWMutex
-	running       bool
+	mu      sync.RWMutex
+	running bool
 }
 
 // NewServer creates a new SMTP server
@@ -45,12 +50,22 @@ func NewServer(
 	cfg *config.Config,
 	domainCache *domain.Cache,
 	queueManager *queue.Manager,
+	redisClient *redis.Client,
+	authRepo auth.Repository,
 	logger *zap.Logger,
 ) *Server {
 	spfValidator := spf.NewValidator(logger.Named("spf"))
 	dkimVerifier := dkim.NewVerifier(logger.Named("dkim"))
 	dmarcValidator := dmarc.NewValidator(spfValidator, dkimVerifier, logger.Named("dmarc"))
 	dkimSigner := dkim.NewSigner(domainCache, logger.Named("dkim"))
+
+	// Create authenticator with config
+	authConfig := &auth.Config{
+		MaxFailedAttempts: 5,
+		LockoutDuration:   15 * time.Minute,
+		RateLimitWindow:   15 * time.Minute,
+	}
+	authenticator := auth.NewAuthenticator(authRepo, redisClient, logger.Named("auth"), authConfig)
 
 	return &Server{
 		config:         cfg,
@@ -60,6 +75,7 @@ func NewServer(
 		dkimSigner:     dkimSigner,
 		dkimVerifier:   dkimVerifier,
 		queueManager:   queueManager,
+		authenticator:  authenticator,
 		logger:         logger,
 		metrics:        NewMetrics(),
 	}
@@ -231,6 +247,7 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		clientIP:  clientIP,
 		logger:    b.server.logger.With(zap.String("client_ip", clientIP.String())),
 		startTime: time.Now(),
+		isTLS:     c.TLSConnectionState() != nil,
 	}
 
 	b.server.metrics.ConnectionsTotal.Inc()
@@ -238,7 +255,8 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 
 	b.server.logger.Debug("New SMTP session",
 		zap.String("client_ip", clientIP.String()),
-		zap.String("remote_addr", remoteAddr.String()))
+		zap.String("remote_addr", remoteAddr.String()),
+		zap.Bool("tls", session.isTLS))
 
 	return session, nil
 }
@@ -250,11 +268,13 @@ type Session struct {
 	clientIP    net.IP
 	logger      *zap.Logger
 	startTime   time.Time
+	isTLS       bool
 
 	// Authentication state
 	authenticated bool
 	userID        string
 	orgID         string
+	userEmail     string
 
 	// Message state
 	from        string
@@ -286,33 +306,177 @@ func (s *Session) Logout() error {
 
 // AuthMechanisms returns the supported authentication mechanisms
 func (s *Session) AuthMechanisms() []string {
+	// Only advertise auth mechanisms if TLS is established
+	if !s.isTLS {
+		return nil
+	}
 	return []string{"PLAIN", "LOGIN"}
 }
 
 // Auth handles SMTP authentication
 func (s *Session) Auth(mech string) (smtp.AuthSession, error) {
-	return &AuthSession{session: s, mechanism: mech}, nil
+	// Reject authentication without TLS
+	if !s.isTLS {
+		s.logger.Warn("Authentication rejected: TLS not established",
+			zap.String("client_ip", s.clientIP.String()),
+			zap.String("mechanism", mech))
+		return nil, &smtp.SMTPError{
+			Code:         523,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 10},
+			Message:      "TLS required for authentication",
+		}
+	}
+
+	return &AuthSession{
+		session:   s,
+		mechanism: mech,
+		loginState: &auth.LoginAuthState{
+			Step:     0,
+			ClientIP: s.clientIP,
+			IsTLS:    s.isTLS,
+		},
+	}, nil
 }
 
 // AuthSession handles authentication
 type AuthSession struct {
-	session   *Session
-	mechanism string
+	session    *Session
+	mechanism  string
+	loginState *auth.LoginAuthState
 }
 
 // Next processes authentication steps
 func (a *AuthSession) Next(response []byte, more bool) ([]byte, error) {
-	// Implement PLAIN/LOGIN authentication
-	// In production, validate against auth service
-	// For now, accept any credentials
-	if !more {
+	ctx := context.Background()
+	authenticator := a.session.backend.server.authenticator
+
+	switch a.mechanism {
+	case "PLAIN":
+		// PLAIN auth sends everything in one response
+		if more {
+			// Initial response not provided, send empty challenge
+			return nil, nil
+		}
+
+		result, err := authenticator.AuthenticatePlain(ctx, response, a.session.clientIP, a.session.isTLS)
+		if err != nil {
+			a.session.logger.Warn("PLAIN authentication failed",
+				zap.String("client_ip", a.session.clientIP.String()),
+				zap.Error(err))
+			return nil, authErrorToSMTP(err)
+		}
+
+		// Set session state
 		a.session.authenticated = true
-		a.session.userID = "user-id" // Would be set from auth
-		a.session.orgID = "org-id"   // Would be set from auth
-		a.session.logger.Info("User authenticated",
-			zap.String("mechanism", a.mechanism))
+		a.session.userID = result.UserID
+		a.session.orgID = result.OrganizationID
+		a.session.userEmail = result.Email
+		a.session.logger.Info("User authenticated via PLAIN",
+			zap.String("user_id", result.UserID),
+			zap.String("email", maskEmailForLog(result.Email)))
+		return nil, nil
+
+	case "LOGIN":
+		// LOGIN auth is multi-step
+		if a.loginState.Step == 0 && len(response) == 0 {
+			// Initial request - send username prompt
+			a.loginState.Step = 0
+			return []byte("VXNlcm5hbWU6"), nil // "Username:" base64
+		}
+
+		result, challenge, err := authenticator.AuthenticateLoginStep(ctx, a.loginState, response)
+		if err != nil {
+			a.session.logger.Warn("LOGIN authentication failed",
+				zap.String("client_ip", a.session.clientIP.String()),
+				zap.Int("step", a.loginState.Step),
+				zap.Error(err))
+			return nil, authErrorToSMTP(err)
+		}
+
+		if challenge != nil {
+			// Need more data
+			return challenge, nil
+		}
+
+		// Authentication complete
+		a.session.authenticated = true
+		a.session.userID = result.UserID
+		a.session.orgID = result.OrganizationID
+		a.session.userEmail = result.Email
+		a.session.logger.Info("User authenticated via LOGIN",
+			zap.String("user_id", result.UserID),
+			zap.String("email", maskEmailForLog(result.Email)))
+		return nil, nil
+
+	default:
+		return nil, &smtp.SMTPError{
+			Code:         504,
+			EnhancedCode: smtp.EnhancedCode{5, 5, 4},
+			Message:      "Unrecognized authentication mechanism",
+		}
 	}
-	return nil, nil
+}
+
+// authErrorToSMTP converts auth errors to SMTP errors
+func authErrorToSMTP(err error) error {
+	switch {
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		return &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Authentication credentials invalid",
+		}
+	case errors.Is(err, auth.ErrRateLimited):
+		return &smtp.SMTPError{
+			Code:         421,
+			EnhancedCode: smtp.EnhancedCode{4, 7, 0},
+			Message:      "Too many failed authentication attempts. Please try again later.",
+		}
+	case errors.Is(err, auth.ErrTLSRequired):
+		return &smtp.SMTPError{
+			Code:         523,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 10},
+			Message:      "TLS required for authentication",
+		}
+	case errors.Is(err, auth.ErrAccountLocked):
+		return &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Account is temporarily locked due to too many failed attempts",
+		}
+	case errors.Is(err, auth.ErrAccountDisabled):
+		return &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Account is disabled",
+		}
+	case errors.Is(err, auth.ErrNoPassword):
+		return &smtp.SMTPError{
+			Code:         535,
+			EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+			Message:      "Password authentication not available for this account",
+		}
+	default:
+		return &smtp.SMTPError{
+			Code:         454,
+			EnhancedCode: smtp.EnhancedCode{4, 7, 0},
+			Message:      "Temporary authentication failure",
+		}
+	}
+}
+
+// maskEmailForLog masks email for logging
+func maskEmailForLog(email string) string {
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return "***"
+	}
+	local := parts[0]
+	domain := parts[1]
+	if len(local) <= 2 {
+		return "**@" + domain
+	}
+	return local[:1] + "***@" + domain
 }
 
 // Mail handles the MAIL FROM command
