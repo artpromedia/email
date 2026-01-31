@@ -20,9 +20,19 @@ rule_files:
   - /etc/prometheus/rules/*.yml
 
 # Scrape configurations
+# Note: Each job includes both kubernetes_sd_configs for K8s deployments
+# and static_configs (commented) as fallback for non-K8s deployments.
+# Uncomment static_configs and comment kubernetes_sd_configs when running outside K8s.
+
 scrape_configs:
   # SMTP Server Metrics
   - job_name: "smtp-server"
+    # Static fallback for non-Kubernetes deployments (uncomment when not using K8s)
+    # static_configs:
+    #   - targets:
+    #       - smtp-server:9090
+    #     labels:
+    #       service: smtp-server
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -48,6 +58,12 @@ scrape_configs:
 
   # IMAP Server Metrics
   - job_name: "imap-server"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - imap-server:9090
+    #     labels:
+    #       service: imap-server
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -67,6 +83,12 @@ scrape_configs:
 
   # Domain Manager Metrics
   - job_name: "domain-manager"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - domain-manager:8080
+    #     labels:
+    #       service: domain-manager
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -82,6 +104,12 @@ scrape_configs:
 
   # Storage Service Metrics
   - job_name: "storage-service"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - storage-service:9090
+    #     labels:
+    #       service: storage-service
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -101,6 +129,12 @@ scrape_configs:
 
   # Auth Service Metrics
   - job_name: "auth-service"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - auth-service:8080
+    #     labels:
+    #       service: auth-service
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -126,6 +160,12 @@ scrape_configs:
 
   # Node Exporter
   - job_name: "node-exporter"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - node-exporter:9100
+    #     labels:
+    #       instance: standalone-host
     kubernetes_sd_configs:
       - role: node
     relabel_configs:
@@ -134,6 +174,12 @@ scrape_configs:
 
   # Nginx Ingress Controller
   - job_name: "nginx-ingress"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - nginx:9113
+    #     labels:
+    #       service: nginx
     kubernetes_sd_configs:
       - role: pod
         namespaces:
@@ -151,6 +197,12 @@ scrape_configs:
 
   # Cert-Manager
   - job_name: "cert-manager"
+    # Static fallback for non-Kubernetes deployments
+    # static_configs:
+    #   - targets:
+    #       - cert-manager:9402
+    #     labels:
+    #       service: cert-manager
     kubernetes_sd_configs:
       - role: pod
         namespaces:

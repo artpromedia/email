@@ -19,7 +19,7 @@ RETENTION_WEEKS="${PG_BACKUP_KEEP_WEEKLY:-4}"
 RETENTION_MONTHS="${PG_BACKUP_KEEP_MONTHLY:-12}"
 
 # Timestamp
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 DAY=$(date +"%Y%m%d")
 MONTH=$(date +"%Y%m")
 

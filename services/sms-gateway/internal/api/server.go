@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -310,11 +312,10 @@ func (s *Server) validateAPIKey(ctx context.Context, apiKey string) (*APIKeyInfo
 	}, nil
 }
 
-// hashAPIKey creates a hash of the API key for comparison
+// hashAPIKey creates a SHA-256 hash of the API key for secure comparison
 func hashAPIKey(key string) string {
-	// In production, use a proper hashing mechanism like SHA-256
-	// This is a placeholder - the actual hash should match what's stored
-	return key
+	hash := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(hash[:])
 }
 
 func (s *Server) rateLimitMiddleware(next http.Handler) http.Handler {
