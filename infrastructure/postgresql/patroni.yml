@@ -1,0 +1,176 @@
+# Patroni Configuration for Enterprise Email Platform
+# This configuration provides high availability PostgreSQL with automatic failover
+
+scope: email-cluster
+namespace: /service/
+name: ${PATRONI_NAME:-patroni1}
+
+# REST API configuration
+restapi:
+  listen: ${PATRONI_RESTAPI_LISTEN:-0.0.0.0:8008}
+  connect_address: ${PATRONI_RESTAPI_CONNECT_ADDRESS:-patroni1:8008}
+  authentication:
+    username: admin
+    password: ${PATRONI_RESTAPI_PASSWORD:-admin_password}
+
+# etcd configuration for distributed consensus
+etcd3:
+  hosts: ${PATRONI_ETCD3_HOSTS:-etcd1:2379,etcd2:2379,etcd3:2379}
+
+# Bootstrap configuration for new cluster
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576  # 1MB
+    maximum_lag_on_syncnode: -1
+    master_start_timeout: 300
+    synchronous_mode: false
+    synchronous_mode_strict: false
+    synchronous_node_count: 1
+
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        # Connection settings
+        max_connections: 200
+        superuser_reserved_connections: 5
+
+        # Memory settings (adjust based on available RAM)
+        shared_buffers: 256MB
+        effective_cache_size: 768MB
+        work_mem: 16MB
+        maintenance_work_mem: 128MB
+
+        # WAL settings for replication
+        wal_level: replica
+        wal_log_hints: "on"
+        wal_keep_size: 1GB
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby: "on"
+        hot_standby_feedback: "on"
+
+        # Checkpoint settings
+        checkpoint_completion_target: 0.9
+        checkpoint_timeout: 5min
+        max_wal_size: 2GB
+        min_wal_size: 512MB
+
+        # Logging
+        log_destination: stderr
+        logging_collector: "on"
+        log_directory: pg_log
+        log_filename: 'postgresql-%Y-%m-%d_%H%M%S.log'
+        log_min_messages: warning
+        log_min_error_statement: error
+        log_min_duration_statement: 1000  # Log queries taking > 1 second
+        log_checkpoints: "on"
+        log_connections: "on"
+        log_disconnections: "on"
+        log_lock_waits: "on"
+        log_statement: ddl
+        log_replication_commands: "on"
+
+        # Performance
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+
+        # Security
+        password_encryption: scram-sha-256
+
+        # SSL (enable in production)
+        # ssl: "on"
+        # ssl_cert_file: /etc/ssl/certs/server.crt
+        # ssl_key_file: /etc/ssl/private/server.key
+
+  # Initial database setup
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  # Post-initialization scripts
+  post_bootstrap: |
+    #!/bin/bash
+    set -e
+
+    # Create application database and user
+    psql -U postgres <<EOF
+    -- Create application database
+    CREATE DATABASE enterprise_email;
+
+    -- Create application user
+    CREATE USER email_app WITH ENCRYPTED PASSWORD '${POSTGRES_PASSWORD:-app_password}';
+
+    -- Grant privileges
+    GRANT ALL PRIVILEGES ON DATABASE enterprise_email TO email_app;
+
+    -- Create read-only user for replicas
+    CREATE USER email_readonly WITH ENCRYPTED PASSWORD '${POSTGRES_READONLY_PASSWORD:-readonly_password}';
+    GRANT CONNECT ON DATABASE enterprise_email TO email_readonly;
+
+    -- Switch to application database
+    \c enterprise_email
+
+    -- Grant schema privileges
+    GRANT USAGE ON SCHEMA public TO email_app;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO email_app;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO email_app;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO email_app;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO email_app;
+
+    -- Grant read-only privileges
+    GRANT USAGE ON SCHEMA public TO email_readonly;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO email_readonly;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO email_readonly;
+    EOF
+
+  # Users to create during bootstrap
+  users:
+    admin:
+      password: ${PATRONI_admin_PASSWORD:-admin_password}
+      options:
+        - createdb
+        - createrole
+
+# PostgreSQL settings
+postgresql:
+  listen: ${PATRONI_POSTGRESQL_LISTEN:-0.0.0.0:5432}
+  connect_address: ${PATRONI_POSTGRESQL_CONNECT_ADDRESS:-patroni1:5432}
+  data_dir: ${PATRONI_POSTGRESQL_DATA_DIR:-/var/lib/postgresql/data}
+  bin_dir: /usr/local/bin
+
+  authentication:
+    superuser:
+      username: ${PATRONI_SUPERUSER_USERNAME:-postgres}
+      password: ${PATRONI_SUPERUSER_PASSWORD:-superuser_password}
+    replication:
+      username: ${PATRONI_REPLICATION_USERNAME:-replicator}
+      password: ${PATRONI_REPLICATION_PASSWORD:-replicator_password}
+    rewind:
+      username: ${PATRONI_SUPERUSER_USERNAME:-postgres}
+      password: ${PATRONI_SUPERUSER_PASSWORD:-superuser_password}
+
+  # pg_hba.conf entries
+  pg_hba:
+    - local all all trust
+    - host all all 0.0.0.0/0 scram-sha-256
+    - host replication replicator 0.0.0.0/0 scram-sha-256
+
+  parameters:
+    unix_socket_directories: /var/run/postgresql
+
+# Watchdog configuration (optional, for fencing)
+# watchdog:
+#   mode: automatic
+#   device: /dev/watchdog
+#   safety_margin: 5
+
+# Tags for node identification
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

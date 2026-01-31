@@ -1,0 +1,43 @@
+# Patroni PostgreSQL Docker Image
+FROM postgres:16-alpine
+
+# Install Patroni and dependencies
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    py3-psycopg2 \
+    py3-yaml \
+    py3-requests \
+    py3-urllib3 \
+    py3-six \
+    py3-dateutil \
+    py3-click \
+    py3-prettytable \
+    curl \
+    jq \
+    bash
+
+# Install Patroni via pip
+RUN pip3 install --no-cache-dir --break-system-packages \
+    patroni[etcd3] \
+    python-etcd
+
+# Create necessary directories
+RUN mkdir -p /etc/patroni /var/lib/postgresql/data && \
+    chown -R postgres:postgres /etc/patroni /var/lib/postgresql
+
+# Copy Patroni configuration
+COPY patroni.yml /etc/patroni/patroni.yml
+
+# Set environment variables
+ENV PATRONI_CONFIGURATION=/etc/patroni/patroni.yml
+
+# Switch to postgres user
+USER postgres
+
+# Expose PostgreSQL and Patroni REST API ports
+EXPOSE 5432 8008
+
+# Start Patroni
+ENTRYPOINT ["patroni"]
+CMD ["/etc/patroni/patroni.yml"]

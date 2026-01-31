@@ -1,0 +1,121 @@
+# Integration Test Environment
+# Extends the main docker-compose.yml with test-specific configuration
+
+services:
+  # PostgreSQL for integration tests
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: email-test-postgres
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: email_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d email_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - email-test-network
+
+  # Redis for integration tests
+  redis-test:
+    image: redis:7-alpine
+    container_name: email-test-redis
+    command: redis-server --appendonly yes --maxmemory 128mb
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - email-test-network
+
+  # MinIO for attachment storage tests
+  minio-test:
+    image: minio/minio:latest
+    container_name: email-test-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: test_access_key
+      MINIO_ROOT_PASSWORD: test_secret_key
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - email-test-network
+
+  # Mailpit for capturing test emails
+  mailpit-test:
+    image: axllent/mailpit:latest
+    container_name: email-test-mailpit
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      MP_MAX_MESSAGES: 1000
+    ports:
+      - "1026:1025"  # SMTP
+      - "8026:8025"  # HTTP API
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v1/info"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - email-test-network
+
+  # Integration test runner
+  integration-tests:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile
+    container_name: email-integration-tests
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      minio-test:
+        condition: service_healthy
+      mailpit-test:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgres://test_user:test_password@postgres-test:5432/email_test?sslmode=disable
+      # Redis
+      REDIS_URL: redis://redis-test:6379
+      # MinIO
+      MINIO_ENDPOINT: minio-test:9000
+      MINIO_ACCESS_KEY: test_access_key
+      MINIO_SECRET_KEY: test_secret_key
+      MINIO_BUCKET: test-attachments
+      MINIO_USE_SSL: "false"
+      # SMTP (Mailpit)
+      SMTP_HOST: mailpit-test
+      SMTP_PORT: "1025"
+      MAILPIT_API: http://mailpit-test:8025
+      # Test configuration
+      TEST_TIMEOUT: "300s"
+      TEST_VERBOSE: "true"
+    volumes:
+      - ../../:/app:ro
+      - test-results:/app/tests/integration/results
+    networks:
+      - email-test-network
+
+volumes:
+  test-results:
+    driver: local
+
+networks:
+  email-test-network:
+    driver: bridge

@@ -1,0 +1,254 @@
+# PostgreSQL High Availability Cluster with Patroni
+# This configuration provides automatic failover and replication
+
+services:
+  # etcd cluster for distributed consensus
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.12
+    container_name: email-etcd1
+    hostname: etcd1
+    environment:
+      ETCD_NAME: etcd1
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd1:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd1:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: email-etcd-cluster
+    volumes:
+      - etcd1_data:/etcd-data
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.12
+    container_name: email-etcd2
+    hostname: etcd2
+    environment:
+      ETCD_NAME: etcd2
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd2:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd2:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: email-etcd-cluster
+    volumes:
+      - etcd2_data:/etcd-data
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.12
+    container_name: email-etcd3
+    hostname: etcd3
+    environment:
+      ETCD_NAME: etcd3
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd3:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd3:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: email-etcd-cluster
+    volumes:
+      - etcd3_data:/etcd-data
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Patroni PostgreSQL nodes
+  patroni1:
+    image: patroni-postgres:16
+    build:
+      context: .
+      dockerfile: Dockerfile.patroni
+    container_name: email-patroni1
+    hostname: patroni1
+    environment:
+      PATRONI_NAME: patroni1
+      PATRONI_SCOPE: email-cluster
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_RESTAPI_CONNECT_ADDRESS: patroni1:8008
+      PATRONI_ETCD3_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PATRONI_POSTGRESQL_LISTEN: 0.0.0.0:5432
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: patroni1:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /var/lib/postgresql/data
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-superuser_password}
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password}
+      PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
+      # Application database
+      PATRONI_admin_PASSWORD: ${POSTGRES_PASSWORD:-admin_password}
+      PATRONI_admin_OPTIONS: createdb
+    volumes:
+      - patroni1_data:/var/lib/postgresql/data
+      - ./patroni.yml:/etc/patroni/patroni.yml:ro
+    ports:
+      - "5432:5432"
+      - "8008:8008"
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  patroni2:
+    image: patroni-postgres:16
+    build:
+      context: .
+      dockerfile: Dockerfile.patroni
+    container_name: email-patroni2
+    hostname: patroni2
+    environment:
+      PATRONI_NAME: patroni2
+      PATRONI_SCOPE: email-cluster
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_RESTAPI_CONNECT_ADDRESS: patroni2:8008
+      PATRONI_ETCD3_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PATRONI_POSTGRESQL_LISTEN: 0.0.0.0:5432
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: patroni2:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /var/lib/postgresql/data
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-superuser_password}
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password}
+      PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
+      PATRONI_admin_PASSWORD: ${POSTGRES_PASSWORD:-admin_password}
+      PATRONI_admin_OPTIONS: createdb
+    volumes:
+      - patroni2_data:/var/lib/postgresql/data
+      - ./patroni.yml:/etc/patroni/patroni.yml:ro
+    ports:
+      - "5433:5432"
+      - "8009:8008"
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  patroni3:
+    image: patroni-postgres:16
+    build:
+      context: .
+      dockerfile: Dockerfile.patroni
+    container_name: email-patroni3
+    hostname: patroni3
+    environment:
+      PATRONI_NAME: patroni3
+      PATRONI_SCOPE: email-cluster
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_RESTAPI_CONNECT_ADDRESS: patroni3:8008
+      PATRONI_ETCD3_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PATRONI_POSTGRESQL_LISTEN: 0.0.0.0:5432
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: patroni3:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /var/lib/postgresql/data
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-superuser_password}
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password}
+      PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
+      PATRONI_admin_PASSWORD: ${POSTGRES_PASSWORD:-admin_password}
+      PATRONI_admin_OPTIONS: createdb
+    volumes:
+      - patroni3_data:/var/lib/postgresql/data
+      - ./patroni.yml:/etc/patroni/patroni.yml:ro
+    ports:
+      - "5434:5432"
+      - "8010:8008"
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # HAProxy for load balancing and automatic failover
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: email-haproxy
+    hostname: haproxy
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "5000:5000"   # Primary (read-write)
+      - "5001:5001"   # Replicas (read-only)
+      - "7000:7000"   # HAProxy stats
+    depends_on:
+      - patroni1
+      - patroni2
+      - patroni3
+    networks:
+      - email-ha-network
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  etcd1_data:
+    driver: local
+  etcd2_data:
+    driver: local
+  etcd3_data:
+    driver: local
+  patroni1_data:
+    driver: local
+  patroni2_data:
+    driver: local
+  patroni3_data:
+    driver: local
+
+networks:
+  email-ha-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
