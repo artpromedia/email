@@ -718,6 +718,8 @@ func handleServiceError(w http.ResponseWriter, err error) {
 		respondError(w, http.StatusBadRequest, "cannot_delete_primary", "Cannot delete primary email address")
 	case err == service.ErrSSORequired:
 		respondError(w, http.StatusForbidden, "sso_required", "This domain requires SSO login")
+	case err == service.ErrTokenReuse:
+		respondError(w, http.StatusUnauthorized, "token_reuse", "Security alert: refresh token was already used. All sessions have been revoked for your protection. Please log in again.")
 	default:
 		log.Error().Err(err).Msg("Unhandled service error")
 		respondError(w, http.StatusInternalServerError, "internal_error", "An internal error occurred")

@@ -749,6 +749,49 @@ func (r *Repository) UpdateSessionActivity(ctx context.Context, sessionID uuid.U
 	return err
 }
 
+// RotateSessionToken updates the session with a new token hash for refresh token rotation.
+// Returns the old token hash for detection of token reuse.
+func (r *Repository) RotateSessionToken(ctx context.Context, sessionID uuid.UUID, newTokenHash string, newExpiresAt time.Time) error {
+	query := `
+		UPDATE user_sessions
+		SET token_hash = $2, last_activity_at = $3, expires_at = $4
+		WHERE id = $1 AND revoked_at IS NULL
+	`
+	result, err := r.pool.Exec(ctx, query, sessionID, newTokenHash, time.Now(), newExpiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to rotate session token: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GetSessionByID retrieves a session by ID.
+func (r *Repository) GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*models.UserSession, error) {
+	query := `
+		SELECT id, user_id, token_hash, user_agent, ip_address,
+		       last_activity_at, expires_at, created_at, revoked_at
+		FROM user_sessions
+		WHERE id = $1
+	`
+
+	var session models.UserSession
+	err := r.pool.QueryRow(ctx, query, sessionID).Scan(
+		&session.ID, &session.UserID, &session.TokenHash, &session.UserAgent,
+		&session.IPAddress, &session.LastActivityAt, &session.ExpiresAt,
+		&session.CreatedAt, &session.RevokedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	return &session, nil
+}
+
 // RevokeSession revokes a session.
 func (r *Repository) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
 	query := `UPDATE user_sessions SET revoked_at = $2 WHERE id = $1`

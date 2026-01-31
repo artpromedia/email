@@ -40,6 +40,7 @@ var (
 	ErrSessionExpired      = errors.New("session has expired")
 	ErrInvalidPassword     = errors.New("password does not meet requirements")
 	ErrInvalidDomain       = errors.New("domain does not belong to your organization")
+	ErrTokenReuse          = errors.New("refresh token has already been used - possible token theft detected")
 )
 
 // AuthService provides authentication operations.
@@ -356,7 +357,11 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (*LoginResu
 	}, nil
 }
 
-// RefreshToken refreshes an access token.
+// RefreshToken refreshes an access token with automatic token rotation.
+// Implements refresh token rotation security pattern:
+// - Each refresh token can only be used once
+// - Using an already-used token indicates potential token theft
+// - On token reuse detection, all user sessions are revoked for security
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken, ipAddress, userAgent string) (*token.TokenPair, error) {
 	// Validate refresh token
 	claims, err := s.tokenService.ValidateRefreshToken(refreshToken)
@@ -375,15 +380,39 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken, ipAddress,
 		return nil, ErrAccountDisabled
 	}
 
-	// Verify session still exists
-	tokenHash := token.HashToken(refreshToken)
-	session, err := s.repo.GetSessionByTokenHash(ctx, tokenHash)
+	// Get session by ID from the token claims
+	session, err := s.repo.GetSessionByID(ctx, claims.SessionID)
 	if err != nil {
+		return nil, ErrSessionExpired
+	}
+
+	// Check if session was revoked
+	if session.RevokedAt.Valid {
 		return nil, ErrSessionExpired
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
 		return nil, ErrSessionExpired
+	}
+
+	// CRITICAL: Token rotation security check
+	// Verify the refresh token hash matches what's stored in the session
+	// If it doesn't match, this token was already rotated (used previously)
+	// This indicates potential token theft - revoke all sessions for security
+	currentTokenHash := token.HashToken(refreshToken)
+	if session.TokenHash != currentTokenHash {
+		// Token reuse detected! This is a security event.
+		// Revoke ALL user sessions to protect the account
+		s.repo.RevokeAllUserSessions(ctx, user.ID, nil)
+
+		// Record security audit event
+		s.recordAuditLog(ctx, user.OrganizationID, &user.ID, "security.token_reuse_detected",
+			"session", &session.ID, ipAddress, userAgent, map[string]string{
+				"action": "all_sessions_revoked",
+				"reason": "refresh_token_reuse_detected",
+			})
+
+		return nil, ErrTokenReuse
 	}
 
 	// Get primary email domain
@@ -392,16 +421,90 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken, ipAddress,
 		return nil, fmt.Errorf("failed to get primary email: %w", err)
 	}
 
-	// Generate new tokens
-	tokenPair, err := s.generateTokensForUser(ctx, user, primaryEmail.DomainID, ipAddress, userAgent)
+	// Generate new token pair (includes new refresh token)
+	tokenPair, err := s.generateTokenPairOnly(user, primaryEmail.DomainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate tokens: %w", err)
 	}
 
-	// Update session activity
-	s.repo.UpdateSessionActivity(ctx, session.ID)
+	// ROTATE: Update session with new refresh token hash
+	// This invalidates the old refresh token
+	newTokenHash := token.HashToken(tokenPair.RefreshToken)
+	newExpiresAt := time.Now().Add(s.tokenService.GetRefreshTokenExpiry())
+
+	if err := s.repo.RotateSessionToken(ctx, session.ID, newTokenHash, newExpiresAt); err != nil {
+		return nil, fmt.Errorf("failed to rotate token: %w", err)
+	}
+
+	// Record token refresh for audit
+	s.recordAuditLog(ctx, user.OrganizationID, &user.ID, "token.refreshed",
+		"session", &session.ID, ipAddress, userAgent, nil)
 
 	return tokenPair, nil
+}
+
+// generateTokenPairOnly generates tokens without creating a session (for token rotation)
+func (s *AuthService) generateTokenPairOnly(user *models.User, primaryDomainID uuid.UUID) (*token.TokenPair, error) {
+	ctx := context.Background()
+
+	// Get user's email addresses
+	emails, err := s.repo.GetUserEmailAddresses(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get emails: %w", err)
+	}
+
+	// Get domain permissions
+	perms, err := s.repo.GetUserDomainPermissions(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get permissions: %w", err)
+	}
+
+	// Get primary email
+	var primaryEmail string
+	for _, e := range emails {
+		if e.IsPrimary {
+			primaryEmail = e.EmailAddress
+			break
+		}
+	}
+
+	// Build domain list and roles
+	domainIDs := make(map[uuid.UUID]bool)
+	for _, e := range emails {
+		domainIDs[e.DomainID] = true
+	}
+
+	var domains []uuid.UUID
+	domainRoles := make(map[string]string)
+	for domainID := range domainIDs {
+		domains = append(domains, domainID)
+		for _, p := range perms {
+			if p.DomainID == domainID {
+				if p.CanManage {
+					domainRoles[domainID.String()] = "admin"
+				} else {
+					domainRoles[domainID.String()] = "member"
+				}
+				break
+			}
+		}
+		if _, exists := domainRoles[domainID.String()]; !exists {
+			domainRoles[domainID.String()] = "member"
+		}
+	}
+
+	// Generate tokens (reuses existing session ID concept for token continuity)
+	return s.tokenService.GenerateTokenPair(token.GenerateTokenParams{
+		UserID:          user.ID,
+		OrganizationID:  user.OrganizationID,
+		PrimaryDomainID: primaryDomainID,
+		Email:           primaryEmail,
+		DisplayName:     user.DisplayName,
+		Role:            user.Role,
+		Domains:         domains,
+		DomainRoles:     domainRoles,
+		MFAVerified:     user.MFAEnabled,
+	})
 }
 
 // Logout revokes the current session.

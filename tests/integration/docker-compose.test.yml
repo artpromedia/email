@@ -1,5 +1,7 @@
 # Integration Test Environment
 # Extends the main docker-compose.yml with test-specific configuration
+# NOTE: sslmode=disable is acceptable for isolated test containers as they don't contain production data
+# For production deployments, always use sslmode=require
 
 services:
   # PostgreSQL for integration tests

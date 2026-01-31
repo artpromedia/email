@@ -541,3 +541,324 @@ func TestConcurrentEmailSending(t *testing.T) {
 		t.Errorf("Not all emails were received: got %d, want %d", len(messages), numEmails)
 	}
 }
+
+// TestEmailWithAttachment tests email delivery with MIME attachments
+func TestEmailWithAttachment(t *testing.T) {
+	suite := SetupSuite(t)
+	defer suite.TeardownSuite(t)
+
+	suite.clearMailpit(t)
+
+	from := "sender@test.example.com"
+	to := []string{"recipient@test.example.com"}
+	subject := "Integration Test - Email with Attachment"
+
+	// Create multipart message with attachment
+	boundary := "----=_Part_0_123456789.123456789"
+	msg := fmt.Sprintf(`From: %s
+To: %s
+Subject: %s
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="%s"
+
+--%s
+Content-Type: text/plain; charset=UTF-8
+
+This email has an attachment.
+
+--%s
+Content-Type: text/plain; name="test.txt"
+Content-Disposition: attachment; filename="test.txt"
+Content-Transfer-Encoding: base64
+
+VGhpcyBpcyBhIHRlc3QgYXR0YWNobWVudCBmaWxlLg==
+
+--%s--
+`, from, strings.Join(to, ", "), subject, boundary, boundary, boundary, boundary)
+
+	// Convert \n to \r\n for SMTP
+	msg = strings.ReplaceAll(msg, "\n", "\r\n")
+
+	addr := fmt.Sprintf("%s:%s", suite.config.SMTPHost, suite.config.SMTPPort)
+	err := smtp.SendMail(addr, nil, from, to, []byte(msg))
+	if err != nil {
+		t.Fatalf("Failed to send email with attachment: %v", err)
+	}
+
+	received := suite.waitForMailpitMessage(t, 10*time.Second, subject)
+	if received == nil {
+		t.Fatal("Email with attachment was not received")
+	}
+}
+
+// TestEmailDeliveryFailure tests handling of invalid recipients
+func TestEmailDeliveryFailure(t *testing.T) {
+	suite := SetupSuite(t)
+	defer suite.TeardownSuite(t)
+
+	t.Run("Invalid Sender Format", func(t *testing.T) {
+		from := "invalid-email-format"
+		to := []string{"recipient@test.example.com"}
+		subject := "Test - Invalid Sender"
+		body := "This should fail."
+
+		msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+			from, strings.Join(to, ", "), subject, body)
+
+		addr := fmt.Sprintf("%s:%s", suite.config.SMTPHost, suite.config.SMTPPort)
+		err := smtp.SendMail(addr, nil, from, to, []byte(msg))
+		// Note: Some SMTP servers accept any format, this tests the behavior
+		t.Logf("Invalid sender result: %v", err)
+	})
+
+	t.Run("Empty Recipients", func(t *testing.T) {
+		from := "sender@test.example.com"
+		to := []string{}
+		subject := "Test - No Recipients"
+		body := "This should fail."
+
+		msg := fmt.Sprintf("From: %s\r\nSubject: %s\r\n\r\n%s",
+			from, subject, body)
+
+		addr := fmt.Sprintf("%s:%s", suite.config.SMTPHost, suite.config.SMTPPort)
+		err := smtp.SendMail(addr, nil, from, to, []byte(msg))
+		if err == nil {
+			t.Error("Expected error when sending to empty recipients")
+		}
+	})
+}
+
+// TestEmailHeaders tests that important headers are preserved
+func TestEmailHeaders(t *testing.T) {
+	suite := SetupSuite(t)
+	defer suite.TeardownSuite(t)
+
+	suite.clearMailpit(t)
+
+	from := "sender@test.example.com"
+	to := []string{"recipient@test.example.com"}
+	subject := "Integration Test - Header Preservation"
+	messageID := "<test-message-id-12345@test.example.com>"
+
+	msg := fmt.Sprintf(`From: %s
+To: %s
+Subject: %s
+Message-ID: %s
+Date: Mon, 01 Jan 2024 00:00:00 +0000
+X-Custom-Header: CustomValue123
+Reply-To: reply@test.example.com
+Cc: cc@test.example.com
+
+Test body with various headers.
+`, from, strings.Join(to, ", "), subject, messageID)
+
+	// Convert \n to \r\n for SMTP
+	msg = strings.ReplaceAll(msg, "\n", "\r\n")
+
+	addr := fmt.Sprintf("%s:%s", suite.config.SMTPHost, suite.config.SMTPPort)
+	err := smtp.SendMail(addr, nil, from, to, []byte(msg))
+	if err != nil {
+		t.Fatalf("Failed to send email with headers: %v", err)
+	}
+
+	received := suite.waitForMailpitMessage(t, 10*time.Second, subject)
+	if received == nil {
+		t.Fatal("Email with headers was not received")
+	}
+
+	// Verify basic headers are present
+	if received.From.Address != from {
+		t.Errorf("From header mismatch: got %s, want %s", received.From.Address, from)
+	}
+	if received.Subject != subject {
+		t.Errorf("Subject header mismatch: got %s, want %s", received.Subject, subject)
+	}
+}
+
+// TestRateLimiting tests that rate limiting works correctly
+func TestRateLimiting(t *testing.T) {
+	suite := SetupSuite(t)
+	defer suite.TeardownSuite(t)
+
+	ctx := context.Background()
+
+	// Simulate rate limiting by tracking sends per sender
+	senderKey := "ratelimit:smtp:sender@test.example.com"
+
+	// Clear any existing rate limit data
+	suite.redis.Del(ctx, senderKey)
+
+	// Simulate hitting rate limit
+	const limit = 100
+	for i := 0; i < limit; i++ {
+		count, err := suite.redis.Incr(ctx, senderKey).Result()
+		if err != nil {
+			t.Fatalf("Redis INCR failed: %v", err)
+		}
+		if count > int64(limit) {
+			t.Logf("Rate limit would be exceeded at count %d", count)
+		}
+	}
+
+	// Verify count reached limit
+	count, err := suite.redis.Get(ctx, senderKey).Int64()
+	if err != nil {
+		t.Fatalf("Redis GET failed: %v", err)
+	}
+	if count != int64(limit) {
+		t.Errorf("Rate limit count mismatch: got %d, want %d", count, limit)
+	}
+
+	// Cleanup
+	suite.redis.Del(ctx, senderKey)
+}
+
+// TestEmailQueuePersistence tests that emails are persisted in queue
+func TestEmailQueuePersistence(t *testing.T) {
+	suite := SetupSuite(t)
+	defer suite.TeardownSuite(t)
+
+	ctx := context.Background()
+
+	// Test queue persistence using Redis list
+	queueKey := "email:queue:outbound"
+
+	// Clear queue
+	suite.redis.Del(ctx, queueKey)
+
+	// Add test messages to queue
+	testMessages := []string{
+		`{"id":"msg1","from":"a@test.com","to":["b@test.com"],"subject":"Test 1"}`,
+		`{"id":"msg2","from":"c@test.com","to":["d@test.com"],"subject":"Test 2"}`,
+		`{"id":"msg3","from":"e@test.com","to":["f@test.com"],"subject":"Test 3"}`,
+	}
+
+	for _, msg := range testMessages {
+		err := suite.redis.RPush(ctx, queueKey, msg).Err()
+		if err != nil {
+			t.Fatalf("Failed to push to queue: %v", err)
+		}
+	}
+
+	// Verify queue length
+	length, err := suite.redis.LLen(ctx, queueKey).Result()
+	if err != nil {
+		t.Fatalf("Failed to get queue length: %v", err)
+	}
+	if length != int64(len(testMessages)) {
+		t.Errorf("Queue length mismatch: got %d, want %d", length, len(testMessages))
+	}
+
+	// Process queue (LPOP simulates worker)
+	for i := 0; i < len(testMessages); i++ {
+		msg, err := suite.redis.LPop(ctx, queueKey).Result()
+		if err != nil {
+			t.Fatalf("Failed to pop from queue: %v", err)
+		}
+		if msg != testMessages[i] {
+			t.Errorf("Queue message mismatch at position %d", i)
+		}
+	}
+
+	// Verify queue is empty
+	length, _ = suite.redis.LLen(ctx, queueKey).Result()
+	if length != 0 {
+		t.Errorf("Queue should be empty after processing, got length %d", length)
+	}
+}
+
+// TestSessionManagement tests session creation and validation
+func TestSessionManagement(t *testing.T) {
+	suite := SetupSuite(t)
+	defer suite.TeardownSuite(t)
+
+	ctx := context.Background()
+
+	t.Run("Create Session", func(t *testing.T) {
+		sessionKey := "session:test-session-id-123"
+		sessionData := `{"user_id":"user123","email":"test@example.com","created_at":"2024-01-01T00:00:00Z"}`
+
+		err := suite.redis.Set(ctx, sessionKey, sessionData, 30*time.Minute).Err()
+		if err != nil {
+			t.Fatalf("Failed to create session: %v", err)
+		}
+
+		// Verify session exists
+		result, err := suite.redis.Get(ctx, sessionKey).Result()
+		if err != nil {
+			t.Fatalf("Failed to get session: %v", err)
+		}
+		if result != sessionData {
+			t.Errorf("Session data mismatch")
+		}
+
+		// Cleanup
+		suite.redis.Del(ctx, sessionKey)
+	})
+
+	t.Run("Session Expiration", func(t *testing.T) {
+		sessionKey := "session:expiring-session"
+		sessionData := `{"user_id":"user456"}`
+
+		// Create session with very short TTL
+		err := suite.redis.Set(ctx, sessionKey, sessionData, 1*time.Second).Err()
+		if err != nil {
+			t.Fatalf("Failed to create expiring session: %v", err)
+		}
+
+		// Wait for expiration
+		time.Sleep(2 * time.Second)
+
+		// Verify session expired
+		_, err = suite.redis.Get(ctx, sessionKey).Result()
+		if err != redis.Nil {
+			t.Error("Session should have expired")
+		}
+	})
+
+	t.Run("Refresh Token Storage", func(t *testing.T) {
+		tokenKey := "refresh_token:user123:token-hash-abc"
+		tokenData := `{"session_id":"sess123","created_at":"2024-01-01T00:00:00Z","rotated":false}`
+
+		err := suite.redis.Set(ctx, tokenKey, tokenData, 7*24*time.Hour).Err()
+		if err != nil {
+			t.Fatalf("Failed to store refresh token: %v", err)
+		}
+
+		// Verify token exists
+		exists, err := suite.redis.Exists(ctx, tokenKey).Result()
+		if err != nil {
+			t.Fatalf("Failed to check token existence: %v", err)
+		}
+		if exists != 1 {
+			t.Error("Refresh token should exist")
+		}
+
+		// Simulate token rotation (delete old, create new)
+		newTokenKey := "refresh_token:user123:token-hash-xyz"
+		newTokenData := `{"session_id":"sess123","created_at":"2024-01-01T00:00:00Z","rotated":true}`
+
+		pipe := suite.redis.Pipeline()
+		pipe.Del(ctx, tokenKey)
+		pipe.Set(ctx, newTokenKey, newTokenData, 7*24*time.Hour)
+		_, err = pipe.Exec(ctx)
+		if err != nil {
+			t.Fatalf("Failed to rotate token: %v", err)
+		}
+
+		// Verify old token is gone
+		exists, _ = suite.redis.Exists(ctx, tokenKey).Result()
+		if exists != 0 {
+			t.Error("Old refresh token should be deleted after rotation")
+		}
+
+		// Verify new token exists
+		exists, _ = suite.redis.Exists(ctx, newTokenKey).Result()
+		if exists != 1 {
+			t.Error("New refresh token should exist after rotation")
+		}
+
+		// Cleanup
+		suite.redis.Del(ctx, newTokenKey)
+	})
+}

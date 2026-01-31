@@ -25,14 +25,15 @@ const (
 type SpecialUse string
 
 const (
-	SpecialUseInbox    SpecialUse = "\\Inbox"
-	SpecialUseSent     SpecialUse = "\\Sent"
-	SpecialUseDrafts   SpecialUse = "\\Drafts"
-	SpecialUseTrash    SpecialUse = "\\Trash"
-	SpecialUseJunk     SpecialUse = "\\Junk"
-	SpecialUseArchive  SpecialUse = "\\Archive"
-	SpecialUseFlagged  SpecialUse = "\\Flagged"
-	SpecialUseAll      SpecialUse = "\\All"
+	SpecialUseInbox     SpecialUse = "\\Inbox"
+	SpecialUseSent      SpecialUse = "\\Sent"
+	SpecialUseDrafts    SpecialUse = "\\Drafts"
+	SpecialUseTrash     SpecialUse = "\\Trash"
+	SpecialUseJunk      SpecialUse = "\\Junk"
+	SpecialUseArchive   SpecialUse = "\\Archive"
+	SpecialUseFlagged   SpecialUse = "\\Flagged"
+	SpecialUseAll       SpecialUse = "\\All"
+	SpecialUseImportant SpecialUse = "\\Important"
 )
 
 // MessageFlag represents IMAP message flags

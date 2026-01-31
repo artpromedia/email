@@ -13,7 +13,7 @@ services:
       - DB_USER=storage
       - DB_PASSWORD=storage_secret
       - DB_NAME=storage
-      - DB_SSL_MODE=disable
+      - DB_SSL_MODE=require
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - S3_ENDPOINT=http://minio:9000
