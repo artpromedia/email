@@ -9,7 +9,7 @@ function extractUserIdFromToken(authHeader: string): string | null {
     if (!token) return null;
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString()) as {
+    const payload = JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as {
       sub?: string;
       userId?: string;
     };
@@ -56,7 +56,7 @@ function applyDomainPolicies(
 function queueEmailForSending(email: Record<string, unknown>): void {
   // In production: add to message queue (Redis, RabbitMQ, etc.)
   // await messageQueue.add('send-email', email);
-  console.info("Email queued for SMTP delivery:", { messageId: email.messageId });
+  console.info("Email queued for SMTP delivery:", { messageId: email["messageId"] });
 }
 
 /**

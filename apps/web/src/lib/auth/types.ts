@@ -30,6 +30,10 @@ export interface AuthUser {
     lastName?: string;
     displayName?: string;
     avatarUrl?: string;
+    jobTitle?: string;
+    department?: string;
+    phoneNumber?: string;
+    timezone?: string;
   };
   permissions: string[];
 }

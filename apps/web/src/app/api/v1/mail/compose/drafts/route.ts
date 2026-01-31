@@ -9,7 +9,7 @@ function extractUserIdFromToken(authHeader: string): string | null {
     if (!token) return null;
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString()) as {
+    const payload = JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as {
       sub?: string;
       userId?: string;
     };
@@ -57,7 +57,7 @@ function saveDraft(userId: string, draft: Record<string, unknown>): void {
     draftStore.set(userId, new Map());
   }
   const userDrafts = draftStore.get(userId);
-  userDrafts?.set(draft.id as string, draft);
+  userDrafts?.set(draft["id"] as string, draft);
   // In production: await db.insert(drafts).values(draft);
 }
 
@@ -238,7 +238,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(newDraft);
     }
 
-    console.info("Draft updated:", { id, subject: updates.subject as string | undefined });
+    console.info("Draft updated:", { id, subject: updates["subject"] as string | undefined });
 
     return NextResponse.json(updatedDraft);
   } catch (error) {

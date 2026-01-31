@@ -15,23 +15,37 @@ import (
 	"github.com/artpromedia/email/services/auth/internal/repository"
 	"github.com/artpromedia/email/services/auth/internal/token"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
+
+// SSO state key prefix for Redis
+const ssoStateKeyPrefix = "sso:state:"
+const ssoStateTTL = 10 * time.Minute
+
+// SSOState represents the state stored during SSO flow
+type SSOState struct {
+	DomainID    uuid.UUID `json:"domain_id"`
+	RedirectURL string    `json:"redirect_url"`
+	CreatedAt   time.Time `json:"created_at"`
+	IPAddress   string    `json:"ip_address"`
+}
 
 // SSOService provides SSO operations.
 type SSOService struct {
 	repo         *repository.Repository
+	redis        *redis.Client
 	tokenService *token.Service
 	authService  *AuthService
 	config       *config.Config
 }
 
 // NewSSOService creates a new SSOService.
-func NewSSOService(repo *repository.Repository, tokenService *token.Service, authService *AuthService, cfg *config.Config) *SSOService {
+func NewSSOService(repo *repository.Repository, redisClient *redis.Client, authService *AuthService, cfg *config.Config) *SSOService {
 	return &SSOService{
-		repo:         repo,
-		tokenService: tokenService,
-		authService:  authService,
-		config:       cfg,
+		repo:        repo,
+		redis:       redisClient,
+		authService: authService,
+		config:      cfg,
 	}
 }
 
@@ -111,8 +125,19 @@ func (s *SSOService) InitiateSSO(ctx context.Context, domainID uuid.UUID, redire
 	// Generate state parameter for CSRF protection
 	state := generateSecureToken()
 
-	// Store state in Redis or session store
-	// TODO: Implement state storage
+	// Store state in Redis for verification during callback
+	ssoState := SSOState{
+		DomainID:    domainID,
+		RedirectURL: redirectURL,
+		CreatedAt:   time.Now(),
+	}
+	stateJSON, err := json.Marshal(ssoState)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal SSO state: %w", err)
+	}
+	if err := s.redis.Set(ctx, ssoStateKeyPrefix+state, stateJSON, ssoStateTTL).Err(); err != nil {
+		return "", fmt.Errorf("failed to store SSO state: %w", err)
+	}
 
 	switch ssoConfig.Provider {
 	case "saml":
@@ -184,7 +209,30 @@ func (s *SSOService) HandleOIDCCallback(ctx context.Context, domainID uuid.UUID,
 		return nil, errors.New("OIDC not configured for this domain")
 	}
 
-	// TODO: Verify state parameter
+	// Verify state parameter
+	if state == "" {
+		return nil, errors.New("missing state parameter")
+	}
+	stateJSON, err := s.redis.Get(ctx, ssoStateKeyPrefix+state).Bytes()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, errors.New("invalid or expired state parameter")
+		}
+		return nil, fmt.Errorf("failed to verify state: %w", err)
+	}
+
+	var storedState SSOState
+	if err := json.Unmarshal(stateJSON, &storedState); err != nil {
+		return nil, fmt.Errorf("failed to parse stored state: %w", err)
+	}
+
+	// Verify domain ID matches
+	if storedState.DomainID != domainID {
+		return nil, errors.New("state domain mismatch")
+	}
+
+	// Delete state to prevent replay attacks
+	s.redis.Del(ctx, ssoStateKeyPrefix+state)
 
 	// Exchange code for tokens
 	userInfo, err := s.exchangeOIDCCode(ssoConfig.OIDCConfig, code)

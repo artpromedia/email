@@ -80,7 +80,7 @@ export default function AccountSettingsPage() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (_error) {
+    } catch (error) {
       console.error("Failed to save profile:", error);
     } finally {
       setIsSaving(false);

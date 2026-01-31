@@ -1,12 +1,14 @@
 package queue
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
 	"net/smtp"
 	"strings"
+	"text/template"
 	"time"
 
 	"go.uber.org/zap"
@@ -97,7 +99,7 @@ func (w *Worker) processMessage(ctx context.Context, msg *domain.Message) {
 
 	// Check if target is local
 	localDomain := w.manager.domainCache.GetDomain(targetDomain)
-	
+
 	var err error
 	if localDomain != nil {
 		err = w.deliverLocal(ctx, msg, localDomain)
@@ -123,7 +125,10 @@ func (w *Worker) processMessage(ctx context.Context, msg *domain.Message) {
 			if err := w.manager.MarkFailed(ctx, msg); err != nil {
 				w.logger.Error("Failed to mark message failed", zap.Error(err))
 			}
-			// TODO: Generate bounce message
+			// Generate and queue bounce message
+			if err := w.generateBounceMessage(ctx, msg, "Delivery failed after maximum retry attempts"); err != nil {
+				w.logger.Error("Failed to generate bounce message", zap.Error(err))
+			}
 		}
 	} else {
 		// Mark as delivered
@@ -152,21 +157,122 @@ func (w *Worker) deliverLocal(ctx context.Context, msg *domain.Message, targetDo
 		return fmt.Errorf("read message data: %w", err)
 	}
 
-	// For local delivery, we would store in the mailbox storage
-	// This is a placeholder for the actual mailbox delivery implementation
-	w.logger.Debug("Local delivery",
+	w.logger.Debug("Local delivery starting",
 		zap.String("message_id", msg.ID),
 		zap.String("domain", targetDomain.Name),
 		zap.Int("recipients", len(msg.Recipients)),
 		zap.Int("size", len(data)))
 
-	// TODO: Implement actual mailbox storage
-	// For each recipient:
-	// 1. Resolve aliases/distribution lists
-	// 2. Check mailbox quota
-	// 3. Store in mailbox
-	// 4. Update mailbox storage used
-	// 5. Trigger notifications (if enabled)
+	// Process each recipient
+	var deliveryErrors []error
+	for _, recipient := range msg.Recipients {
+		if err := w.deliverToMailbox(ctx, msg, targetDomain, recipient, data); err != nil {
+			w.logger.Warn("Failed to deliver to recipient",
+				zap.String("recipient", recipient),
+				zap.Error(err))
+			deliveryErrors = append(deliveryErrors, fmt.Errorf("%s: %w", recipient, err))
+		}
+	}
+
+	// If all deliveries failed, return error
+	if len(deliveryErrors) == len(msg.Recipients) {
+		return fmt.Errorf("delivery failed for all recipients")
+	}
+
+	// If some deliveries failed, we should generate partial bounce
+	if len(deliveryErrors) > 0 {
+		w.logger.Warn("Partial delivery failure",
+			zap.String("message_id", msg.ID),
+			zap.Int("failed", len(deliveryErrors)),
+			zap.Int("total", len(msg.Recipients)))
+	}
+
+	return nil
+}
+
+// deliverToMailbox delivers a message to a single recipient's mailbox
+func (w *Worker) deliverToMailbox(ctx context.Context, msg *domain.Message, targetDomain *domain.Domain, recipient string, data []byte) error {
+	// Look up recipient (could be mailbox, alias, or distribution list)
+	lookupResult, err := w.manager.LookupRecipient(ctx, recipient)
+	if err != nil {
+		return fmt.Errorf("lookup recipient: %w", err)
+	}
+
+	if !lookupResult.Found {
+		// Check if catch-all is enabled
+		if targetDomain.Policies != nil && targetDomain.Policies.CatchAllEnabled && targetDomain.Policies.CatchAllAddress != "" {
+			// Redirect to catch-all
+			lookupResult, err = w.manager.LookupRecipient(ctx, targetDomain.Policies.CatchAllAddress)
+			if err != nil || !lookupResult.Found {
+				return fmt.Errorf("recipient not found and catch-all failed")
+			}
+		} else if targetDomain.Policies != nil && targetDomain.Policies.RejectUnknownUsers {
+			return fmt.Errorf("recipient not found: %s", recipient)
+		} else {
+			return fmt.Errorf("recipient not found: %s", recipient)
+		}
+	}
+
+	// Handle different recipient types
+	switch lookupResult.Type {
+	case "mailbox":
+		return w.storeInMailbox(ctx, msg, lookupResult.Mailbox, data)
+	case "alias":
+		// Recursively deliver to alias target
+		return w.deliverToMailbox(ctx, msg, targetDomain, lookupResult.Alias.TargetEmail, data)
+	case "distribution_list":
+		// Deliver to all distribution list members
+		for _, member := range lookupResult.DistributionList.Members {
+			if err := w.deliverToMailbox(ctx, msg, targetDomain, member, data); err != nil {
+				w.logger.Warn("Failed to deliver to DL member",
+					zap.String("member", member),
+					zap.Error(err))
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown recipient type: %s", lookupResult.Type)
+	}
+}
+
+// storeInMailbox stores a message in a user's mailbox
+func (w *Worker) storeInMailbox(ctx context.Context, msg *domain.Message, mailbox *domain.Mailbox, data []byte) error {
+	// Check mailbox quota
+	newSize := mailbox.UsedBytes + int64(len(data))
+	if mailbox.QuotaBytes > 0 && newSize > mailbox.QuotaBytes {
+		return fmt.Errorf("mailbox quota exceeded: %d/%d bytes", newSize, mailbox.QuotaBytes)
+	}
+
+	// Store message in mailbox storage
+	storagePath := fmt.Sprintf("%s/%s/%s/INBOX/%s.eml",
+		mailbox.OrganizationID,
+		mailbox.DomainID,
+		mailbox.ID,
+		msg.ID,
+	)
+
+	if err := w.manager.StoreMailboxMessage(ctx, storagePath, data); err != nil {
+		return fmt.Errorf("store message: %w", err)
+	}
+
+	// Update mailbox used storage
+	if err := w.manager.UpdateMailboxUsage(ctx, mailbox.ID, int64(len(data))); err != nil {
+		w.logger.Warn("Failed to update mailbox usage",
+			zap.String("mailbox_id", mailbox.ID),
+			zap.Error(err))
+	}
+
+	// Record message in mailbox messages table
+	if err := w.manager.RecordMailboxMessage(ctx, mailbox.ID, msg, storagePath, int64(len(data))); err != nil {
+		w.logger.Warn("Failed to record mailbox message",
+			zap.String("mailbox_id", mailbox.ID),
+			zap.Error(err))
+	}
+
+	w.logger.Debug("Message stored in mailbox",
+		zap.String("message_id", msg.ID),
+		zap.String("mailbox", mailbox.Email),
+		zap.Int64("size", int64(len(data))))
 
 	return nil
 }
@@ -272,6 +378,160 @@ func (w *Worker) deliverToHost(ctx context.Context, host string, msg *domain.Mes
 	if err := client.Quit(); err != nil {
 		w.logger.Debug("QUIT failed", zap.Error(err))
 	}
+
+	return nil
+}
+
+// bounceTemplate is the template for bounce messages
+var bounceTemplate = template.Must(template.New("bounce").Parse(`From: Mail Delivery System <MAILER-DAEMON@{{.LocalDomain}}>
+To: {{.OriginalSender}}
+Subject: Undelivered Mail Returned to Sender
+Date: {{.Date}}
+Message-ID: <{{.BounceID}}@{{.LocalDomain}}>
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="{{.Boundary}}"
+
+This is a MIME-encapsulated message.
+
+--{{.Boundary}}
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+This is the mail system at host {{.LocalDomain}}.
+
+I'm sorry to have to inform you that your message could not
+be delivered to one or more recipients. It's attached below.
+
+For further assistance, please send mail to postmaster.
+
+If you do so, please include this problem report. You can
+delete your own text from the attached returned message.
+
+                   The mail system
+
+{{range .FailedRecipients}}
+<{{.Address}}>: {{.Reason}}
+{{end}}
+
+--{{.Boundary}}
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; {{.LocalDomain}}
+Arrival-Date: {{.ArrivalDate}}
+
+{{range .FailedRecipients}}
+Final-Recipient: rfc822; {{.Address}}
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; {{.Reason}}
+{{end}}
+
+--{{.Boundary}}
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+{{.OriginalHeaders}}
+--{{.Boundary}}--
+`))
+
+// bounceData holds the data for generating bounce messages
+type bounceData struct {
+	LocalDomain      string
+	OriginalSender   string
+	Date             string
+	BounceID         string
+	Boundary         string
+	ArrivalDate      string
+	FailedRecipients []failedRecipient
+	OriginalHeaders  string
+}
+
+type failedRecipient struct {
+	Address string
+	Reason  string
+}
+
+// generateBounceMessage creates and queues a bounce message for a failed delivery
+func (w *Worker) generateBounceMessage(ctx context.Context, msg *domain.Message, reason string) error {
+	// Don't bounce bounces (null sender)
+	if msg.FromAddress == "" || strings.HasPrefix(msg.FromAddress, "MAILER-DAEMON") {
+		w.logger.Debug("Not bouncing a bounce message",
+			zap.String("message_id", msg.ID))
+		return nil
+	}
+
+	// Extract original headers from message
+	originalHeaders := ""
+	if msg.RawMessagePath != "" {
+		data, err := w.manager.GetMessageData(msg.RawMessagePath)
+		if err == nil {
+			// Extract just headers (up to first blank line)
+			if idx := bytes.Index(data, []byte("\r\n\r\n")); idx > 0 {
+				originalHeaders = string(data[:idx])
+			} else if idx := bytes.Index(data, []byte("\n\n")); idx > 0 {
+				originalHeaders = string(data[:idx])
+			}
+		}
+	}
+
+	// Create bounce data
+	now := time.Now()
+	data := bounceData{
+		LocalDomain:    w.manager.config.Server.Hostname,
+		OriginalSender: msg.FromAddress,
+		Date:           now.Format(time.RFC1123Z),
+		BounceID:       fmt.Sprintf("bounce-%s-%d", msg.ID, now.UnixNano()),
+		Boundary:       fmt.Sprintf("----=_Part_%d_%d", now.UnixNano(), now.Unix()),
+		ArrivalDate:    msg.QueuedAt.Format(time.RFC1123Z),
+		OriginalHeaders: originalHeaders,
+	}
+
+	// Add failed recipients
+	for _, rcpt := range msg.Recipients {
+		data.FailedRecipients = append(data.FailedRecipients, failedRecipient{
+			Address: rcpt,
+			Reason:  reason,
+		})
+	}
+
+	// Render bounce message
+	var buf bytes.Buffer
+	if err := bounceTemplate.Execute(&buf, data); err != nil {
+		return fmt.Errorf("render bounce template: %w", err)
+	}
+
+	// Create bounce message
+	bounceMsg := &domain.Message{
+		ID:             fmt.Sprintf("bounce-%s", msg.ID),
+		OrganizationID: msg.OrganizationID,
+		FromAddress:    "", // Null sender for bounces
+		Recipients:     []string{msg.FromAddress},
+		Headers: map[string]string{
+			"X-Original-Message-ID": msg.ID,
+			"X-Bounce-Reason":       reason,
+		},
+		Status:    domain.StatusQueued,
+		QueuedAt:  now,
+		MaxRetries: 3, // Fewer retries for bounces
+	}
+
+	// Store bounce message data
+	bouncePath, err := w.manager.StoreMessage(ctx, buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("store bounce message: %w", err)
+	}
+	bounceMsg.RawMessagePath = bouncePath
+
+	// Queue the bounce
+	if err := w.manager.Enqueue(ctx, bounceMsg); err != nil {
+		return fmt.Errorf("enqueue bounce: %w", err)
+	}
+
+	w.logger.Info("Bounce message generated",
+		zap.String("original_id", msg.ID),
+		zap.String("bounce_id", bounceMsg.ID),
+		zap.String("sender", msg.FromAddress))
 
 	return nil
 }

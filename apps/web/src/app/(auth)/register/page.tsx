@@ -98,7 +98,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function RegisterPage() {
-  const _router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledEmail = searchParams.get("email") ?? "";
 
@@ -134,7 +134,7 @@ export default function RegisterPage() {
   );
 
   // Get domain branding
-  const domainFromEmail = email.split("@")[1];
+  const domainFromEmail = email.split("@")[1] ?? "";
   const branding = useDomainBrandingFor(domainFromEmail);
 
   // Register mutation
@@ -175,7 +175,7 @@ export default function RegisterPage() {
       } else {
         router.push("/");
       }
-    } catch (_error) {
+    } catch (error) {
       console.error("Registration failed:", error);
     }
   };
@@ -189,7 +189,7 @@ export default function RegisterPage() {
             <div className="flex justify-center">
               <img
                 src={branding.logo}
-                alt={branding.name || "Organization"}
+                alt={branding?.displayName || "Organization"}
                 className="h-12 w-auto object-contain"
               />
             </div>
@@ -248,7 +248,7 @@ export default function RegisterPage() {
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding.name || "Organization"}
+              alt={branding?.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>
@@ -263,7 +263,7 @@ export default function RegisterPage() {
 
         <div>
           <CardTitle className="text-2xl">
-            {branding?.name ? `Join ${branding.name}` : "Create an account"}
+            {branding?.displayName ? `Join ${branding?.displayName}` : "Create an account"}
           </CardTitle>
           <CardDescription className="mt-2">Enter your details to get started</CardDescription>
         </div>

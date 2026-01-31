@@ -9,9 +9,9 @@
  * - Loading state with domain branding
  */
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { KeyRound, Loader2, AlertCircle, Building2, ArrowLeft } from "lucide-react";
 import {
   Card,
@@ -25,7 +25,6 @@ import {
 import { useInitiateSSOLogin, useDomainDetection } from "@/lib/auth";
 
 export default function SSOLoginPage() {
-  const _router = useRouter();
   const searchParams = useSearchParams();
   const domain = searchParams.get("domain");
   const error = searchParams.get("error");
@@ -41,14 +40,14 @@ export default function SSOLoginPage() {
   );
 
   // Get domain branding
-  const branding = useDomainBrandingFor(domain || undefined);
+  const branding = useDomainBrandingFor(domain ?? "");
 
   // SSO initiation mutation
   const ssoMutation = useInitiateSSOLogin();
 
   // Auto-initiate SSO if domain is provided and no error
   useEffect(() => {
-    if (domain && !error && !initiatedSSORef.current && domainInfo.ssoEnabled) {
+    if (domain && !error && !initiatedSSORef.current && domainInfo?.ssoEnabled) {
       initiatedSSORef.current = true;
       ssoMutation.mutate(domain);
     }
@@ -152,7 +151,7 @@ export default function SSOLoginPage() {
             <div className="flex justify-center">
               <img
                 src={branding.logo}
-                alt={branding.name || "Organization"}
+                alt={branding?.displayName || "Organization"}
                 className="h-12 w-auto object-contain"
               />
             </div>
@@ -200,7 +199,7 @@ export default function SSOLoginPage() {
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding.name || "Organization"}
+              alt={branding?.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>

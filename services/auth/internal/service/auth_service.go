@@ -16,6 +16,7 @@ import (
 	"github.com/artpromedia/email/services/auth/internal/repository"
 	"github.com/artpromedia/email/services/auth/internal/token"
 	"github.com/google/uuid"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,6 +47,7 @@ type AuthService struct {
 	repo          *repository.Repository
 	tokenService  *token.Service
 	config        *config.Config
+	emailService  *EmailService
 }
 
 // NewAuthService creates a new AuthService.
@@ -54,6 +56,7 @@ func NewAuthService(repo *repository.Repository, tokenService *token.Service, cf
 		repo:         repo,
 		tokenService: tokenService,
 		config:       cfg,
+		emailService: NewEmailService(&cfg.Email),
 	}
 }
 
@@ -513,7 +516,13 @@ func (s *AuthService) AddEmail(ctx context.Context, params AddEmailParams) (*mod
 	// Record audit log
 	s.recordAuditLog(ctx, user.OrganizationID, &user.ID, "email.added", "email_address", &emailAddressID, params.IPAddress, params.UserAgent, nil)
 
-	// TODO: Send verification email
+	// Send verification email
+	if s.emailService != nil {
+		if err := s.emailService.SendVerificationEmail(params.Email, user.DisplayName, verificationToken); err != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to send verification email to %s: %v\n", params.Email, err)
+		}
+	}
 
 	return emailAddress, nil
 }
@@ -923,13 +932,15 @@ func (s *AuthService) generateMFAPendingToken(userID uuid.UUID) string {
 }
 
 func (s *AuthService) verifyMFACode(user *models.User, code string) bool {
-	// In a full implementation, this would verify a TOTP code
-	// using the user's MFA secret
-	if !user.MFASecret.Valid {
+	// Verify TOTP code using the user's MFA secret
+	if !user.MFASecret.Valid || user.MFASecret.String == "" {
 		return false
 	}
-	// TODO: Implement TOTP verification
-	return true
+
+	// Validate the TOTP code
+	// The totp.Validate function allows for time drift of +/- 1 period (30 seconds by default)
+	valid := totp.Validate(code, user.MFASecret.String)
+	return valid
 }
 
 func (s *AuthService) recordLoginAttempt(ctx context.Context, userID *uuid.UUID, email, ipAddress, userAgent string, success bool, failureReason, method string) {

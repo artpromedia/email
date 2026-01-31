@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Lock,
@@ -65,7 +65,6 @@ const resetPasswordSchema = z
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
-  const _router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -177,7 +176,7 @@ export default function ResetPasswordPage() {
         confirmPassword: data.confirmPassword,
       });
       setSuccess(true);
-    } catch (_error) {
+    } catch (error) {
       console.error("Failed to reset password:", error);
     }
   };

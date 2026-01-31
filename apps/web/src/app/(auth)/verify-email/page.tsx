@@ -4,23 +4,20 @@
  * Verify Email Page - Email verification confirmation
  */
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Mail, ArrowRight, Loader2, AlertCircle, CheckCircle, Send } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@email/ui";
 import { useVerifyEmail, useResendVerificationEmail } from "@/lib/auth";
 
 export default function VerifyEmailPage() {
-  const _router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
 
-  const [_verificationAttempted, _setVerificationAttempted] = useState(false);
   const verificationAttemptedRef = React.useRef(false);
   const [resendSuccess, setResendSuccess] = useState(false);
-  const verificationAttemptedRef = React.useRef(false);
 
   const verifyEmailMutation = useVerifyEmail();
   const resendMutation = useResendVerificationEmail();
@@ -41,7 +38,7 @@ export default function VerifyEmailPage() {
         // In a real app, this would need adjustment
         await resendMutation.mutateAsync(email);
         setResendSuccess(true);
-      } catch (_error) {
+      } catch (error) {
         console.error("Failed to resend verification:", error);
       }
     }

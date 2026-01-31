@@ -13,7 +13,7 @@ import { cn } from "@email/ui";
 // TYPES
 // ============================================================
 
-interface ReplySuggestion {
+export interface ReplySuggestion {
   id: string;
   content: string;
   tone: "professional" | "friendly" | "concise" | "formal" | "casual";
@@ -154,7 +154,7 @@ export function SmartReplySuggestions({
   // Auto-fetch on mount
   useEffect(() => {
     if (emailId && body) {
-      fetchSuggestions();
+      void fetchSuggestions();
     }
   }, [emailId]);
 

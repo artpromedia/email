@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 /**
  * Check database connectivity by attempting a simple query
  */
-async function checkDatabase(): Promise<boolean> {
+function checkDatabase(): boolean {
   try {
     // In production, this would use the actual database client
     // For now, check if DATABASE_URL is configured
-    const dbUrl = process.env.DATABASE_URL;
+    const dbUrl = process.env['DATABASE_URL'];
     if (!dbUrl) {
       console.warn("DATABASE_URL not configured");
       return false;
@@ -24,11 +24,11 @@ async function checkDatabase(): Promise<boolean> {
 /**
  * Check Redis connectivity
  */
-async function checkRedis(): Promise<boolean> {
+function checkRedis(): boolean {
   try {
     // In production, this would use the actual Redis client
     // For now, check if REDIS_URL is configured
-    const redisUrl = process.env.REDIS_URL;
+    const redisUrl = process.env['REDIS_URL'];
     if (!redisUrl) {
       // Redis is optional for admin dashboard
       return true;
@@ -45,9 +45,9 @@ async function checkRedis(): Promise<boolean> {
 /**
  * Check auth service availability
  */
-async function checkAuthService(): Promise<boolean> {
+function checkAuthService(): boolean {
   try {
-    const authServiceUrl = process.env.AUTH_SERVICE_URL;
+    const authServiceUrl = process.env['AUTH_SERVICE_URL'];
     if (!authServiceUrl) {
       // Auth service URL not configured, assume internal auth
       return true;
@@ -76,13 +76,13 @@ export async function GET() {
 
   try {
     // Check database connectivity
-    checks.database = await checkDatabase();
+    checks.database = checkDatabase();
 
     // Check Redis connectivity
-    checks.redis = await checkRedis();
+    checks.redis = checkRedis();
 
     // Check auth service availability
-    checks.authService = await checkAuthService();
+    checks.authService = checkAuthService();
 
     const allHealthy = Object.values(checks).every(Boolean);
 

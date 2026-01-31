@@ -318,6 +318,7 @@ function FilterDropdown({ value, onChange }: Readonly<FilterDropdownProps>) {
   ];
 
   const selected = options.find((o) => o.value === value) ?? options[0];
+  const selectedLabel = selected?.label ?? "Select...";
 
   return (
     <div className="relative">
@@ -332,7 +333,7 @@ function FilterDropdown({ value, onChange }: Readonly<FilterDropdownProps>) {
         )}
       >
         <Filter className="h-4 w-4 text-neutral-500" />
-        <span>{selected.label}</span>
+        <span>{selectedLabel}</span>
         <ChevronDown className="h-4 w-4 text-neutral-500" />
       </button>
 

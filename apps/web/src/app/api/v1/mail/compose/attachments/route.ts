@@ -12,7 +12,7 @@ function extractUserIdFromToken(authHeader: string): string | null {
     if (!token) return null;
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString()) as {
+    const payload = JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as {
       sub?: string;
       userId?: string;
     };
@@ -28,7 +28,7 @@ function extractUserIdFromToken(authHeader: string): string | null {
  */
 function getStoragePath(userId: string): string {
   const storageBase =
-    process.env.ATTACHMENT_STORAGE_PATH ?? join(process.cwd(), "uploads", "attachments");
+    process.env["ATTACHMENT_STORAGE_PATH"] ?? join(process.cwd(), "uploads", "attachments");
   return join(storageBase, userId);
 }
 

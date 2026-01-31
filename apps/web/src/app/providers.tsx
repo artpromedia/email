@@ -33,7 +33,7 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange>
         {children}
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />

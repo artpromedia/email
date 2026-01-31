@@ -11,6 +11,7 @@ import { z } from "zod";
 
 export const DomainStatus = {
   PENDING: "pending",
+  VERIFYING: "verifying",
   ACTIVE: "active",
   SUSPENDED: "suspended",
   DELETED: "deleted",
@@ -97,8 +98,10 @@ export interface DomainVerification {
 export interface DkimKey {
   id: string;
   domainId: string;
+  domainName?: string;
   selector: string;
-  algorithm: "rsa-2048" | "rsa-4096" | "ed25519";
+  algorithm: "rsa-2048" | "rsa-4096" | "ed25519" | "rsa";
+  bits?: number;
   publicKey: string;
   privateKey?: string; // Only returned on creation
   status: "active" | "pending" | "inactive" | "expired";
@@ -112,36 +115,53 @@ export interface DkimKey {
  * Domain branding
  */
 export interface DomainBranding {
-  domainId: string;
+  domainId?: string;
+  name?: string;
   logoUrl?: string;
   faviconUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  textColor?: string;
+  linkColor?: string;
   loginBackgroundUrl?: string;
   emailHeaderHtml?: string;
   emailFooterHtml?: string;
+  footerHtml?: string;
+  customCss?: string;
 }
 
 /**
  * Domain settings
  */
 export interface DomainSettings {
-  domainId: string;
+  domainId?: string;
 
   // Catch-all settings
   catchAllEnabled: boolean;
-  catchAllAction: "deliver" | "forward" | "reject";
+  catchAllAction?: "deliver" | "forward" | "reject";
   catchAllDestination?: string;
+  catchAllAddress?: string;
 
   // Sending limits
-  maxMessagesPerUserPerDay: number;
+  maxMessagesPerUserPerDay?: number;
+  maxMessagesPerDay?: number;
   maxRecipientsPerMessage: number;
   maxMessageSizeBytes: number;
 
   // Security
-  requireTlsOutbound: boolean;
-  blockList: string[];
-  allowList: string[];
+  requireTlsOutbound?: boolean;
+  requireTls?: boolean;
+  blockList?: string[];
+  allowList?: string[];
+  allowedIpRanges?: string[];
+  blockedCountries?: string[];
+
+  // DNS/Email authentication
+  spfPolicy?: string;
+  dmarcPolicy?: string;
+
+  // Storage
+  defaultStorageQuotaBytes?: number;
 }
 
 /**
@@ -202,13 +222,52 @@ export interface AdminDomainDetail extends AdminDomain {
  * Domain user (user with email on this domain)
  */
 export interface DomainUser {
+  id: string;
   userId: string;
   userName: string;
+  displayName: string;
+  email: string;
   emailAddresses: string[];
   role: string;
   status: string;
   storageUsedBytes: number;
+  quotaBytes: number;
+  emailCount: number;
+  lastActivityAt?: Date;
   createdAt: Date;
+}
+
+/**
+ * Domain users list response
+ */
+export interface DomainUsersResponse {
+  users: DomainUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Domain policies
+ */
+export interface DomainPolicies {
+  domainId?: string;
+  maxMessageSize?: number;
+  maxAttachmentSize?: number;
+  allowedFileTypes?: string[];
+  blockedFileTypes?: string[];
+  retentionDays: number;
+  archiveAfterDays?: number;
+  deleteAfterDays?: number;
+  spamThreshold?: number;
+  virusScanEnabled?: boolean;
+  encryptionRequired?: boolean;
+  requireEncryption?: boolean;
+  allowForwarding?: boolean;
+  allowExternalSharing?: boolean;
+  dlpEnabled?: boolean;
+  dlpRules?: string[];
+  complianceMode?: "none" | "hipaa" | "gdpr" | "sox" | "finra";
 }
 
 // ============================================================
@@ -274,7 +333,8 @@ export interface UpdateDomainSettingsRequest {
 export interface GenerateDkimKeyRequest {
   domainId: string;
   selector: string;
-  algorithm: "rsa-2048" | "rsa-4096" | "ed25519";
+  algorithm: "rsa-2048" | "rsa-4096" | "ed25519" | "rsa";
+  bits?: number;
 }
 
 /**

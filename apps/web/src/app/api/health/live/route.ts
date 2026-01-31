@@ -26,7 +26,7 @@ export function GET() {
         },
         timestamp: new Date().toISOString(),
         service: "web-app",
-        version: process.env.APP_VERSION || "unknown",
+        version: process.env['APP_VERSION'] || "unknown",
       },
       { status: isHealthy ? 200 : 503 }
     );

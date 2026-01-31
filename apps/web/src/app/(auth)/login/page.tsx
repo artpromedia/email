@@ -72,7 +72,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function LoginPage() {
-  const _router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || "/";
   const prefilledEmail = searchParams.get("email") ?? "";
@@ -85,7 +85,6 @@ export default function LoginPage() {
     register,
     handleSubmit,
     watch,
-    _setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -106,7 +105,7 @@ export default function LoginPage() {
   );
 
   // Get domain branding
-  const domainFromEmail = email.split("@")[1];
+  const domainFromEmail = email.split("@")[1] ?? "";
   const branding = useDomainBrandingFor(domainFromEmail);
 
   // Login mutation
@@ -137,7 +136,7 @@ export default function LoginPage() {
 
       // Successful login
       router.push(returnUrl);
-    } catch (_error) {
+    } catch (error) {
       // Error handled by mutation
       console.error("Login failed:", error);
     }
@@ -163,7 +162,7 @@ export default function LoginPage() {
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding.name || "Organization"}
+              alt={branding?.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>
@@ -178,7 +177,7 @@ export default function LoginPage() {
 
         <div>
           <CardTitle className="text-2xl">
-            {branding?.name ? `Sign in to ${branding.name}` : "Sign in"}
+            {branding?.displayName ? `Sign in to ${branding?.displayName}` : "Sign in"}
           </CardTitle>
           <CardDescription className="mt-2">
             Enter your credentials to access your account

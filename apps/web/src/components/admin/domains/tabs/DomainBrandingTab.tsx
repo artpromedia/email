@@ -234,22 +234,22 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <ColorPicker
               label="Primary Color"
-              value={branding.primaryColor}
+              value={branding.primaryColor ?? ""}
               onChange={(color) => setBranding({ ...branding, primaryColor: color })}
             />
             <ColorPicker
               label="Secondary Color"
-              value={branding.secondaryColor}
+              value={branding.secondaryColor ?? ""}
               onChange={(color) => setBranding({ ...branding, secondaryColor: color })}
             />
             <ColorPicker
               label="Text Color"
-              value={branding.textColor}
+              value={branding.textColor ?? ""}
               onChange={(color) => setBranding({ ...branding, textColor: color })}
             />
             <ColorPicker
               label="Link Color"
-              value={branding.linkColor}
+              value={branding.linkColor ?? ""}
               onChange={(color) => setBranding({ ...branding, linkColor: color })}
             />
           </div>

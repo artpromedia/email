@@ -324,7 +324,14 @@ export function AdminAISettingsPage({ orgId }: AdminAISettingsPageProps) {
   };
 
   const updateSettings = (updates: Partial<AdminAISettings>) => {
-    setSettings((prev) => ({ ...prev, ...updates }));
+    setSettings((prev) => {
+      // Handle apiEndpoint clearing - empty string means remove the property
+      if ("apiEndpoint" in updates && updates.apiEndpoint === "") {
+        const { apiEndpoint: _, ...rest } = prev;
+        return rest as AdminAISettings;
+      }
+      return { ...prev, ...updates };
+    });
     setHasChanges(true);
   };
 
@@ -574,7 +581,7 @@ function GeneralSection({
           <Switch
             id="ai-enabled"
             checked={settings.aiEnabled}
-            onCheckedChange={(checked) => onChange({ aiEnabled: checked })}
+            onCheckedChange={(checked: boolean) => onChange({ aiEnabled: checked })}
           />
         </div>
 
@@ -605,7 +612,7 @@ function GeneralSection({
           <Switch
             id="encryption"
             checked={settings.encryptionRequired}
-            onCheckedChange={(checked) => onChange({ encryptionRequired: checked })}
+            onCheckedChange={(checked: boolean) => onChange({ encryptionRequired: checked })}
           />
         </div>
 
@@ -613,7 +620,7 @@ function GeneralSection({
           <Label>Data Residency</Label>
           <Select
             value={settings.dataResidency}
-            onValueChange={(value) => onChange({ dataResidency: value })}
+            onValueChange={(value: string) => onChange({ dataResidency: value })}
           >
             <SelectTrigger>
               <SelectValue />
@@ -692,9 +699,12 @@ function ProviderSection({
             {LLM_PROVIDERS.map((provider) => (
               <button
                 key={provider.id}
-                onClick={() =>
-                  onChange({ llmProvider: provider.id, llmModel: provider.models[0].id })
-                }
+                onClick={() => {
+                  const defaultModel = provider.models[0];
+                  if (defaultModel) {
+                    onChange({ llmProvider: provider.id, llmModel: defaultModel.id });
+                  }
+                }}
                 className={cn(
                   "rounded-lg border p-4 text-left transition-colors",
                   settings.llmProvider === provider.id
@@ -717,7 +727,7 @@ function ProviderSection({
               <Label>Model</Label>
               <Select
                 value={settings.llmModel}
-                onValueChange={(value) => onChange({ llmModel: value })}
+                onValueChange={(value: string) => onChange({ llmModel: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -747,9 +757,11 @@ function ProviderSection({
               <Input
                 placeholder="https://your-endpoint.com/v1"
                 value={settings.apiEndpoint ?? ""}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  onChange({ apiEndpoint: e.target.value || undefined })
-                }
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value.trim();
+                  // Pass empty string to signal clearing, non-empty for actual value
+                  onChange({ apiEndpoint: value || "" });
+                }}
               />
               <p className="text-xs text-muted-foreground">
                 Custom endpoint URL for Azure or self-hosted deployments
@@ -939,7 +951,7 @@ function FeaturesSection({
             <Switch
               id={feature.key}
               checked={allowedFeatures[feature.key]}
-              onCheckedChange={(checked) => onChange(feature.key, checked)}
+              onCheckedChange={(checked: boolean) => onChange(feature.key, checked)}
               disabled={!aiEnabled}
             />
           </div>
@@ -979,7 +991,10 @@ function LimitsSection({
             </div>
             <Slider
               value={[settings.tokenLimitPerUser]}
-              onValueChange={([value]) => onChange({ tokenLimitPerUser: value })}
+              onValueChange={(values: number[]) => {
+                const value = values[0];
+                if (value !== undefined) onChange({ tokenLimitPerUser: value });
+              }}
               min={10000}
               max={1000000}
               step={10000}
@@ -1001,7 +1016,10 @@ function LimitsSection({
             </div>
             <Slider
               value={[settings.tokenLimitPerDay]}
-              onValueChange={([value]) => onChange({ tokenLimitPerDay: value })}
+              onValueChange={(values: number[]) => {
+                const value = values[0];
+                if (value !== undefined) onChange({ tokenLimitPerDay: value });
+              }}
               min={100000}
               max={10000000}
               step={100000}
@@ -1030,7 +1048,7 @@ function LimitsSection({
             <Switch
               id="human-review"
               checked={settings.requireHumanReview}
-              onCheckedChange={(checked) => onChange({ requireHumanReview: checked })}
+              onCheckedChange={(checked: boolean) => onChange({ requireHumanReview: checked })}
             />
           </div>
 
@@ -1042,7 +1060,10 @@ function LimitsSection({
               </div>
               <Slider
                 value={[settings.humanReviewThreshold]}
-                onValueChange={([value]) => onChange({ humanReviewThreshold: value })}
+                onValueChange={(values: number[]) => {
+                  const value = values[0];
+                  if (value !== undefined) onChange({ humanReviewThreshold: value });
+                }}
                 min={50}
                 max={95}
                 step={5}

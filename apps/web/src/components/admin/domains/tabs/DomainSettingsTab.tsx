@@ -177,7 +177,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
                 type="number"
                 min="1"
                 max="1000"
-                value={formatGB(settings.defaultStorageQuotaBytes)}
+                value={formatGB(settings.defaultStorageQuotaBytes ?? 0)}
                 onChange={(e) =>
                   setSettings({
                     ...settings,
@@ -390,7 +390,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
               </label>
               <textarea
                 id="allowed-ip-ranges"
-                value={settings.allowedIpRanges.join("\n")}
+                value={(settings.allowedIpRanges ?? []).join("\n")}
                 onChange={(e) =>
                   setSettings({
                     ...settings,
@@ -424,7 +424,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
               </label>
               <textarea
                 id="blocked-countries"
-                value={settings.blockedCountries.join("\n")}
+                value={(settings.blockedCountries ?? []).join("\n")}
                 onChange={(e) =>
                   setSettings({
                     ...settings,

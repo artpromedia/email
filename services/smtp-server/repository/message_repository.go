@@ -114,7 +114,7 @@ func (r *MessageRepository) UpdateMessageRetry(ctx context.Context, messageID st
 // GetPendingMessages returns messages ready for delivery
 func (r *MessageRepository) GetPendingMessages(ctx context.Context, limit int) ([]*domain.Message, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, organization_id, domain_id, from_address, recipients,
 			subject, headers, body_size, raw_message_path, status,
 			priority, retry_count, max_retries, next_retry_at, last_error,
@@ -149,7 +149,7 @@ func (r *MessageRepository) GetPendingMessages(ctx context.Context, limit int) (
 // GetPendingMessagesByDomain returns pending messages for a specific domain
 func (r *MessageRepository) GetPendingMessagesByDomain(ctx context.Context, domainID string, limit int) ([]*domain.Message, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, organization_id, domain_id, from_address, recipients,
 			subject, headers, body_size, raw_message_path, status,
 			priority, retry_count, max_retries, next_retry_at, last_error,
@@ -185,7 +185,7 @@ func (r *MessageRepository) GetPendingMessagesByDomain(ctx context.Context, doma
 // GetMessage returns a message by ID
 func (r *MessageRepository) GetMessage(ctx context.Context, messageID string) (*domain.Message, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, organization_id, domain_id, from_address, recipients,
 			subject, headers, body_size, raw_message_path, status,
 			priority, retry_count, max_retries, next_retry_at, last_error,
@@ -229,7 +229,7 @@ func (r *MessageRepository) MarkMessageProcessing(ctx context.Context, messageID
 // GetQueueStats returns queue statistics by domain
 func (r *MessageRepository) GetQueueStats(ctx context.Context) (map[string]*QueueStats, error) {
 	query := `
-		SELECT 
+		SELECT
 			domain_id,
 			COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
 			COUNT(*) FILTER (WHERE status = 'processing') as processing_count,
@@ -293,7 +293,7 @@ func (r *MessageRepository) CleanupOldMessages(ctx context.Context, olderThan ti
 // GetStuckMessages returns messages that have been processing too long
 func (r *MessageRepository) GetStuckMessages(ctx context.Context, stuckDuration time.Duration) ([]*domain.Message, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, organization_id, domain_id, from_address, recipients,
 			subject, headers, body_size, raw_message_path, status,
 			priority, retry_count, max_retries, next_retry_at, last_error,
@@ -422,4 +422,122 @@ func scanMessageRow(row pgx.Row) (*domain.Message, error) {
 	}
 
 	return &msg, nil
+}
+
+// GetMailboxByEmail returns a mailbox by email address
+func (r *MessageRepository) GetMailboxByEmail(ctx context.Context, email string) (*domain.Mailbox, error) {
+	query := `
+		SELECT
+			id, user_id, domain_id, organization_id, email, local_part, domain,
+			display_name, status, quota_bytes, used_bytes, is_active,
+			created_at, updated_at
+		FROM mailboxes
+		WHERE email = $1 AND is_active = true
+	`
+
+	var mb domain.Mailbox
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&mb.ID, &mb.UserID, &mb.DomainID, &mb.OrganizationID, &mb.Email, &mb.LocalPart, &mb.Domain,
+		&mb.DisplayName, &mb.Status, &mb.QuotaBytes, &mb.UsedBytes, &mb.IsActive,
+		&mb.CreatedAt, &mb.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query mailbox: %w", err)
+	}
+
+	return &mb, nil
+}
+
+// GetAliasBySource returns an alias by source email
+func (r *MessageRepository) GetAliasBySource(ctx context.Context, email string) (*domain.Alias, error) {
+	query := `
+		SELECT id, domain_id, organization_id, source_email, target_email, is_active, created_at
+		FROM aliases
+		WHERE source_email = $1 AND is_active = true
+		LIMIT 1
+	`
+
+	var alias domain.Alias
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&alias.ID, &alias.DomainID, &alias.OrganizationID, &alias.SourceEmail,
+		&alias.TargetEmail, &alias.IsActive, &alias.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query alias: %w", err)
+	}
+
+	return &alias, nil
+}
+
+// GetDistributionListByEmail returns a distribution list by email
+func (r *MessageRepository) GetDistributionListByEmail(ctx context.Context, email string) (*domain.DistributionList, error) {
+	query := `
+		SELECT id, domain_id, organization_id, email, name, description, members, allow_external, is_active, created_at
+		FROM distribution_lists
+		WHERE email = $1 AND is_active = true
+	`
+
+	var dl domain.DistributionList
+	var membersJSON []byte
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&dl.ID, &dl.DomainID, &dl.OrganizationID, &dl.Email, &dl.Name, &dl.Description,
+		&membersJSON, &dl.AllowExternal, &dl.IsActive, &dl.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query distribution list: %w", err)
+	}
+
+	if err := json.Unmarshal(membersJSON, &dl.Members); err != nil {
+		return nil, fmt.Errorf("unmarshal members: %w", err)
+	}
+
+	return &dl, nil
+}
+
+// UpdateMailboxUsage updates the storage used by a mailbox
+func (r *MessageRepository) UpdateMailboxUsage(ctx context.Context, mailboxID string, additionalBytes int64) error {
+	query := `
+		UPDATE mailboxes
+		SET used_bytes = used_bytes + $2, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := r.db.Exec(ctx, query, mailboxID, additionalBytes)
+	if err != nil {
+		return fmt.Errorf("update mailbox usage: %w", err)
+	}
+
+	return nil
+}
+
+// RecordMailboxMessage records a message in the mailbox messages table
+func (r *MessageRepository) RecordMailboxMessage(ctx context.Context, mailboxID string, msg *domain.Message, storagePath string, size int64) error {
+	query := `
+		INSERT INTO mailbox_messages (
+			id, mailbox_id, message_id, folder, storage_path,
+			from_address, subject, size, received_at, is_read, is_flagged, created_at
+		) VALUES (
+			gen_random_uuid(), $1, $2, 'INBOX', $3,
+			$4, $5, $6, NOW(), false, false, NOW()
+		)
+	`
+
+	_, err := r.db.Exec(ctx, query,
+		mailboxID, msg.ID, storagePath,
+		msg.FromAddress, msg.Subject, size,
+	)
+	if err != nil {
+		return fmt.Errorf("record mailbox message: %w", err)
+	}
+
+	return nil
 }

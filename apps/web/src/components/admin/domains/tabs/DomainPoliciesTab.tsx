@@ -307,7 +307,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 </label>
                 <textarea
                   id="dlp-rules"
-                  value={policies.dlpRules.join("\n")}
+                  value={(policies.dlpRules ?? []).join("\n")}
                   onChange={(e) =>
                     setPolicies({
                       ...policies,
@@ -368,7 +368,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
               <option value="finra">FINRA (Securities)</option>
             </select>
 
-            {policies.complianceMode !== "none" && (
+            {policies.complianceMode && policies.complianceMode !== "none" && (
               <div className="mt-4 flex items-start gap-3 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
                 <Shield className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
                 <div className="text-sm text-blue-900 dark:text-blue-100">

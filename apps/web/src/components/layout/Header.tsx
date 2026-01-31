@@ -34,7 +34,6 @@ import {
   AvatarImage,
   Badge,
   DomainAvatar,
-  useActiveDomain,
   useDomain,
   cn,
 } from "@email/ui";
@@ -45,7 +44,7 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const _router = useRouter();
+  const router = useRouter();
   const { data: user, isLoading: isLoadingUser } = useCurrentUser();
   const logoutMutation = useLogout();
 
@@ -53,8 +52,12 @@ export function Header({ className }: HeaderProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Domain context
-  const { domains, activeDomain, setActiveDomain } = useDomain();
-  const activeDomainBranding = useActiveDomain();
+  const {
+    activeDomain,
+    availableDomains: domains,
+    switchDomain,
+    branding: activeDomainBranding,
+  } = useDomain();
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
@@ -62,7 +65,7 @@ export function Header({ className }: HeaderProps) {
   };
 
   const handleDomainSwitch = (domainId: string) => {
-    setActiveDomain(domainId);
+    switchDomain(domainId);
     setShowDomainMenu(false);
   };
 
@@ -94,7 +97,7 @@ export function Header({ className }: HeaderProps) {
             {activeDomainBranding?.logo ? (
               <img
                 src={activeDomainBranding.logo}
-                alt={activeDomainBranding.name || "Email"}
+                alt={activeDomainBranding.displayName || "Email"}
                 className="h-8 w-auto"
               />
             ) : (
@@ -108,7 +111,7 @@ export function Header({ className }: HeaderProps) {
               </div>
             )}
             <span className="hidden font-semibold sm:inline-block">
-              {activeDomainBranding?.name || "Enterprise Email"}
+              {activeDomainBranding?.displayName || "Enterprise Email"}
             </span>
           </Link>
 
@@ -121,7 +124,7 @@ export function Header({ className }: HeaderProps) {
                 onClick={() => setShowDomainMenu(!showDomainMenu)}
                 className="gap-2 px-3"
               >
-                <DomainAvatar domain={activeDomain ?? ""} size="sm" />
+                <DomainAvatar name={activeDomain ?? ""} domain={activeDomain ?? ""} size="sm" />
                 <span className="hidden max-w-[150px] truncate md:inline-block">
                   {activeDomain}
                 </span>
@@ -138,7 +141,7 @@ export function Header({ className }: HeaderProps) {
                         Switch Domain
                       </p>
                       <div className="mt-1 space-y-1">
-                        {domains.map((domain) => {
+                        {domains.map((domain: string) => {
                           const isActive = domain === activeDomain;
                           return (
                             <button
@@ -149,7 +152,7 @@ export function Header({ className }: HeaderProps) {
                                 isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                               )}
                             >
-                              <DomainAvatar domain={domain} size="sm" />
+                              <DomainAvatar name={domain} domain={domain} size="sm" />
                               <div className="flex-1 text-left">
                                 <p className="truncate font-medium">{domain}</p>
                               </div>

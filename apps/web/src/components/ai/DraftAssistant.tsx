@@ -234,7 +234,7 @@ export function HelpMeWriteButton({
   const [result, setResult] = useState<HelpMeWriteResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tone, setTone] = useState<ToneAdjustment>("professional");
+  const [tone, setTone] = useState<ToneAdjustment>("formal");
 
   const toneOptions: { value: ToneAdjustment; label: string; icon: React.ReactNode }[] = [
     { value: "formal", label: "Formal", icon: <Briefcase className="h-4 w-4" /> },
@@ -339,10 +339,14 @@ export function HelpMeWriteButton({
                 <>
                   {/* Prompt Input */}
                   <div className="mb-4">
-                    <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    <label
+                      htmlFor="help-me-write-prompt"
+                      className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+                    >
                       What would you like to write?
                     </label>
                     <textarea
+                      id="help-me-write-prompt"
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="e.g., Write a follow-up email asking about the proposal status..."
@@ -353,10 +357,10 @@ export function HelpMeWriteButton({
 
                   {/* Tone Selection */}
                   <div className="mb-4">
-                    <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    <span className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
                       Tone
-                    </label>
-                    <div className="flex flex-wrap gap-2">
+                    </span>
+                    <div className="flex flex-wrap gap-2" role="group" aria-label="Tone selection">
                       {toneOptions.map((option) => (
                         <button
                           key={option.value}

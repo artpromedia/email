@@ -352,6 +352,7 @@ export interface AddDomainWizardState {
   displayName: string;
   verificationMethod?: VerificationMethod;
   verificationRecord?: VerificationRecord;
+  verificationRecords?: VerificationRecord[];
   isVerified: boolean;
   dnsRecords: DnsRecord[];
   dnsVerified: boolean;

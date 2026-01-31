@@ -240,7 +240,14 @@ export const useMailStore = create<MailState & MailActions>()(
         set((state) => {
           const index = state.emails.findIndex((e) => e.id === emailId);
           if (index !== -1) {
-            state.emails[index] = { ...state.emails[index], ...updates };
+            const email = state.emails[index];
+            // Use Object.keys to iterate and assign each property
+            (Object.keys(updates) as Array<keyof typeof updates>).forEach((key) => {
+              if (updates[key] !== undefined) {
+                // @ts-expect-error - Immer draft typing limitation
+                email[key] = updates[key];
+              }
+            });
           }
         }),
 

@@ -527,6 +527,7 @@ function Step2VerifyOwnership({
 // ============================================================
 
 interface Step3Props {
+  readonly domainId: string;
   readonly domain: string;
   readonly dnsRecords: DnsRecord[];
   readonly onVerifyDns: () => void;
@@ -537,6 +538,7 @@ interface Step3Props {
 }
 
 function Step3ConfigureDns({
+  domainId: _domainId,
   domain,
   dnsRecords,
   onVerifyDns,
@@ -986,7 +988,9 @@ export function AddDomainWizard() {
     setState((prev) => ({
       ...prev,
       verificationMethod: method,
-      verificationRecord: prev.verificationRecords?.find((r) => r.method === method),
+      verificationRecord: prev.verificationRecords?.find(
+        (r: VerificationRecord) => r.method === method
+      ),
     }));
   }, []);
 
@@ -1089,7 +1093,6 @@ export function AddDomainWizard() {
 
           {state.currentStep === 2 && state.domainId && (
             <Step2VerifyOwnership
-              domainId={state.domainId}
               domain={state.domain}
               verificationRecords={state.verificationRecords ?? []}
               selectedMethod={state.verificationMethod}

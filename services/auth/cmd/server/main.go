@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -64,7 +65,7 @@ func main() {
 	}
 
 	// Initialize services
-	authService := service.NewAuthService(repo, redisClient, tokenService, cfg)
+	authService := service.NewAuthService(repo, tokenService, cfg)
 	ssoService := service.NewSSOService(repo, redisClient, authService, cfg)
 	adminService := service.NewAdminService(repo, redisClient, cfg)
 
@@ -77,7 +78,7 @@ func main() {
 	authMiddleware := middleware.NewAuthMiddleware(tokenService, repo)
 
 	// Create router
-	router := createRouter(cfg, authHandler, ssoHandler, adminHandler, authMiddleware)
+	router := createRouter(cfg, authHandler, ssoHandler, adminHandler, authMiddleware, dbPool, redisClient)
 
 	// Create HTTP server
 	server := &http.Server{
@@ -191,6 +192,8 @@ func createRouter(
 	ssoHandler *handler.SSOHandler,
 	adminHandler *handler.AdminHandler,
 	authMiddleware *middleware.AuthMiddleware,
+	dbPool *pgxpool.Pool,
+	redisClient *redis.Client,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -214,7 +217,7 @@ func createRouter(
 
 	// Health check endpoints
 	r.Get("/health", healthCheck)
-	r.Get("/ready", readinessCheck)
+	r.Get("/ready", makeReadinessCheck(dbPool, redisClient))
 
 	// API routes
 	r.Route("/api/auth", func(r chi.Router) {
@@ -243,8 +246,54 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func readinessCheck(w http.ResponseWriter, r *http.Request) {
-	// TODO: Add actual readiness checks (DB, Redis, etc.)
+	// This is overridden by makeReadinessCheck
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ready","service":"auth"}`))
+}
+
+// makeReadinessCheck creates a readiness check handler with dependencies
+func makeReadinessCheck(dbPool *pgxpool.Pool, redisClient *redis.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
+		checks := map[string]string{
+			"database": "ok",
+			"redis":    "ok",
+		}
+		allHealthy := true
+
+		// Check database connectivity
+		if err := dbPool.Ping(ctx); err != nil {
+			checks["database"] = fmt.Sprintf("error: %v", err)
+			allHealthy = false
+			log.Error().Err(err).Msg("Database health check failed")
+		}
+
+		// Check Redis connectivity
+		if err := redisClient.Ping(ctx).Err(); err != nil {
+			checks["redis"] = fmt.Sprintf("error: %v", err)
+			allHealthy = false
+			log.Error().Err(err).Msg("Redis health check failed")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		response := map[string]interface{}{
+			"service": "auth",
+			"checks":  checks,
+		}
+
+		if allHealthy {
+			response["status"] = "ready"
+			w.WriteHeader(http.StatusOK)
+		} else {
+			response["status"] = "not_ready"
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+
+		jsonBytes, _ := json.Marshal(response)
+		w.Write(jsonBytes)
+	}
 }

@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 /**
  * Check database connectivity by verifying configuration
  */
-async function checkDatabase(): Promise<boolean> {
+function checkDatabase(): boolean {
   try {
-    const dbUrl = process.env.DATABASE_URL;
+    const dbUrl = process.env['DATABASE_URL'];
     if (!dbUrl) {
       console.warn("DATABASE_URL not configured");
       return false;
@@ -21,9 +21,9 @@ async function checkDatabase(): Promise<boolean> {
 /**
  * Check Redis connectivity
  */
-async function checkRedis(): Promise<boolean> {
+function checkRedis(): boolean {
   try {
-    const redisUrl = process.env.REDIS_URL;
+    const redisUrl = process.env['REDIS_URL'];
     if (!redisUrl) {
       // Redis is optional, return true if not configured
       return true;
@@ -39,9 +39,9 @@ async function checkRedis(): Promise<boolean> {
 /**
  * Check MinIO/S3 storage connectivity
  */
-async function checkStorage(): Promise<boolean> {
+function checkStorage(): boolean {
   try {
-    const storageEndpoint = process.env.MINIO_ENDPOINT ?? process.env.S3_ENDPOINT;
+    const storageEndpoint = process.env['MINIO_ENDPOINT'] ?? process.env['S3_ENDPOINT'];
     if (!storageEndpoint) {
       // Storage is optional for basic functionality
       return true;
@@ -69,13 +69,13 @@ export async function GET() {
 
   try {
     // Check database connectivity
-    checks.database = await checkDatabase();
+    checks.database = checkDatabase();
 
     // Check Redis connectivity
-    checks.redis = await checkRedis();
+    checks.redis = checkRedis();
 
     // Check MinIO/S3 storage
-    checks.storage = await checkStorage();
+    checks.storage = checkStorage();
 
     const allHealthy = Object.values(checks).every(Boolean);
 

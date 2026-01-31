@@ -378,3 +378,79 @@ func (r *RateLimiter) Allow() bool {
 
 	return true
 }
+
+// RecipientLookupResult contains the result of looking up a recipient
+type RecipientLookupResult struct {
+	Found            bool
+	Type             string // "mailbox", "alias", "distribution_list"
+	Mailbox          *domain.Mailbox
+	Alias            *domain.Alias
+	DistributionList *domain.DistributionList
+}
+
+// LookupRecipient looks up a recipient email address and returns what it resolves to
+func (m *Manager) LookupRecipient(ctx context.Context, email string) (*RecipientLookupResult, error) {
+	result := &RecipientLookupResult{Found: false}
+
+	// Try to find as mailbox first
+	mailbox, err := m.msgRepo.GetMailboxByEmail(ctx, email)
+	if err == nil && mailbox != nil && mailbox.IsActive {
+		result.Found = true
+		result.Type = "mailbox"
+		result.Mailbox = mailbox
+		return result, nil
+	}
+
+	// Try to find as alias
+	alias, err := m.msgRepo.GetAliasBySource(ctx, email)
+	if err == nil && alias != nil && alias.IsActive {
+		result.Found = true
+		result.Type = "alias"
+		result.Alias = alias
+		return result, nil
+	}
+
+	// Try to find as distribution list
+	dl, err := m.msgRepo.GetDistributionListByEmail(ctx, email)
+	if err == nil && dl != nil && dl.IsActive {
+		result.Found = true
+		result.Type = "distribution_list"
+		result.DistributionList = dl
+		return result, nil
+	}
+
+	return result, nil
+}
+
+// StoreMailboxMessage stores a message in mailbox storage (S3 or local)
+func (m *Manager) StoreMailboxMessage(ctx context.Context, path string, data []byte) error {
+	// For now, store locally - in production this would go to S3/object storage
+	fullPath := filepath.Join(m.config.Queue.StoragePath, "mailboxes", path)
+
+	// Create directory if needed
+	dir := filepath.Dir(fullPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create mailbox directory: %w", err)
+	}
+
+	// Write message
+	if err := os.WriteFile(fullPath, data, 0644); err != nil {
+		return fmt.Errorf("write mailbox message: %w", err)
+	}
+
+	m.logger.Debug("Stored mailbox message",
+		zap.String("path", path),
+		zap.Int("size", len(data)))
+
+	return nil
+}
+
+// UpdateMailboxUsage updates the storage used by a mailbox
+func (m *Manager) UpdateMailboxUsage(ctx context.Context, mailboxID string, additionalBytes int64) error {
+	return m.msgRepo.UpdateMailboxUsage(ctx, mailboxID, additionalBytes)
+}
+
+// RecordMailboxMessage records a message in the mailbox messages table
+func (m *Manager) RecordMailboxMessage(ctx context.Context, mailboxID string, msg *domain.Message, storagePath string, size int64) error {
+	return m.msgRepo.RecordMailboxMessage(ctx, mailboxID, msg, storagePath, size)
+}

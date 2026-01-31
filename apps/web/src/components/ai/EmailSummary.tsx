@@ -132,7 +132,7 @@ export function EmailSummary({
 
   useEffect(() => {
     if (shouldShowTldr || isExpanded) {
-      fetchSummary();
+      void fetchSummary();
     }
   }, [emailId, isExpanded]);
 
@@ -306,7 +306,7 @@ export function ThreadSummary({
 
   useEffect(() => {
     if (messages.length > 2) {
-      fetchSummary();
+      void fetchSummary();
     }
   }, [threadId]);
 

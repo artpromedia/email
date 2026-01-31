@@ -139,19 +139,19 @@ export async function POST(request: NextRequest) {
 
     // Validate 'from' address
     const fromError = validateFrom(from);
-    if (fromError) errors.from = fromError;
+    if (fromError) errors["from"] = fromError;
 
     // Validate 'to' addresses
     const toError = validateTo(to);
-    if (toError) errors.to = toError;
+    if (toError) errors["to"] = toError;
 
     // Validate 'cc' addresses
     const ccError = validateEmailList(cc, "CC");
-    if (ccError) errors.cc = ccError;
+    if (ccError) errors["cc"] = ccError;
 
     // Validate 'bcc' addresses
     const bccError = validateEmailList(bcc, "BCC");
-    if (bccError) errors.bcc = bccError;
+    if (bccError) errors["bcc"] = bccError;
 
     // Validate subject
     warnings.push(...validateSubject(subject));
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     // Check recipient count
     const recipientValidation = validateRecipientCount(to, cc, bcc);
-    if (recipientValidation.error) errors.recipients = recipientValidation.error;
+    if (recipientValidation.error) errors["recipients"] = recipientValidation.error;
     warnings.push(...recipientValidation.warnings);
 
     // Check for external recipients (domain verification)

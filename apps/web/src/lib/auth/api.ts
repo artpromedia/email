@@ -30,7 +30,7 @@ interface ApiErrorResponse {
   };
 }
 
-const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8081";
+const AUTH_API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] ?? "http://localhost:8081";
 
 class AuthApiError extends Error {
   constructor(

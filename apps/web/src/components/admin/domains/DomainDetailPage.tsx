@@ -407,8 +407,8 @@ export function DomainDetailPage({
       <div className="mx-auto max-w-7xl px-6 py-6">
         {activeTab === "overview" && <DomainOverviewTab domain={domain} />}
         {activeTab === "dns" && <DnsRecordsTab domainId={domain.id} domain={domain.domain} />}
-        {activeTab === "dkim" && <DkimKeysTab domainId={domain.id} domain={domain.domain} />}
-        {activeTab === "users" && <DomainUsersTab domainId={domain.id} domain={domain.domain} />}
+        {activeTab === "dkim" && <DkimKeysTab domainId={domain.id} />}
+        {activeTab === "users" && <DomainUsersTab domainId={domain.id} />}
         {activeTab === "settings" && <DomainSettingsTab domainId={domain.id} />}
         {activeTab === "branding" && <DomainBrandingTab domainId={domain.id} />}
         {activeTab === "policies" && <DomainPoliciesTab domainId={domain.id} />}

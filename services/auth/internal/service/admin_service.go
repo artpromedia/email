@@ -21,17 +21,19 @@ import (
 
 // AdminService handles admin operations.
 type AdminService struct {
-	repo   *repository.Repository
-	redis  *redis.Client
-	config *config.Config
+	repo         *repository.Repository
+	redis        *redis.Client
+	config       *config.Config
+	emailService *EmailService
 }
 
 // NewAdminService creates a new AdminService.
 func NewAdminService(repo *repository.Repository, redis *redis.Client, cfg *config.Config) *AdminService {
 	return &AdminService{
-		repo:   repo,
-		redis:  redis,
-		config: cfg,
+		repo:         repo,
+		redis:        redis,
+		config:       cfg,
+		emailService: NewEmailService(&cfg.Email),
 	}
 }
 
@@ -780,6 +782,19 @@ func (s *AdminService) AdminResetPassword(ctx context.Context, userID uuid.UUID)
 	}
 
 	// TODO: Send password reset email
+	// Send password reset email
+	resetURL := s.config.Email.VerificationURL // Should be a separate password reset URL in production
+	resetURL = strings.Replace(resetURL, "/verify-email", "/reset-password", 1)
+	if s.emailService != nil {
+		if err := s.emailService.SendPasswordResetEmail(user.Email, user.DisplayName, resetToken, resetURL); err != nil {
+			log.Error().Err(err).
+				Str("user_id", user.ID.String()).
+				Str("email", user.Email).
+				Msg("Failed to send password reset email")
+			// Continue anyway - token is stored
+		}
+	}
+
 	log.Info().
 		Str("user_id", user.ID.String()).
 		Str("email", user.Email).
