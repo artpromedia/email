@@ -1,6 +1,7 @@
 server:
   port: 8090
-  environment: development
+  environment: production
+  debug: false
   shutdown_timeout: 30s
 
 database:
