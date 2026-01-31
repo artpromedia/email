@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react";
 
 export interface Message {
   id: string;
@@ -136,7 +144,10 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || "http://localhost:8086";
 const CHAT_WS_URL = process.env.NEXT_PUBLIC_CHAT_WS_URL || "ws://localhost:8086/ws";
 
-export function ChatProvider({ children, token }: { children: ReactNode; token: string }) {
+export function ChatProvider({
+  children,
+  token,
+}: Readonly<{ children: ReactNode; token: string }>) {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -496,7 +507,7 @@ export function ChatProvider({ children, token }: { children: ReactNode; token: 
       body: JSON.stringify({ user_id: userId }),
     });
     setChannels((prev) => {
-      if (prev.find((ch) => ch.id === channel.id)) return prev;
+      if (prev.some((ch) => ch.id === channel.id)) return prev;
       return [...prev, channel];
     });
     return channel;
@@ -508,38 +519,62 @@ export function ChatProvider({ children, token }: { children: ReactNode; token: 
     return response.messages;
   };
 
-  return (
-    <ChatContext.Provider
-      value={{
-        isConnected,
-        connect,
-        disconnect,
-        channels,
-        currentChannel,
-        setCurrentChannel,
-        createChannel,
-        joinChannel,
-        leaveChannel,
-        messages,
-        sendMessage,
-        editMessage,
-        deleteMessage,
-        pinMessage,
-        unpinMessage,
-        addReaction,
-        removeReaction,
-        typingUsers,
-        sendTyping,
-        onlineUsers,
-        users,
-        startDirectMessage,
-        searchMessages,
-        isLoading,
-      }}
-    >
-      {children}
-    </ChatContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      isConnected,
+      connect,
+      disconnect,
+      channels,
+      currentChannel,
+      setCurrentChannel,
+      createChannel,
+      joinChannel,
+      leaveChannel,
+      messages,
+      sendMessage,
+      editMessage,
+      deleteMessage,
+      pinMessage,
+      unpinMessage,
+      addReaction,
+      removeReaction,
+      typingUsers,
+      sendTyping,
+      onlineUsers,
+      users,
+      startDirectMessage,
+      searchMessages,
+      isLoading,
+    }),
+    [
+      isConnected,
+      connect,
+      disconnect,
+      channels,
+      currentChannel,
+      setCurrentChannel,
+      createChannel,
+      joinChannel,
+      leaveChannel,
+      messages,
+      sendMessage,
+      editMessage,
+      deleteMessage,
+      pinMessage,
+      unpinMessage,
+      addReaction,
+      removeReaction,
+      typingUsers,
+      sendTyping,
+      onlineUsers,
+      users,
+      startDirectMessage,
+      searchMessages,
+      isLoading,
+    ]
   );
+
+  return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 }
 
 export function useChat() {

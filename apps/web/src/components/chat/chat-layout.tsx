@@ -158,13 +158,13 @@ function ChannelSection({
   currentChannel,
   onSelectChannel,
   icon: Icon,
-}: {
+}: Readonly<{
   title: string;
   channels: Channel[];
   currentChannel: Channel | null;
   onSelectChannel: (channel: Channel) => void;
   icon: typeof Hash;
-}) {
+}>) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { createChannel } = useChat();
 
@@ -213,13 +213,13 @@ function DirectMessagesSection({
   onSelectChannel,
   users,
   onlineUsers,
-}: {
+}: Readonly<{
   channels: Channel[];
   currentChannel: Channel | null;
   onSelectChannel: (channel: Channel) => void;
   users: User[];
   onlineUsers: string[];
-}) {
+}>) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
@@ -279,12 +279,12 @@ function CreateChannelDialog({
   onOpenChange,
   onCreate,
   isPrivate,
-}: {
+}: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreate: (name: string, description: string, isPrivate: boolean) => Promise<Channel>;
   isPrivate: boolean;
-}) {
+}>) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivateChannel, setIsPrivateChannel] = useState(isPrivate);
@@ -362,21 +362,27 @@ function CreateChannelDialog({
   );
 }
 
-function ChannelHeader({ channel }: { channel: Channel }) {
+function ChannelHeader({ channel }: Readonly<{ channel: Channel }>) {
   const { leaveChannel } = useChat();
+
+  const channelIcon = (() => {
+    if (channel.type === "private") {
+      return <Lock className="h-5 w-5 text-muted-foreground" />;
+    }
+    if (channel.type === "direct") {
+      return (
+        <Avatar className="h-6 w-6">
+          <AvatarFallback>U</AvatarFallback>
+        </Avatar>
+      );
+    }
+    return <Hash className="h-5 w-5 text-muted-foreground" />;
+  })();
 
   return (
     <div className="flex items-center justify-between border-b px-4 py-3">
       <div className="flex items-center gap-2">
-        {channel.type === "private" ? (
-          <Lock className="h-5 w-5 text-muted-foreground" />
-        ) : channel.type === "direct" ? (
-          <Avatar className="h-6 w-6">
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
-        ) : (
-          <Hash className="h-5 w-5 text-muted-foreground" />
-        )}
+        {channelIcon}
         <div>
           <h2 className="font-semibold">{channel.name}</h2>
           {channel.topic && <p className="text-xs text-muted-foreground">{channel.topic}</p>}
@@ -476,7 +482,7 @@ function MessageList() {
   );
 }
 
-function MessageItem({ message, showAvatar }: { message: Message; showAvatar: boolean }) {
+function MessageItem({ message, showAvatar }: Readonly<{ message: Message; showAvatar: boolean }>) {
   const { editMessage, deleteMessage, pinMessage, addReaction } = useChat();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
