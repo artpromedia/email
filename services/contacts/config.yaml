@@ -1,0 +1,23 @@
+server:
+  port: 8083
+  domain: "contacts.local"
+  public_url: "https://contacts.yourdomain.com"
+  debug: true
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+    - "https://mail.yourdomain.com"
+
+database:
+  url: "postgres://postgres:postgres@localhost:5432/enterprise_email?sslmode=disable"
+  max_conns: 25
+  min_conns: 5
+  max_conn_lifetime: "1h"
+
+auth:
+  service_url: "http://localhost:8080"
+  jwt_secret: "${JWT_SECRET}"
+
+storage:
+  photo_path: "/data/photos"
+  max_size: 5242880 # 5MB

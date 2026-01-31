@@ -330,6 +330,63 @@ services:
     networks:
       - email-network
 
+  # Calendar Service - CalDAV Support
+  calendar:
+    build:
+      context: ./services/calendar
+      dockerfile: Dockerfile
+    container_name: enterprise-email-calendar
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      DOMAIN: ${CALENDAR_DOMAIN:-calendar.localhost}
+    ports:
+      - "${CALENDAR_PORT:-8082}:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - email-network
+
+  # Contacts Service - CardDAV Support
+  contacts:
+    build:
+      context: ./services/contacts
+      dockerfile: Dockerfile
+    container_name: enterprise-email-contacts
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      DOMAIN: ${CONTACTS_DOMAIN:-contacts.localhost}
+    ports:
+      - "${CONTACTS_PORT:-8083}:8083"
+    volumes:
+      - contacts_photos:/data/photos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - email-network
+
 volumes:
   postgres_data:
     driver: local
@@ -344,6 +401,8 @@ volumes:
   prometheus_data:
     driver: local
   grafana_data:
+    driver: local
+  contacts_photos:
     driver: local
 
 networks:

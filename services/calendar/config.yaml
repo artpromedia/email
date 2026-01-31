@@ -1,0 +1,18 @@
+server:
+  addr: ":8082"
+  logLevel: "${LOG_LEVEL:-info}"
+  allowedOrigins:
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+
+database:
+  url: "${DATABASE_URL:-postgres://enterprise:enterprise@localhost:5432/enterprise_email?sslmode=disable}"
+  maxConns: 25
+  minConns: 5
+
+notification:
+  emailEnabled: true
+  smtpHost: "${SMTP_HOST:-localhost}"
+  smtpPort: ${SMTP_PORT:-25}
+  fromEmail: "calendar@${DOMAIN:-example.com}"
+  reminderLookAhead: 15

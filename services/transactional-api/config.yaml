@@ -1,0 +1,45 @@
+server:
+  addr: ":8080"
+  logLevel: "${LOG_LEVEL:-info}"
+  allowedOrigins:
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+    - "${ALLOWED_ORIGINS}"
+
+database:
+  url: "${DATABASE_URL:-postgres://enterprise:enterprise@localhost:5432/enterprise_email?sslmode=disable}"
+  maxConns: 25
+  minConns: 5
+
+redis:
+  addr: "${REDIS_ADDR:-localhost:6379}"
+  password: "${REDIS_PASSWORD:-}"
+  db: 0
+
+smtp:
+  host: "${SMTP_HOST:-localhost}"
+  port: ${SMTP_PORT:-25}
+  tls: ${SMTP_TLS:-false}
+  poolSize: 10
+  retryCount: 3
+
+rateLimit:
+  requestsPerSecond: 100
+  requestsPerMinute: 1000
+  requestsPerHour: 10000
+  requestsPerDay: 100000
+  burstSize: 50
+
+tracking:
+  enableOpen: true
+  enableClick: true
+  trackingHost: "${TRACKING_HOST:-https://track.example.com}"
+  pixelPath: "/o"
+  clickPath: "/c"
+
+webhook:
+  timeout: 30
+  maxRetries: 5
+  retryInterval: 60
+  signingSecret: "${WEBHOOK_SIGNING_SECRET:-your-secret-key}"
+  workerPoolSize: 10
