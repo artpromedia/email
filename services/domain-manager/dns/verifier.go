@@ -42,6 +42,9 @@ type VerificationResult struct {
 	SPFRecord      string
 	DKIMRecord     string
 	DMARCRecord    string
+	BIMIRecord     string
+	MTASTSRecord   string
+	TLSRPTRecord   string
 	Errors         []string
 	VerifiedAt     time.Time
 	MissingRecords []string
@@ -207,6 +210,90 @@ func (v *Verifier) VerifyDMARC(ctx context.Context, domain string) (string, erro
 	return "", fmt.Errorf("no DMARC record found")
 }
 
+// VerifyBIMI checks BIMI record
+func (v *Verifier) VerifyBIMI(ctx context.Context, domain string, selector string) (string, error) {
+	if selector == "" {
+		selector = "default"
+	}
+
+	recordName := fmt.Sprintf("%s._bimi.%s", selector, domain)
+	v.logger.Info("Verifying BIMI record",
+		zap.String("domain", domain),
+		zap.String("selector", selector),
+		zap.String("record", recordName),
+	)
+
+	txtRecords, err := net.LookupTXT(recordName)
+	if err != nil {
+		return "", fmt.Errorf("failed to lookup BIMI record: %w", err)
+	}
+
+	for _, record := range txtRecords {
+		if strings.HasPrefix(record, "v=BIMI1") {
+			v.logger.Info("BIMI record verified",
+				zap.String("domain", domain),
+				zap.String("selector", selector),
+				zap.String("record", record),
+			)
+			return record, nil
+		}
+	}
+
+	return "", fmt.Errorf("no BIMI record found")
+}
+
+// VerifyMTASTS checks MTA-STS DNS record
+func (v *Verifier) VerifyMTASTS(ctx context.Context, domain string) (string, error) {
+	recordName := fmt.Sprintf("_mta-sts.%s", domain)
+	v.logger.Info("Verifying MTA-STS record",
+		zap.String("domain", domain),
+		zap.String("record", recordName),
+	)
+
+	txtRecords, err := net.LookupTXT(recordName)
+	if err != nil {
+		return "", fmt.Errorf("failed to lookup MTA-STS record: %w", err)
+	}
+
+	for _, record := range txtRecords {
+		if strings.HasPrefix(record, "v=STSv1") {
+			v.logger.Info("MTA-STS record verified",
+				zap.String("domain", domain),
+				zap.String("record", record),
+			)
+			return record, nil
+		}
+	}
+
+	return "", fmt.Errorf("no MTA-STS record found")
+}
+
+// VerifyTLSRPT checks TLS-RPT record for SMTP TLS reporting
+func (v *Verifier) VerifyTLSRPT(ctx context.Context, domain string) (string, error) {
+	recordName := fmt.Sprintf("_smtp._tls.%s", domain)
+	v.logger.Info("Verifying TLS-RPT record",
+		zap.String("domain", domain),
+		zap.String("record", recordName),
+	)
+
+	txtRecords, err := net.LookupTXT(recordName)
+	if err != nil {
+		return "", fmt.Errorf("failed to lookup TLS-RPT record: %w", err)
+	}
+
+	for _, record := range txtRecords {
+		if strings.HasPrefix(record, "v=TLSRPTv1") {
+			v.logger.Info("TLS-RPT record verified",
+				zap.String("domain", domain),
+				zap.String("record", record),
+			)
+			return record, nil
+		}
+	}
+
+	return "", fmt.Errorf("no TLS-RPT record found")
+}
+
 // VerifyAll performs comprehensive DNS verification
 func (v *Verifier) VerifyAll(ctx context.Context, domain, dkimSelector string) *VerificationResult {
 	result := &VerificationResult{
@@ -259,6 +346,33 @@ func (v *Verifier) VerifyAll(ctx context.Context, domain, dkimSelector string) *
 		result.DMARCRecord = dmarcRecord
 	}
 
+	// 6. Verify BIMI (optional)
+	bimiRecord, err := v.VerifyBIMI(ctx, domain, "default")
+	if err != nil {
+		// BIMI is optional, just log as info
+		v.logger.Debug("BIMI record not found", zap.String("domain", domain), zap.Error(err))
+	} else {
+		result.BIMIRecord = bimiRecord
+	}
+
+	// 7. Verify MTA-STS (optional)
+	mtaStsRecord, err := v.VerifyMTASTS(ctx, domain)
+	if err != nil {
+		// MTA-STS is optional, just log as info
+		v.logger.Debug("MTA-STS record not found", zap.String("domain", domain), zap.Error(err))
+	} else {
+		result.MTASTSRecord = mtaStsRecord
+	}
+
+	// 8. Verify TLS-RPT (optional)
+	tlsRptRecord, err := v.VerifyTLSRPT(ctx, domain)
+	if err != nil {
+		// TLS-RPT is optional, just log as info
+		v.logger.Debug("TLS-RPT record not found", zap.String("domain", domain), zap.Error(err))
+	} else {
+		result.TLSRPTRecord = tlsRptRecord
+	}
+
 	// Domain is verified if ownership is confirmed and MX records are correct
 	result.Verified = owned && len(result.MXRecords) > 0
 
@@ -307,4 +421,87 @@ func (v *Verifier) GetRequiredRecords(domain, dkimPublicKey string) []Verificati
 	}
 
 	return records
+}
+
+// OptionalRecordConfig contains configuration for optional email security records
+type OptionalRecordConfig struct {
+	// BIMI configuration
+	BIMIEnabled   bool
+	BIMILogoURL   string
+	BIMIVMCURL    string
+	BIMISelector  string
+
+	// MTA-STS configuration
+	MTASTSEnabled bool
+	MTASTSMode    string // "testing" or "enforce"
+	MTASTSPolicyID string
+	MTASTSMXHosts []string
+	MTASTSMaxAge  int
+
+	// TLS-RPT configuration
+	TLSRPTEnabled bool
+	TLSRPTEmail   string
+}
+
+// GetOptionalRecords returns optional email security DNS records (BIMI, MTA-STS, TLS-RPT)
+func (v *Verifier) GetOptionalRecords(domain string, config OptionalRecordConfig) []VerificationRecord {
+	var records []VerificationRecord
+
+	// BIMI record
+	if config.BIMIEnabled && config.BIMILogoURL != "" {
+		selector := config.BIMISelector
+		if selector == "" {
+			selector = "default"
+		}
+
+		bimiValue := fmt.Sprintf("v=BIMI1; l=%s", config.BIMILogoURL)
+		if config.BIMIVMCURL != "" {
+			bimiValue += fmt.Sprintf("; a=%s", config.BIMIVMCURL)
+		}
+
+		records = append(records, VerificationRecord{
+			Type:  "TXT",
+			Name:  fmt.Sprintf("%s._bimi.%s", selector, domain),
+			Value: bimiValue,
+		})
+	}
+
+	// MTA-STS DNS record
+	if config.MTASTSEnabled && config.MTASTSPolicyID != "" {
+		records = append(records, VerificationRecord{
+			Type:  "TXT",
+			Name:  fmt.Sprintf("_mta-sts.%s", domain),
+			Value: fmt.Sprintf("v=STSv1; id=%s", config.MTASTSPolicyID),
+		})
+	}
+
+	// TLS-RPT record
+	if config.TLSRPTEnabled && config.TLSRPTEmail != "" {
+		records = append(records, VerificationRecord{
+			Type:  "TXT",
+			Name:  fmt.Sprintf("_smtp._tls.%s", domain),
+			Value: fmt.Sprintf("v=TLSRPTv1; rua=mailto:%s", config.TLSRPTEmail),
+		})
+	}
+
+	return records
+}
+
+// GenerateMTASTSPolicy generates the MTA-STS policy file content
+func GenerateMTASTSPolicy(mode string, mxHosts []string, maxAge int) string {
+	if maxAge <= 0 {
+		maxAge = 604800 // Default to 1 week
+	}
+
+	var builder strings.Builder
+	builder.WriteString("version: STSv1\n")
+	builder.WriteString(fmt.Sprintf("mode: %s\n", mode))
+
+	for _, mx := range mxHosts {
+		builder.WriteString(fmt.Sprintf("mx: %s\n", mx))
+	}
+
+	builder.WriteString(fmt.Sprintf("max_age: %d\n", maxAge))
+
+	return builder.String()
 }

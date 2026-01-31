@@ -35,7 +35,7 @@ export const domainStatusEnum = pgEnum("domain_status", [
 export const catchAllActionEnum = pgEnum("catch_all_action", ["deliver", "reject", "bounce"]);
 
 /** DNS record types */
-export const dnsRecordTypeEnum = pgEnum("dns_record_type", ["mx", "txt", "cname", "dkim"]);
+export const dnsRecordTypeEnum = pgEnum("dns_record_type", ["mx", "txt", "cname", "dkim", "bimi", "mta_sts", "tls_rpt"]);
 
 /** DKIM key algorithms */
 export const dkimAlgorithmEnum = pgEnum("dkim_algorithm", ["rsa2048", "rsa4096", "ed25519"]);

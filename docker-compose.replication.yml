@@ -1,0 +1,173 @@
+# Docker Compose Override for PostgreSQL Replication
+# Enterprise Email - High Availability Setup
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.replication.yml up -d
+#
+# This adds a read replica for high availability and read scaling
+
+services:
+  # Override primary postgres with replication-enabled config
+  postgres:
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-scripts/postgres:/docker-entrypoint-initdb.d:ro
+      - ./docker/backups/postgres:/backups
+      - ./docker/postgres/primary/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/postgres/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - postgres_archive:/var/lib/postgresql/archive
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    labels:
+      - "com.email.role=primary"
+      - "com.email.replication=enabled"
+
+  # PostgreSQL Read Replica
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: enterprise-email-postgres-replica
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+      # Replication settings
+      PGUSER: replicator
+      PGPASSWORD: replication_secure_password
+    ports:
+      - "${POSTGRES_REPLICA_PORT:-5433}:5432"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./docker/postgres/replica/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/postgres/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: >
+      bash -c "
+        # Check if replica is already initialized
+        if [ ! -f /var/lib/postgresql/data/pgdata/PG_VERSION ]; then
+          echo 'Initializing replica from primary...'
+          # Wait for primary to be ready
+          until pg_isready -h postgres -U ${POSTGRES_USER}; do
+            echo 'Waiting for primary...'
+            sleep 2
+          done
+          # Create base backup
+          PGPASSWORD=replication_secure_password pg_basebackup -h postgres -D /var/lib/postgresql/data/pgdata -U replicator -v -P -X stream -C -S replica_1_slot
+          # Create standby signal file
+          touch /var/lib/postgresql/data/pgdata/standby.signal
+          # Copy replica config
+          cp /etc/postgresql/postgresql.conf /var/lib/postgresql/data/pgdata/postgresql.conf
+          cp /etc/postgresql/pg_hba.conf /var/lib/postgresql/data/pgdata/pg_hba.conf
+        fi
+        # Start PostgreSQL
+        exec postgres -c config_file=/var/lib/postgresql/data/pgdata/postgresql.conf -c hba_file=/var/lib/postgresql/data/pgdata/pg_hba.conf
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-enterprise_email} && psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:-enterprise_email} -c 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - email-network
+    labels:
+      - "com.email.role=replica"
+      - "com.email.replication=enabled"
+
+  # PgBouncer with read/write splitting
+  pgbouncer:
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}"
+      # Read replica can be added to pool for read operations
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      MAX_DB_CONNECTIONS: 100
+      MAX_USER_CONNECTIONS: 100
+
+  # Add read-only PgBouncer for replica
+  pgbouncer-readonly:
+    image: edoburu/pgbouncer:latest
+    container_name: enterprise-email-pgbouncer-readonly
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-replica:5432/${POSTGRES_DB:-enterprise_email}"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+    ports:
+      - "${PGBOUNCER_READONLY_PORT:-6433}:5432"
+    depends_on:
+      postgres-replica:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - email-network
+    labels:
+      - "com.email.role=readonly-pool"
+
+  # Replication Monitor
+  replication-monitor:
+    image: postgres:16-alpine
+    container_name: enterprise-email-replication-monitor
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+    entrypoint: >
+      /bin/sh -c "
+        while true; do
+          echo '=== Replication Status ==='
+          PGPASSWORD=$$POSTGRES_PASSWORD psql -h postgres -U $$POSTGRES_USER -d $$POSTGRES_DB -c '
+            SELECT
+              client_addr,
+              state,
+              sent_lsn,
+              write_lsn,
+              flush_lsn,
+              replay_lsn,
+              sync_state,
+              EXTRACT(EPOCH FROM replay_lag)::int as replay_lag_seconds
+            FROM pg_stat_replication;
+          ' 2>/dev/null || echo 'Unable to check replication status'
+          sleep 30
+        done
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+    networks:
+      - email-network
+    labels:
+      - "com.email.role=monitor"
+
+volumes:
+  postgres_archive:
+    driver: local
+  postgres_replica_data:
+    driver: local

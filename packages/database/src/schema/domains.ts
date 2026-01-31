@@ -102,6 +102,15 @@ export const domains = pgTable(
     /** DMARC policy verified */
     dmarcVerified: boolean("dmarc_verified").notNull().default(false),
 
+    /** BIMI record verified */
+    bimiVerified: boolean("bimi_verified").notNull().default(false),
+
+    /** MTA-STS policy verified */
+    mtaStsVerified: boolean("mta_sts_verified").notNull().default(false),
+
+    /** TLS-RPT record verified */
+    tlsRptVerified: boolean("tls_rpt_verified").notNull().default(false),
+
     /** Catch-all email address (nullable) */
     catchAllAddress: varchar("catch_all_address", { length: 255 }),
 
@@ -277,6 +286,28 @@ export const domainSettings = pgTable("domain_settings", {
   /** Content filtering rules (JSONB) */
   contentFilterRules: jsonb("content_filter_rules").$type<ContentFilterRule[]>().default([]),
 
+  /** BIMI configuration */
+  bimiConfig: jsonb("bimi_config").$type<BIMIConfig>().default({
+    enabled: false,
+    selector: "default",
+    logoUrl: null,
+    vmcUrl: null,
+    lastVerifiedAt: null,
+    logoValid: false,
+    vmcValid: false,
+  }),
+
+  /** MTA-STS configuration */
+  mtaStsConfig: jsonb("mta_sts_config").$type<MTASTSConfig>().default({
+    enabled: false,
+    mode: "none",
+    mxHosts: [],
+    maxAge: 604800,
+    policyId: "",
+    tlsRptEmail: null,
+    lastVerifiedAt: null,
+  }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 
   updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -284,6 +315,48 @@ export const domainSettings = pgTable("domain_settings", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+// ============================================================
+// BIMI CONFIGURATION TYPE
+// ============================================================
+
+export interface BIMIConfig {
+  /** BIMI enabled */
+  enabled: boolean;
+  /** BIMI selector (default: "default") */
+  selector: string;
+  /** Logo URL (must be HTTPS, SVG Tiny PS format) */
+  logoUrl: string | null;
+  /** Verified Mark Certificate URL (optional but recommended for Gmail) */
+  vmcUrl: string | null;
+  /** Last verification timestamp */
+  lastVerifiedAt: string | null;
+  /** Whether logo has been validated */
+  logoValid: boolean;
+  /** Whether VMC has been validated */
+  vmcValid: boolean;
+}
+
+// ============================================================
+// MTA-STS CONFIGURATION TYPE
+// ============================================================
+
+export interface MTASTSConfig {
+  /** MTA-STS enabled */
+  enabled: boolean;
+  /** Policy mode: none, testing, enforce */
+  mode: "none" | "testing" | "enforce";
+  /** MX host patterns */
+  mxHosts: string[];
+  /** Policy max age in seconds */
+  maxAge: number;
+  /** Policy ID (changes when policy changes) */
+  policyId: string;
+  /** TLS-RPT reporting email */
+  tlsRptEmail: string | null;
+  /** Last verification timestamp */
+  lastVerifiedAt: string | null;
+}
 
 // ============================================================
 // CONTENT FILTER RULE TYPE

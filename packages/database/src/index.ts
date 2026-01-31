@@ -36,6 +36,18 @@ export {
 // Seed utilities
 export { seed } from "./seed";
 
+// Replication support
+export {
+  ReplicationClient,
+  getReplicationClient,
+  closeReplicationClient,
+  getReplicationLag,
+  isReplicationHealthy,
+  type ReplicationConfig,
+  type ReplicaConfig,
+  type ReplicationLag,
+} from "./replication";
+
 // Re-export drizzle-orm utilities for convenience
 export {
   eq,
