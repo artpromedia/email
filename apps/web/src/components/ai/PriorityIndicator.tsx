@@ -102,7 +102,7 @@ export function PriorityIndicator({
   showScore = false,
   size = "md",
   className,
-}: PriorityIndicatorProps) {
+}: Readonly<PriorityIndicatorProps>) {
   const config = priorityConfig[level];
   const sizes = sizeConfig[size];
 
@@ -125,7 +125,7 @@ export function PriorityIndicator({
 /**
  * Badge-style priority indicator
  */
-export function PriorityBadge({ level, label, className }: PriorityBadgeProps) {
+export function PriorityBadge({ level, label, className }: Readonly<PriorityBadgeProps>) {
   const config = priorityConfig[level];
 
   return (
@@ -151,11 +151,11 @@ export function PriorityDot({
   level,
   size = "md",
   className,
-}: {
+}: Readonly<{
   level: PriorityLevel;
   size?: "sm" | "md" | "lg";
   className?: string;
-}) {
+}>) {
   const config = priorityConfig[level];
   const sizes = sizeConfig[size];
 
@@ -174,11 +174,11 @@ export function PriorityIndicatorWithFactors({
   level,
   factors,
   className,
-}: {
+}: Readonly<{
   level: PriorityLevel;
   factors?: { factor: string; description: string }[];
   className?: string;
-}) {
+}>) {
   const config = priorityConfig[level];
 
   return (
@@ -193,7 +193,7 @@ export function PriorityIndicatorWithFactors({
           </div>
           <div className="space-y-1.5">
             {factors.map((factor, i) => (
-              <div key={i} className="text-xs">
+              <div key={`factor-${factor.factor}-${i}`} className="text-xs">
                 <span className="font-medium text-neutral-700 dark:text-neutral-300">
                   {factor.factor}:
                 </span>{" "}
@@ -212,7 +212,7 @@ export function PriorityIndicatorWithFactors({
 /**
  * Priority column header for email list
  */
-export function PriorityColumnHeader({ className }: { className?: string }) {
+export function PriorityColumnHeader({ className }: Readonly<{ className?: string }>) {
   return (
     <div className={cn("flex items-center gap-1 text-xs text-neutral-500", className)}>
       <span>Priority</span>

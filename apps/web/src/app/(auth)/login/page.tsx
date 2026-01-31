@@ -71,6 +71,60 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Helper to get login button text
+function getLoginButtonContent(isPending: boolean, requiresTwoFactor: boolean) {
+  if (isPending) {
+    return (
+      <>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Signing in...
+      </>
+    );
+  }
+  if (requiresTwoFactor) {
+    return (
+      <>
+        Verify
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </>
+    );
+  }
+  return (
+    <>
+      Sign in
+      <ArrowRight className="ml-2 h-4 w-4" />
+    </>
+  );
+}
+
+// Domain detection indicator component - extracted to reduce complexity
+function DomainIndicator({
+  domain,
+  branding,
+}: Readonly<{
+  domain: DomainInfo;
+  branding: ReturnType<typeof useDomainBrandingFor>;
+}>) {
+  return (
+    <div
+      className="flex items-center gap-2 rounded-lg p-3 text-sm"
+      style={{
+        backgroundColor: branding?.primaryColor ? `${branding.primaryColor}15` : "var(--muted)",
+      }}
+    >
+      <Building2 className="h-4 w-4" style={{ color: branding?.primaryColor }} />
+      <span>
+        Signing in to <strong>{domain.organizationName}</strong>
+      </span>
+      {domain.ssoEnabled && (
+        <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+          SSO Available
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -214,26 +268,7 @@ export default function LoginPage() {
           </div>
 
           {/* Domain Detection Indicator */}
-          {detectedDomain && (
-            <div
-              className="flex items-center gap-2 rounded-lg p-3 text-sm"
-              style={{
-                backgroundColor: branding?.primaryColor
-                  ? `${branding.primaryColor}15`
-                  : "var(--muted)",
-              }}
-            >
-              <Building2 className="h-4 w-4" style={{ color: branding?.primaryColor }} />
-              <span>
-                Signing in to <strong>{detectedDomain.organizationName}</strong>
-              </span>
-              {detectedDomain.ssoEnabled && (
-                <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                  SSO Available
-                </span>
-              )}
-            </div>
-          )}
+          {detectedDomain && <DomainIndicator domain={detectedDomain} branding={branding} />}
 
           {/* 2FA Code Field (shown when required) */}
           {requiresTwoFactor && (
@@ -331,22 +366,7 @@ export default function LoginPage() {
                 branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined
               }
             >
-              {loginMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : requiresTwoFactor ? (
-                <>
-                  Verify
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Sign in
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
+              {getLoginButtonContent(loginMutation.isPending, requiresTwoFactor)}
             </Button>
           )}
 
@@ -404,7 +424,7 @@ export default function LoginPage() {
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
-              href={`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+              href={email ? `/register?email=${encodeURIComponent(email)}` : "/register"}
               className="font-medium text-primary hover:underline"
             >
               Sign up

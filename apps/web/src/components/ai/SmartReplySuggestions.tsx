@@ -105,7 +105,7 @@ export function SmartReplySuggestions({
   onEdit,
   className,
   quickReplyMode = false,
-}: SmartReplySuggestionsProps) {
+}: Readonly<SmartReplySuggestionsProps>) {
   const [suggestions, setSuggestions] = useState<ReplySuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +197,7 @@ export function SmartReplySuggestions({
         <div className="flex gap-1">
           {[0, 1, 2].map((i) => (
             <div
-              key={i}
+              key={`skeleton-${i}`}
               className="h-8 w-24 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700"
               style={{ animationDelay: `${i * 100}ms` }}
             />
@@ -353,17 +353,17 @@ export function QuickReplySuggestions({
   suggestions,
   onSelect,
   isLoading,
-}: {
+}: Readonly<{
   suggestions: ReplySuggestion[];
   onSelect: (content: string) => void;
   isLoading: boolean;
-}) {
+}>) {
   if (isLoading) {
     return (
       <div className="flex gap-2 overflow-x-auto p-2">
         {[0, 1, 2].map((i) => (
           <div
-            key={i}
+            key={`quick-skeleton-${i}`}
             className="h-10 w-28 shrink-0 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700"
           />
         ))}

@@ -19,7 +19,6 @@ import type {
   DkimKey,
   CheckDnsRecordsRequest,
   CheckDnsRecordsResponse,
-  DomainUser as _DomainUser,
   DomainUsersResponse,
   DomainBranding,
   DomainSettings,
@@ -33,9 +32,14 @@ import type {
 const API_BASE = "/api/v1/admin";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (options?.headers) {
+    const optHeaders = new Headers(options.headers);
+    optHeaders.forEach((value, key) => headers.set(key, value));
+  }
   const response = await fetch(`${API_BASE}${url}`, {
     ...options,
-    headers: Object.assign({ "Content-Type": "application/json" }, options?.headers),
+    headers,
   });
 
   if (!response.ok) {
@@ -338,9 +342,10 @@ export function useDomainUsers(domainId: string | null, query: DomainUsersQuery 
       if (query.page) params.set("page", query.page.toString());
       if (query.pageSize) params.set("pageSize", query.pageSize.toString());
       const queryString = params.toString();
-      return fetchJson<DomainUsersResponse>(
-        `/domains/${domainId}/users${queryString ? `?${queryString}` : ""}`
-      );
+      const url = queryString
+        ? `/domains/${domainId}/users?${queryString}`
+        : `/domains/${domainId}/users`;
+      return fetchJson<DomainUsersResponse>(url);
     },
     enabled: !!domainId,
     staleTime: 60 * 1000, // 1 minute
@@ -356,13 +361,12 @@ export function useExportDomainUsers() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       const queryString = params.toString();
-
-      return fetch(
-        `${API_BASE}/domains/${domainId}/users/export${queryString ? `?${queryString}` : ""}`,
-        {
-          method: "GET",
-        }
-      ).then((res) => res.blob());
+      const url = queryString
+        ? `${API_BASE}/domains/${domainId}/users/export?${queryString}`
+        : `${API_BASE}/domains/${domainId}/users/export`;
+      return fetch(url, {
+        method: "GET",
+      }).then((res) => res.blob());
     },
   });
 }

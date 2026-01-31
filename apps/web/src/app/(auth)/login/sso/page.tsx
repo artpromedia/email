@@ -9,7 +9,7 @@
  * - Loading state with domain branding
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, Loader2, AlertCircle, Building2, ArrowLeft } from "lucide-react";
@@ -24,13 +24,37 @@ import {
 } from "@email/ui";
 import { useInitiateSSOLogin, useDomainDetection } from "@/lib/auth";
 
+// Helper to get SSO error message
+function getSSOErrorMessage(error: string): string {
+  switch (error) {
+    case "access_denied":
+      return "Access was denied by your identity provider";
+    case "invalid_state":
+      return "Invalid session state. Please try again.";
+    case "user_not_found":
+      return "No account found for your identity";
+    default:
+      return "An error occurred during SSO authentication";
+  }
+}
+
+// Helper to get loading status message
+function getLoadingMessage(isPending: boolean, isLoadingDomain: boolean): string {
+  if (isPending) {
+    return "Redirecting to your identity provider...";
+  }
+  if (isLoadingDomain) {
+    return "Checking organization settings...";
+  }
+  return "Preparing SSO login...";
+}
+
 export default function SSOLoginPage() {
   const searchParams = useSearchParams();
   const domain = searchParams.get("domain");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  const [_initiatedSSO, _setInitiatedSSO] = useState(false);
   const initiatedSSORef = React.useRef(false);
 
   // Domain detection for branding
@@ -79,15 +103,7 @@ export default function SSOLoginPage() {
 
         <CardContent className="space-y-4">
           <div className="rounded-lg bg-destructive/10 p-4 text-sm">
-            <p className="font-medium text-destructive">
-              {error === "access_denied"
-                ? "Access was denied by your identity provider"
-                : error === "invalid_state"
-                  ? "Invalid session state. Please try again."
-                  : error === "user_not_found"
-                    ? "No account found for your identity"
-                    : "An error occurred during SSO authentication"}
-            </p>
+            <p className="font-medium text-destructive">{getSSOErrorMessage(error)}</p>
             {errorDescription && <p className="mt-2 text-muted-foreground">{errorDescription}</p>}
           </div>
 
@@ -229,11 +245,7 @@ export default function SSOLoginPage() {
         <div className="flex flex-col items-center gap-4 py-8">
           <Loader2 className="h-8 w-8 animate-spin" style={{ color: branding?.primaryColor }} />
           <p className="animate-pulse text-sm text-muted-foreground">
-            {ssoMutation.isPending
-              ? "Redirecting to your identity provider..."
-              : isLoadingDomain
-                ? "Checking organization settings..."
-                : "Preparing SSO login..."}
+            {getLoadingMessage(ssoMutation.isPending, isLoadingDomain)}
           </p>
         </div>
 

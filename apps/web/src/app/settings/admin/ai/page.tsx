@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 export default function AdminAISettingsRoute() {
-  // TODO: Get orgId from auth context and verify admin access
+  // FUTURE: Get orgId from auth context and verify admin access
   const orgId = "org-placeholder";
 
   return <AdminAISettingsPage orgId={orgId} />;

@@ -117,7 +117,11 @@ interface AISettingsPageProps {
   isAdmin?: boolean;
 }
 
-export function AISettingsPage({ userId, orgId: _orgId, isAdmin = false }: AISettingsPageProps) {
+export function AISettingsPage({
+  userId,
+  orgId: _orgId,
+  isAdmin = false,
+}: Readonly<AISettingsPageProps>) {
   const [activeTab, setActiveTab] = useState("features");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

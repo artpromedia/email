@@ -162,11 +162,11 @@ export function GhostText({
   suggestion,
   onAccept,
   onDismiss,
-}: {
+}: Readonly<{
   suggestion: string;
   onAccept: () => void;
   onDismiss: () => void;
-}) {
+}>) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Tab" && suggestion) {
@@ -228,7 +228,7 @@ export function HelpMeWriteButton({
   userEmail,
   userSignature,
   className,
-}: HelpMeWriteProps) {
+}: Readonly<HelpMeWriteProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState<HelpMeWriteResponse | null>(null);
@@ -472,7 +472,7 @@ export function ToneAdjustmentMenu({
   userId,
   orgId,
   className,
-}: ToneAdjustmentMenuProps) {
+}: Readonly<ToneAdjustmentMenuProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [preview, setPreview] = useState<ToneAdjustResponse | null>(null);
@@ -575,7 +575,10 @@ export function ToneAdjustmentMenu({
                 <div className="mb-3">
                   <div className="mb-1 text-xs font-medium text-neutral-500">Changes Made</div>
                   {preview.changes.slice(0, 3).map((change, i) => (
-                    <div key={i} className="text-xs text-neutral-600 dark:text-neutral-400">
+                    <div
+                      key={`change-${change.original}-${i}`}
+                      className="text-xs text-neutral-600 dark:text-neutral-400"
+                    >
                       <span className="text-red-500 line-through">{change.original}</span>
                       {" → "}
                       <span className="text-green-600">{change.replacement}</span>
@@ -621,7 +624,13 @@ interface GrammarCheckProps {
   className?: string;
 }
 
-export function GrammarCheckButton({ text, onFix, userId, orgId, className }: GrammarCheckProps) {
+export function GrammarCheckButton({
+  text,
+  onFix,
+  userId,
+  orgId,
+  className,
+}: Readonly<GrammarCheckProps>) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<GrammarCheckResponse | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -720,7 +729,10 @@ export function GrammarCheckButton({ text, onFix, userId, orgId, className }: Gr
               ) : (
                 <div className="space-y-3">
                   {result.issues.map((issue, i) => (
-                    <div key={i} className="rounded-lg border p-3 dark:border-neutral-700">
+                    <div
+                      key={`issue-${issue.type}-${i}`}
+                      className="rounded-lg border p-3 dark:border-neutral-700"
+                    >
                       <div className="mb-1 flex items-center gap-2">
                         <span
                           className={cn(

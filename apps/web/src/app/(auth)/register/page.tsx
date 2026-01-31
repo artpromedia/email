@@ -97,6 +97,81 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Helper function to calculate password strength - extracted to reduce component complexity
+function getPasswordStrength(pwd: string) {
+  return passwordRequirements.map((req) => ({
+    ...req,
+    met: req.regex.test(pwd),
+  }));
+}
+
+// Registration unavailable component - extracted to reduce complexity
+function RegistrationUnavailable({
+  domain,
+  email,
+  branding,
+}: Readonly<{
+  domain: DomainInfo;
+  email: string;
+  branding: ReturnType<typeof useDomainBrandingFor>;
+}>) {
+  return (
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        {branding?.logo ? (
+          <div className="flex justify-center">
+            <img
+              src={branding.logo}
+              alt={branding?.displayName || "Organization"}
+              className="h-12 w-auto object-contain"
+            />
+          </div>
+        ) : (
+          <div
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
+          >
+            <Building2 className="h-6 w-6 text-primary-foreground" />
+          </div>
+        )}
+
+        <div>
+          <CardTitle className="text-2xl">Registration Unavailable</CardTitle>
+          <CardDescription className="mt-2">
+            Self-registration is not available for <strong>{domain.organizationName}</strong>.
+          </CardDescription>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="rounded-lg bg-muted p-4 text-sm">
+          <div className="flex items-start gap-3">
+            <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Contact your administrator</p>
+              <p className="mt-1 text-muted-foreground">
+                Your organization requires administrator approval for new accounts. Please contact
+                your IT administrator to request access.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <Button asChild className="w-full">
+            <Link href={`/login?email=${encodeURIComponent(email)}`}>Back to Sign In</Link>
+          </Button>
+          {domain.ssoEnabled && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href={`/login/sso?domain=${domain.domain}`}>Sign in with SSO</Link>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -147,14 +222,6 @@ export default function RegisterPage() {
     }
   }, [domainInfo]);
 
-  // Check password requirements
-  const getPasswordStrength = (pwd: string) => {
-    return passwordRequirements.map((req) => ({
-      ...req,
-      met: req.regex.test(pwd),
-    }));
-  };
-
   const passwordStrength = getPasswordStrength(password);
   const allRequirementsMet = passwordStrength.every((req) => req.met);
 
@@ -182,62 +249,7 @@ export default function RegisterPage() {
 
   // Check if registration is disabled for this domain
   if (detectedDomain && !detectedDomain.registrationEnabled) {
-    return (
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="space-y-4 text-center">
-          {branding?.logo ? (
-            <div className="flex justify-center">
-              <img
-                src={branding.logo}
-                alt={branding?.displayName || "Organization"}
-                className="h-12 w-auto object-contain"
-              />
-            </div>
-          ) : (
-            <div
-              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
-            >
-              <Building2 className="h-6 w-6 text-primary-foreground" />
-            </div>
-          )}
-
-          <div>
-            <CardTitle className="text-2xl">Registration Unavailable</CardTitle>
-            <CardDescription className="mt-2">
-              Self-registration is not available for{" "}
-              <strong>{detectedDomain.organizationName}</strong>.
-            </CardDescription>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="rounded-lg bg-muted p-4 text-sm">
-            <div className="flex items-start gap-3">
-              <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Contact your administrator</p>
-                <p className="mt-1 text-muted-foreground">
-                  Your organization requires administrator approval for new accounts. Please contact
-                  your IT administrator to request access.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <Button asChild className="w-full">
-              <Link href={`/login?email=${encodeURIComponent(email)}`}>Back to Sign In</Link>
-            </Button>
-            {detectedDomain.ssoEnabled && (
-              <Button asChild variant="outline" className="w-full">
-                <Link href={`/login/sso?domain=${detectedDomain.domain}`}>Sign in with SSO</Link>
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <RegistrationUnavailable domain={detectedDomain} email={email} branding={branding} />;
   }
 
   return (
@@ -496,7 +508,7 @@ export default function RegisterPage() {
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
-            href={`/login${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+            href={email ? `/login?email=${encodeURIComponent(email)}` : "/login"}
             className="font-medium text-primary hover:underline"
           >
             Sign in

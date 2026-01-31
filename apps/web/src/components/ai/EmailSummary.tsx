@@ -88,7 +88,7 @@ export function EmailSummary({
   autoExpand = false,
   showTldr = true,
   className,
-}: EmailSummaryProps) {
+}: Readonly<EmailSummaryProps>) {
   const [data, setData] = useState<EmailSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,7 +213,7 @@ export function EmailSummary({
                   <ul className="space-y-1">
                     {data.keyPoints.map((point, i) => (
                       <li
-                        key={i}
+                        key={`point-${i}`}
                         className="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-400"
                       >
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
@@ -263,7 +263,7 @@ export function ThreadSummary({
   userId,
   orgId,
   className,
-}: ThreadSummaryProps) {
+}: Readonly<ThreadSummaryProps>) {
   const [data, setData] = useState<ThreadSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -391,7 +391,7 @@ export function ThreadSummary({
                     </h4>
                     <ul className="space-y-1">
                       {data.keyDecisions.map((decision, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
+                        <li key={`decision-${i}`} className="flex items-start gap-2 text-sm">
                           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                           <span className="text-neutral-600 dark:text-neutral-400">{decision}</span>
                         </li>
@@ -407,7 +407,7 @@ export function ThreadSummary({
                     </h4>
                     <ul className="space-y-1">
                       {data.openQuestions.map((question, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
+                        <li key={`question-${i}`} className="flex items-start gap-2 text-sm">
                           <Circle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
                           <span className="text-neutral-600 dark:text-neutral-400">{question}</span>
                         </li>
@@ -428,7 +428,7 @@ export function ThreadSummary({
             {activeTab === "timeline" && (
               <div className="space-y-3">
                 {data.timeline.map((event, i) => (
-                  <div key={i} className="flex gap-3">
+                  <div key={`event-${event.date}-${i}`} className="flex gap-3">
                     <div className="flex flex-col items-center">
                       <div className="h-2 w-2 rounded-full bg-violet-500" />
                       {i < data.timeline.length - 1 && (
@@ -473,7 +473,12 @@ interface ActionItemsListProps {
   className?: string;
 }
 
-export function ActionItemsList({ items, title, onToggle, className }: ActionItemsListProps) {
+export function ActionItemsList({
+  items,
+  title,
+  onToggle,
+  className,
+}: Readonly<ActionItemsListProps>) {
   if (items.length === 0) {
     return null;
   }
@@ -554,7 +559,7 @@ export function ActionItemsList({ items, title, onToggle, className }: ActionIte
 // TL;DR BADGE (Inline)
 // ============================================================
 
-export function TldrBadge({ tldr, className }: { tldr: string; className?: string }) {
+export function TldrBadge({ tldr, className }: Readonly<{ tldr: string; className?: string }>) {
   return (
     <div
       className={cn(

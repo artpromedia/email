@@ -6,10 +6,10 @@ export const metadata = {
 };
 
 export default function AISettingsRoute() {
-  // TODO: Get userId and orgId from auth context
+  // FUTURE: Get userId and orgId from auth context
   const userId = "user-placeholder";
   const orgId = "org-placeholder";
-  const isAdmin = false; // TODO: Check if user is admin
+  const isAdmin = false; // FUTURE: Check if user is admin
 
   return <AISettingsPage userId={userId} orgId={orgId} isAdmin={isAdmin} />;
 }

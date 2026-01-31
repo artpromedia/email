@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  */
 function checkDatabase(): boolean {
   try {
-    const dbUrl = process.env['DATABASE_URL'];
+    const dbUrl = process.env["DATABASE_URL"];
     if (!dbUrl) {
       console.warn("DATABASE_URL not configured");
       return false;
@@ -23,7 +23,7 @@ function checkDatabase(): boolean {
  */
 function checkRedis(): boolean {
   try {
-    const redisUrl = process.env['REDIS_URL'];
+    const redisUrl = process.env["REDIS_URL"];
     if (!redisUrl) {
       // Redis is optional, return true if not configured
       return true;
@@ -41,7 +41,7 @@ function checkRedis(): boolean {
  */
 function checkStorage(): boolean {
   try {
-    const storageEndpoint = process.env['MINIO_ENDPOINT'] ?? process.env['S3_ENDPOINT'];
+    const storageEndpoint = process.env["MINIO_ENDPOINT"] ?? process.env["S3_ENDPOINT"];
     if (!storageEndpoint) {
       // Storage is optional for basic functionality
       return true;
@@ -59,7 +59,7 @@ function checkStorage(): boolean {
  * Readiness probe - checks if the application is ready to accept traffic
  * Returns 200 if ready, 503 if not ready
  */
-export async function GET() {
+export function GET() {
   const checks = {
     server: true,
     database: false,

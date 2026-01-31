@@ -28,7 +28,7 @@ interface UserRowProps {
   user: DomainUser;
 }
 
-function UserRow({ user }: UserRowProps) {
+function UserRow({ user }: Readonly<UserRowProps>) {
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -40,6 +40,12 @@ function UserRow({ user }: UserRowProps) {
   const getUsagePercentage = () => {
     if (user.quotaBytes === 0) return 0;
     return Math.round((user.storageUsedBytes / user.quotaBytes) * 100);
+  };
+
+  const getUsageColor = (percentage: number) => {
+    if (percentage >= 90) return "bg-red-500";
+    if (percentage >= 75) return "bg-amber-500";
+    return "bg-blue-500";
   };
 
   const usagePercentage = getUsagePercentage();
@@ -81,14 +87,7 @@ function UserRow({ user }: UserRowProps) {
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
             <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                usagePercentage >= 90
-                  ? "bg-red-500"
-                  : usagePercentage >= 75
-                    ? "bg-amber-500"
-                    : "bg-blue-500"
-              )}
+              className={cn("h-full rounded-full transition-all", getUsageColor(usagePercentage))}
               style={{ width: `${Math.min(usagePercentage, 100)}%` }}
             />
           </div>
@@ -116,7 +115,7 @@ function UserRow({ user }: UserRowProps) {
 // MAIN COMPONENT
 // ============================================================
 
-export function DomainUsersTab({ domainId }: DomainUsersTabProps) {
+export function DomainUsersTab({ domainId }: Readonly<DomainUsersTabProps>) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 25;
@@ -138,11 +137,71 @@ export function DomainUsersTab({ domainId }: DomainUsersTabProps) {
       a.download = `domain-users-${domainId}-${new Date().toISOString()}.csv`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to export users:", error);
     }
+  };
+
+  const renderTableContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-blue-600" />
+        </div>
+      );
+    }
+
+    if (data && data.users.length > 0) {
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  User
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Emails
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Storage
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Created
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Last Activity
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.users.map((user) => (
+                <UserRow key={user.id} user={user} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="rounded-full bg-neutral-100 p-3 dark:bg-neutral-800">
+          <Users className="h-6 w-6 text-neutral-400" />
+        </div>
+        <h3 className="mt-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+          No users found
+        </h3>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+          {search ? "Try adjusting your search" : "Add your first user to get started"}
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -281,55 +340,7 @@ export function DomainUsersTab({ domainId }: DomainUsersTabProps) {
 
       {/* Table */}
       <div className="rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-blue-600" />
-          </div>
-        ) : data && data.users.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                    User
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                    Emails
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                    Storage
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                    Created
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                    Last Activity
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.users.map((user) => (
-                  <UserRow key={user.id} user={user} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-neutral-100 p-3 dark:bg-neutral-800">
-              <Users className="h-6 w-6 text-neutral-400" />
-            </div>
-            <h3 className="mt-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              No users found
-            </h3>
-            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              {search ? "Try adjusting your search" : "Add your first user to get started"}
-            </p>
-          </div>
-        )}
+        {renderTableContent()}
       </div>
 
       {/* Pagination */}

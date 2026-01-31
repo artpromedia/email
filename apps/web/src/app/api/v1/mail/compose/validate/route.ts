@@ -153,19 +153,17 @@ export async function POST(request: NextRequest) {
     const bccError = validateEmailList(bcc, "BCC");
     if (bccError) errors["bcc"] = bccError;
 
-    // Validate subject
-    warnings.push(...validateSubject(subject));
-
-    // Validate body
-    warnings.push(...validateBody(emailBody));
-
     // Check recipient count
     const recipientValidation = validateRecipientCount(to, cc, bcc);
     if (recipientValidation.error) errors["recipients"] = recipientValidation.error;
-    warnings.push(...recipientValidation.warnings);
 
-    // Check for external recipients (domain verification)
-    warnings.push(...checkExternalRecipients(from, to, cc, bcc));
+    // Collect all warnings in a single push call
+    warnings.push(
+      ...validateSubject(subject),
+      ...validateBody(emailBody),
+      ...recipientValidation.warnings,
+      ...checkExternalRecipients(from, to, cc, bcc)
+    );
 
     const isValid = Object.keys(errors).length === 0;
 

@@ -229,7 +229,7 @@ interface AdminAISettingsPageProps {
   orgId: string;
 }
 
-export function AdminAISettingsPage({ orgId }: AdminAISettingsPageProps) {
+export function AdminAISettingsPage({ orgId }: Readonly<AdminAISettingsPageProps>) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -676,7 +676,7 @@ function ProviderSection({
       setShowApiKeyDialog(false);
       setNewApiKey("");
       // Refresh to show new status
-      window.location.reload();
+      globalThis.location.reload();
     } catch (error) {
       console.error("Failed to save API key:", error);
     } finally {

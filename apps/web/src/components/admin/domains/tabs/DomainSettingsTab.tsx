@@ -24,7 +24,7 @@ interface DomainSettingsTabProps {
 // MAIN COMPONENT
 // ============================================================
 
-export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
+export function DomainSettingsTab({ domainId }: Readonly<DomainSettingsTabProps>) {
   const { data: currentSettings, isLoading } = useDomainSettings(domainId);
   const updateSettings = useUpdateDomainSettings();
 
@@ -181,7 +181,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
                 onChange={(e) =>
                   setSettings({
                     ...settings,
-                    defaultStorageQuotaBytes: parseInt(e.target.value) * 1073741824,
+                    defaultStorageQuotaBytes: Number.parseInt(e.target.value) * 1073741824,
                   })
                 }
                 className={cn(
@@ -209,7 +209,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
                 onChange={(e) =>
                   setSettings({
                     ...settings,
-                    maxMessageSizeBytes: parseInt(e.target.value) * 1048576,
+                    maxMessageSizeBytes: Number.parseInt(e.target.value) * 1048576,
                   })
                 }
                 className={cn(
@@ -237,7 +237,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
                 onChange={(e) =>
                   setSettings({
                     ...settings,
-                    maxRecipientsPerMessage: parseInt(e.target.value),
+                    maxRecipientsPerMessage: Number.parseInt(e.target.value),
                   })
                 }
                 className={cn(
@@ -266,7 +266,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
                 onChange={(e) =>
                   setSettings({
                     ...settings,
-                    maxMessagesPerDay: parseInt(e.target.value),
+                    maxMessagesPerDay: Number.parseInt(e.target.value),
                   })
                 }
                 className={cn(
@@ -364,7 +364,7 @@ export function DomainSettingsTab({ domainId }: DomainSettingsTabProps) {
           </p>
 
           <div className="mt-4 space-y-4">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2" aria-label="Require TLS encryption">
               <input
                 type="checkbox"
                 checked={settings.requireTls}

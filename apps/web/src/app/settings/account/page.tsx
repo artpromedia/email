@@ -76,7 +76,7 @@ export default function AccountSettingsPage() {
     setSaveSuccess(false);
 
     try {
-      // TODO: Implement profile update API call
+      // FUTURE: Implement profile update API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

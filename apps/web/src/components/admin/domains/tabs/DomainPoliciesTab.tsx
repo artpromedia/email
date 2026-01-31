@@ -24,7 +24,7 @@ interface DomainPoliciesTabProps {
 // MAIN COMPONENT
 // ============================================================
 
-export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
+export function DomainPoliciesTab({ domainId }: Readonly<DomainPoliciesTabProps>) {
   const { data: currentPolicies, isLoading } = useDomainPolicies(domainId);
   const updatePolicies = useUpdateDomainPolicies();
 
@@ -124,7 +124,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 min="0"
                 value={policies.retentionDays}
                 onChange={(e) =>
-                  setPolicies({ ...policies, retentionDays: parseInt(e.target.value) })
+                  setPolicies({ ...policies, retentionDays: Number.parseInt(e.target.value) })
                 }
                 className={cn(
                   "mt-1 w-full rounded-lg border border-neutral-200 px-4 py-2 text-sm",
@@ -151,7 +151,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 min="0"
                 value={policies.archiveAfterDays}
                 onChange={(e) =>
-                  setPolicies({ ...policies, archiveAfterDays: parseInt(e.target.value) })
+                  setPolicies({ ...policies, archiveAfterDays: Number.parseInt(e.target.value) })
                 }
                 className={cn(
                   "mt-1 w-full rounded-lg border border-neutral-200 px-4 py-2 text-sm",
@@ -178,7 +178,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 min="0"
                 value={policies.deleteAfterDays}
                 onChange={(e) =>
-                  setPolicies({ ...policies, deleteAfterDays: parseInt(e.target.value) })
+                  setPolicies({ ...policies, deleteAfterDays: Number.parseInt(e.target.value) })
                 }
                 className={cn(
                   "mt-1 w-full rounded-lg border border-neutral-200 px-4 py-2 text-sm",
@@ -221,6 +221,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 checked={policies.requireEncryption}
                 onChange={(e) => setPolicies({ ...policies, requireEncryption: e.target.checked })}
                 className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                aria-label="Require email encryption"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -238,6 +239,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 checked={policies.allowForwarding}
                 onChange={(e) => setPolicies({ ...policies, allowForwarding: e.target.checked })}
                 className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                aria-label="Allow email forwarding"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -257,6 +259,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                   setPolicies({ ...policies, allowExternalSharing: e.target.checked })
                 }
                 className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                aria-label="Allow external sharing"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -286,6 +289,7 @@ export function DomainPoliciesTab({ domainId }: DomainPoliciesTabProps) {
                 checked={policies.dlpEnabled}
                 onChange={(e) => setPolicies({ ...policies, dlpEnabled: e.target.checked })}
                 className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                aria-label="Enable DLP scanning"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">

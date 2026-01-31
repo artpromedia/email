@@ -7,7 +7,7 @@ function checkDatabase(): boolean {
   try {
     // In production, this would use the actual database client
     // For now, check if DATABASE_URL is configured
-    const dbUrl = process.env['DATABASE_URL'];
+    const dbUrl = process.env["DATABASE_URL"];
     if (!dbUrl) {
       console.warn("DATABASE_URL not configured");
       return false;
@@ -28,7 +28,7 @@ function checkRedis(): boolean {
   try {
     // In production, this would use the actual Redis client
     // For now, check if REDIS_URL is configured
-    const redisUrl = process.env['REDIS_URL'];
+    const redisUrl = process.env["REDIS_URL"];
     if (!redisUrl) {
       // Redis is optional for admin dashboard
       return true;
@@ -47,7 +47,7 @@ function checkRedis(): boolean {
  */
 function checkAuthService(): boolean {
   try {
-    const authServiceUrl = process.env['AUTH_SERVICE_URL'];
+    const authServiceUrl = process.env["AUTH_SERVICE_URL"];
     if (!authServiceUrl) {
       // Auth service URL not configured, assume internal auth
       return true;
@@ -66,7 +66,7 @@ function checkAuthService(): boolean {
  * GET /api/health/ready
  * Readiness probe for admin dashboard
  */
-export async function GET() {
+export function GET() {
   const checks = {
     server: true,
     database: false,

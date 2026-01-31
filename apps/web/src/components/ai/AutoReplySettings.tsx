@@ -97,7 +97,11 @@ interface ModeToggleProps {
   disabled?: boolean;
 }
 
-export function AutoReplyModeToggle({ currentMode, onChange, disabled }: ModeToggleProps) {
+export function AutoReplyModeToggle({
+  currentMode,
+  onChange,
+  disabled,
+}: Readonly<ModeToggleProps>) {
   const modes: {
     value: AutoReplyMode;
     label: string;
@@ -206,7 +210,13 @@ interface RuleListProps {
   onCreate: () => void;
 }
 
-export function AutoReplyRuleList({ rules, onEdit, onDelete, onToggle, onCreate }: RuleListProps) {
+export function AutoReplyRuleList({
+  rules,
+  onEdit,
+  onDelete,
+  onToggle,
+  onCreate,
+}: Readonly<RuleListProps>) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -323,7 +333,13 @@ interface RuleEditorProps {
   orgId: string;
 }
 
-export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: RuleEditorProps) {
+export function AutoReplyRuleEditor({
+  rule,
+  onSave,
+  onCancel,
+  userId,
+  orgId,
+}: Readonly<RuleEditorProps>) {
   const [name, setName] = useState(rule?.name ?? "");
   const [priority, setPriority] = useState(rule?.priority ?? 1);
   const [conditions, setConditions] = useState<RuleCondition[]>(rule?.conditions ?? []);
@@ -453,7 +469,7 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
             id="rule-priority"
             type="number"
             value={priority}
-            onChange={(e) => setPriority(parseInt(e.target.value) || 1)}
+            onChange={(e) => setPriority(Number.parseInt(e.target.value) || 1)}
             min={1}
             max={100}
             className="w-full rounded-lg border p-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-neutral-600 dark:bg-neutral-900"
@@ -613,7 +629,7 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
                 onChange={(e) =>
                   setSafeguards({
                     ...safeguards,
-                    maxRepliesPerSender: parseInt(e.target.value) || 1,
+                    maxRepliesPerSender: Number.parseInt(e.target.value) || 1,
                   })
                 }
                 min={1}
@@ -634,7 +650,7 @@ export function AutoReplyRuleEditor({ rule, onSave, onCancel, userId, orgId }: R
                 onChange={(e) =>
                   setSafeguards({
                     ...safeguards,
-                    cooldownMinutes: parseInt(e.target.value) || 0,
+                    cooldownMinutes: Number.parseInt(e.target.value) || 0,
                   })
                 }
                 min={0}
@@ -694,7 +710,12 @@ interface AuditLogProps {
   hasMore?: boolean;
 }
 
-export function AutoReplyAuditLog({ entries, isLoading, onLoadMore, hasMore }: AuditLogProps) {
+export function AutoReplyAuditLog({
+  entries,
+  isLoading,
+  onLoadMore,
+  hasMore,
+}: Readonly<AuditLogProps>) {
   const actionColors = {
     suggested: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     drafted: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
@@ -781,7 +802,7 @@ interface AutoReplySettingsProps {
   orgId: string;
 }
 
-export function AutoReplySettings({ userId, orgId }: AutoReplySettingsProps) {
+export function AutoReplySettings({ userId, orgId }: Readonly<AutoReplySettingsProps>) {
   const [mode, setMode] = useState<AutoReplyMode>("off");
   const [rules, setRules] = useState<AutoReplyRule[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
