@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Brain,
   Sparkles,
   MessageSquare,
   Reply,
@@ -14,15 +13,12 @@ import {
   Trash2,
   Plus,
   X,
-  Info,
   Loader2,
   CheckCircle,
   Settings,
   Lock,
   Globe,
   Zap,
-  RefreshCw,
-  HelpCircle,
   FileText,
   Mail,
   Folder,
@@ -53,12 +49,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+// Separator not currently used but kept for future
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+// Tooltip imports removed - not currently used
 import { cn } from "@/lib/utils";
 
 // ============================================================
@@ -121,7 +117,7 @@ interface AISettingsPageProps {
   isAdmin?: boolean;
 }
 
-export function AISettingsPage({ userId, orgId, isAdmin = false }: AISettingsPageProps) {
+export function AISettingsPage({ userId, orgId: _orgId, isAdmin = false }: AISettingsPageProps) {
   const [activeTab, setActiveTab] = useState("features");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -478,7 +474,7 @@ function FeatureTogglesSection({ features, onChange, aiAvailable }: FeatureToggl
               <Switch
                 id={feature.key}
                 checked={features[feature.key]}
-                onCheckedChange={(checked) => onChange({ [feature.key]: checked })}
+                onCheckedChange={(checked: boolean) => onChange({ [feature.key]: checked })}
                 disabled={!aiAvailable}
               />
             </div>
@@ -710,7 +706,7 @@ function PersonalizationSection({ personalization, onChange }: PersonalizationSe
             <Label>Language Preference</Label>
             <Select
               value={personalization.languagePreference}
-              onValueChange={(value) => onChange({ languagePreference: value })}
+              onValueChange={(value: string) => onChange({ languagePreference: value })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -736,7 +732,7 @@ function PersonalizationSection({ personalization, onChange }: PersonalizationSe
             <Switch
               id="signature"
               checked={personalization.signatureInclusion}
-              onCheckedChange={(checked) => onChange({ signatureInclusion: checked })}
+              onCheckedChange={(checked: boolean) => onChange({ signatureInclusion: checked })}
             />
           </div>
         </CardContent>
@@ -853,7 +849,7 @@ function PrivacyControlsSection({ privacy, onChange, userId }: PrivacyControlsSe
             <Label>Retention Period</Label>
             <Select
               value={String(privacy.dataRetentionDays)}
-              onValueChange={(value) =>
+              onValueChange={(value: string) =>
                 onChange({
                   dataRetentionDays: Number(value) as AIPrivacySettings["dataRetentionDays"],
                 })
@@ -1095,7 +1091,7 @@ function PrivacyControlsSection({ privacy, onChange, userId }: PrivacyControlsSe
             <Switch
               id="training-opt-out"
               checked={privacy.allowAnonymousTraining}
-              onCheckedChange={(checked) => onChange({ allowAnonymousTraining: checked })}
+              onCheckedChange={(checked: boolean) => onChange({ allowAnonymousTraining: checked })}
             />
           </div>
 
@@ -1109,7 +1105,7 @@ function PrivacyControlsSection({ privacy, onChange, userId }: PrivacyControlsSe
             <Switch
               id="encrypt-data"
               checked={privacy.encryptAIData}
-              onCheckedChange={(checked) => onChange({ encryptAIData: checked })}
+              onCheckedChange={(checked: boolean) => onChange({ encryptAIData: checked })}
             />
           </div>
 
@@ -1123,7 +1119,7 @@ function PrivacyControlsSection({ privacy, onChange, userId }: PrivacyControlsSe
             <Switch
               id="log-access"
               checked={privacy.logAIAccess}
-              onCheckedChange={(checked) => onChange({ logAIAccess: checked })}
+              onCheckedChange={(checked: boolean) => onChange({ logAIAccess: checked })}
             />
           </div>
         </CardContent>

@@ -11,17 +11,12 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader2,
-  Info,
-  Lock,
   Settings,
   DollarSign,
   Activity,
   FileCheck,
   Eye,
-  RefreshCw,
   Zap,
-  Globe,
-  HelpCircle,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -50,7 +45,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 // ============================================================
