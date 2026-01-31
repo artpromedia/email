@@ -1,0 +1,35 @@
+server:
+  port: "${CHAT_PORT:-8086}"
+  logLevel: "${LOG_LEVEL:-info}"
+
+database:
+  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/enterprise_email?sslmode=require}"
+  maxConns: 25
+  minConns: 5
+  maxConnLifetime: 1h
+
+redis:
+  addr: "${REDIS_ADDR:-localhost:6379}"
+  password: "${REDIS_PASSWORD:-}"
+  db: 3
+
+auth:
+  jwtSecret: "${JWT_SECRET}"
+  serviceUrl: "${AUTH_SERVICE_URL:-http://localhost:8080}"
+
+storage:
+  endpoint: "${S3_ENDPOINT:-http://localhost:9000}"
+  accessKey: "${S3_ACCESS_KEY}"
+  secretKey: "${S3_SECRET_KEY}"
+  bucket: "${CHAT_BUCKET:-chat-files}"
+  maxFileSize: 104857600 # 100MB
+
+metrics:
+  port: "${CHAT_METRICS_PORT:-9094}"
+
+limits:
+  maxMessageLength: 10000
+  maxChannelsPerOrg: 500
+  maxMembersPerChannel: 1000
+  maxFileSize: 104857600
+  rateLimitPerMinute: 60

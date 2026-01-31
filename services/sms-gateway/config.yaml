@@ -1,0 +1,74 @@
+server:
+  port: "${SMS_GATEWAY_PORT:-8087}"
+  logLevel: "${LOG_LEVEL:-info}"
+
+database:
+  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/enterprise_email?sslmode=require}"
+  maxConns: 25
+  minConns: 5
+  maxConnLifetime: 1h
+
+redis:
+  addr: "${REDIS_ADDR:-localhost:6379}"
+  password: "${REDIS_PASSWORD:-}"
+  db: 4
+
+auth:
+  jwtSecret: "${JWT_SECRET}"
+  apiKeyAuth: true
+
+metrics:
+  port: "${SMS_METRICS_PORT:-9095}"
+
+rateLimit:
+  enabled: true
+  defaultPerMinute: 30
+  defaultPerHour: 500
+  defaultPerDay: 5000
+  otpPerMinute: 3
+  otpPerHour: 10
+  otpPerPhonePerDay: 5
+
+otp:
+  length: 6
+  expiryMinutes: 5
+  maxAttempts: 3
+  resendCooldown: 60s
+  alphanumeric: false
+  caseSensitive: false
+
+providers:
+  default: "twilio"
+
+  twilio:
+    enabled: ${TWILIO_ENABLED:-false}
+    priority: 1
+    accountSid: "${TWILIO_ACCOUNT_SID:-}"
+    authToken: "${TWILIO_AUTH_TOKEN:-}"
+    fromNumber: "${TWILIO_FROM_NUMBER:-}"
+    messagingServiceSid: "${TWILIO_MESSAGING_SERVICE_SID:-}"
+
+  vonage:
+    enabled: ${VONAGE_ENABLED:-false}
+    priority: 2
+    apiKey: "${VONAGE_API_KEY:-}"
+    apiSecret: "${VONAGE_API_SECRET:-}"
+    fromNumber: "${VONAGE_FROM_NUMBER:-}"
+    applicationId: "${VONAGE_APPLICATION_ID:-}"
+    privateKey: "${VONAGE_PRIVATE_KEY:-}"
+
+  smpp:
+    enabled: false
+    priority: 3
+    host: "${SMPP_HOST:-}"
+    port: ${SMPP_PORT:-2775}
+    systemId: "${SMPP_SYSTEM_ID:-}"
+    password: "${SMPP_PASSWORD:-}"
+    systemType: "transceiver"
+
+  gsm:
+    enabled: false
+    priority: 10
+    devicePath: "/dev/ttyUSB0"
+    baudRate: 115200
+    pin: "${GSM_PIN:-}"

@@ -692,6 +692,94 @@ services:
     networks:
       - email-network
 
+  # Chat Service - Internal Team Communication (Slack-like)
+  chat:
+    build:
+      context: ./services/chat
+      dockerfile: Dockerfile
+    container_name: enterprise-email-chat
+    restart: unless-stopped
+    environment:
+      CHAT_PORT: "8086"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      AUTH_SERVICE_URL: "http://auth:8080"
+      S3_ENDPOINT: "http://minio:9000"
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      CHAT_BUCKET: chat-files
+      CHAT_METRICS_PORT: "9094"
+    ports:
+      - "${CHAT_PORT:-8086}:8086"
+      - "${CHAT_METRICS_PORT:-9094}:9094"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
+  # SMS Gateway - Multi-provider SMS with OTP support
+  sms-gateway:
+    build:
+      context: ./services/sms-gateway
+      dockerfile: Dockerfile
+    container_name: enterprise-email-sms-gateway
+    restart: unless-stopped
+    environment:
+      SMS_GATEWAY_PORT: "8087"
+      SMS_METRICS_PORT: "9095"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # Twilio Configuration
+      TWILIO_ENABLED: ${TWILIO_ENABLED:-false}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      TWILIO_MESSAGING_SERVICE_SID: ${TWILIO_MESSAGING_SERVICE_SID:-}
+      # Vonage Configuration
+      VONAGE_ENABLED: ${VONAGE_ENABLED:-false}
+      VONAGE_API_KEY: ${VONAGE_API_KEY:-}
+      VONAGE_API_SECRET: ${VONAGE_API_SECRET:-}
+      VONAGE_FROM_NUMBER: ${VONAGE_FROM_NUMBER:-}
+    ports:
+      - "${SMS_GATEWAY_PORT:-8087}:8087"
+      - "${SMS_METRICS_PORT:-9095}:9095"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8087/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
 volumes:
   postgres_data:
     driver: local
@@ -710,6 +798,8 @@ volumes:
   smtp_queue_data:
     driver: local
   contacts_photos:
+    driver: local
+  chat_files:
     driver: local
 
 networks:
