@@ -88,7 +88,7 @@ func Load() *Config {
 		S3PresignDuration: getDuration("S3_PRESIGN_DURATION", 15*time.Minute),
 
 		// Storage
-		MaxUploadSize:        getInt64("MAX_UPLOAD_SIZE", 50*1024*1024), // 50MB
+		MaxUploadSize:        getInt64("MAX_UPLOAD_SIZE", 25*1024*1024), // 25MB - aligned with SMTP and industry standard
 		ChunkSize:            getInt64("CHUNK_SIZE", 5*1024*1024),       // 5MB
 		DeduplicationEnabled: getBool("DEDUPLICATION_ENABLED", true),
 

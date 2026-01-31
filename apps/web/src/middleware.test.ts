@@ -2,18 +2,77 @@
  * Middleware Tests
  *
  * Tests for security headers, rate limiting, and CSRF validation
+ * Updated to support async middleware with @email/utils rate limiter
  */
 
 // Note: These tests require the jest setup from jest.setup.js
 
+// Mock @email/utils before importing middleware
+jest.mock('@email/utils', () => {
+  // Create a mock rate limiter that tracks calls per identifier
+  const mockCounts = new Map<string, number>();
+
+  const mockRateLimiter = {
+    check: jest.fn(async (identifier: string, limit: number) => {
+      const count = (mockCounts.get(identifier) || 0) + 1;
+      mockCounts.set(identifier, count);
+      return {
+        allowed: count <= limit,
+        remaining: Math.max(0, limit - count),
+        resetAt: Math.floor(Date.now() / 1000) + 60,
+        retryAfter: count > limit ? 60 : undefined,
+      };
+    }),
+    checkMultiple: jest.fn(async (identifier: string, configs: Array<{ limit: number; windowMs: number }>) => {
+      // Use the most restrictive limit
+      const minLimit = Math.min(...configs.map((c) => c.limit));
+      const count = (mockCounts.get(identifier) || 0) + 1;
+      mockCounts.set(identifier, count);
+      return {
+        allowed: count <= minLimit,
+        remaining: Math.max(0, minLimit - count),
+        resetAt: Math.floor(Date.now() / 1000) + 60,
+        retryAfter: count > minLimit ? 60 : undefined,
+      };
+    }),
+    reset: jest.fn(),
+  };
+
+  return {
+    InMemoryRateLimiter: jest.fn(() => mockRateLimiter),
+    RATE_LIMIT_TIERS: {
+      auth: [
+        { limit: 5, windowMs: 60 * 1000 },
+        { limit: 20, windowMs: 60 * 60 * 1000 },
+      ],
+      api: [
+        { limit: 100, windowMs: 60 * 1000 },
+        { limit: 1000, windowMs: 60 * 60 * 1000 },
+      ],
+      web: [{ limit: 300, windowMs: 60 * 1000 }],
+    },
+    // Export for test access
+    __mockCounts: mockCounts,
+    __mockRateLimiter: mockRateLimiter,
+  };
+});
+
 describe('Middleware', () => {
   // Import middleware after setting up mocks
-  let middleware: Function;
-  let NextResponse: any;
+  let middleware: (request: unknown) => Promise<unknown>;
+  let NextResponse: {
+    next: jest.Mock;
+  };
+  let mockCounts: Map<string, number>;
 
   beforeEach(async () => {
     // Reset modules to get fresh rate limit state
     jest.resetModules();
+
+    // Get the mock counts map and clear it
+    const utils = await import('@email/utils');
+    mockCounts = (utils as unknown as { __mockCounts: Map<string, number> }).__mockCounts;
+    mockCounts.clear();
 
     // Mock NextResponse
     NextResponse = {
@@ -38,7 +97,7 @@ describe('Middleware', () => {
         headers: { 'x-real-ip': '192.168.1.1' },
       });
 
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status).not.toBe(429);
     });
@@ -51,7 +110,7 @@ describe('Middleware', () => {
         const request = createMockNextRequest('http://localhost:3000/api/auth/login', {
           headers: { 'x-real-ip': ip },
         });
-        const response = middleware(request);
+        const response = (await middleware(request)) as { status?: number };
 
         if (i < 5) {
           expect(response.status || 200).not.toBe(429);
@@ -69,7 +128,7 @@ describe('Middleware', () => {
         const request = createMockNextRequest('http://localhost:3000/api/emails', {
           headers: { 'x-real-ip': ip },
         });
-        const response = middleware(request);
+        const response = (await middleware(request)) as { status?: number };
 
         if (i < 100) {
           expect(response.status || 200).not.toBe(429);
@@ -85,19 +144,19 @@ describe('Middleware', () => {
         const request = createMockNextRequest('http://localhost:3000/api/auth/login', {
           headers: { 'x-real-ip': '10.0.0.1' },
         });
-        middleware(request);
+        await middleware(request);
       }
 
       // IP2 should still be allowed
       const request = createMockNextRequest('http://localhost:3000/api/auth/login', {
         headers: { 'x-real-ip': '10.0.0.2' },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status || 200).not.toBe(429);
     });
 
-    it('returns Retry-After header when rate limited', async () => {
+    it('returns rate limit headers when rate limited', async () => {
       const ip = '192.168.1.102';
 
       // Exhaust limit
@@ -105,10 +164,15 @@ describe('Middleware', () => {
         const request = createMockNextRequest('http://localhost:3000/api/auth/login', {
           headers: { 'x-real-ip': ip },
         });
-        const response = middleware(request);
+        const response = (await middleware(request)) as {
+          status?: number;
+          headers: { get: (name: string) => string | null };
+        };
 
         if (response.status === 429) {
-          expect(response.headers.get('Retry-After')).toBe('60');
+          expect(response.headers.get('Retry-After')).toBeTruthy();
+          expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+          expect(response.headers.get('X-RateLimit-Reset')).toBeTruthy();
         }
       }
     });
@@ -117,7 +181,9 @@ describe('Middleware', () => {
   describe('Security Headers', () => {
     it('sets HSTS header', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         const hsts = response.headers.get('Strict-Transport-Security');
@@ -128,7 +194,9 @@ describe('Middleware', () => {
 
     it('sets X-Frame-Options to DENY', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         expect(response.headers.get('X-Frame-Options')).toBe('DENY');
@@ -137,7 +205,9 @@ describe('Middleware', () => {
 
     it('sets X-Content-Type-Options to nosniff', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
@@ -146,7 +216,9 @@ describe('Middleware', () => {
 
     it('sets X-XSS-Protection', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         expect(response.headers.get('X-XSS-Protection')).toBe('1; mode=block');
@@ -155,7 +227,9 @@ describe('Middleware', () => {
 
     it('sets Content-Security-Policy', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         const csp = response.headers.get('Content-Security-Policy');
@@ -166,7 +240,9 @@ describe('Middleware', () => {
 
     it('sets Referrer-Policy', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
@@ -175,7 +251,9 @@ describe('Middleware', () => {
 
     it('sets Permissions-Policy to disable sensitive features', async () => {
       const request = createMockNextRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = (await middleware(request)) as {
+        headers?: { get: (name: string) => string | null };
+      };
 
       if (response.headers && response.headers.get) {
         const policy = response.headers.get('Permissions-Policy');
@@ -191,7 +269,7 @@ describe('Middleware', () => {
       const request = createMockNextRequest('http://localhost:3000/api/emails', {
         method: 'GET',
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status || 200).not.toBe(403);
     });
@@ -201,7 +279,7 @@ describe('Middleware', () => {
         method: 'POST',
         headers: { 'x-real-ip': '192.168.1.200' },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status).toBe(403);
     });
@@ -215,7 +293,7 @@ describe('Middleware', () => {
         },
         cookies: { 'csrf-token': 'different-token-from-cookie' },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status).toBe(403);
     });
@@ -230,7 +308,7 @@ describe('Middleware', () => {
         },
         cookies: { 'csrf-token': csrfToken },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status || 200).not.toBe(403);
     });
@@ -241,7 +319,7 @@ describe('Middleware', () => {
         headers: { 'x-real-ip': '192.168.1.203' },
         // No CSRF token
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status || 200).not.toBe(403);
     });
@@ -251,7 +329,7 @@ describe('Middleware', () => {
         method: 'PUT',
         headers: { 'x-real-ip': '192.168.1.204' },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status).toBe(403);
     });
@@ -261,7 +339,7 @@ describe('Middleware', () => {
         method: 'DELETE',
         headers: { 'x-real-ip': '192.168.1.205' },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status).toBe(403);
     });
@@ -271,7 +349,7 @@ describe('Middleware', () => {
         method: 'PATCH',
         headers: { 'x-real-ip': '192.168.1.206' },
       });
-      const response = middleware(request);
+      const response = (await middleware(request)) as { status?: number };
 
       expect(response.status).toBe(403);
     });
@@ -285,9 +363,13 @@ describe('Middleware', () => {
       const pageRequest = createMockNextRequest('http://localhost:3000/mail');
 
       // All should pass first request
-      expect((middleware(authRequest).status || 200)).not.toBe(429);
-      expect((middleware(apiRequest).status || 200)).not.toBe(429);
-      expect((middleware(pageRequest).status || 200)).not.toBe(429);
+      const authResponse = (await middleware(authRequest)) as { status?: number };
+      const apiResponse = (await middleware(apiRequest)) as { status?: number };
+      const pageResponse = (await middleware(pageRequest)) as { status?: number };
+
+      expect(authResponse.status || 200).not.toBe(429);
+      expect(apiResponse.status || 200).not.toBe(429);
+      expect(pageResponse.status || 200).not.toBe(429);
     });
   });
 });

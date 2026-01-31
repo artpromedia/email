@@ -89,8 +89,8 @@ imap:
   # Enable compression
   compress: true
   
-  # Maximum message size (64MB)
-  max_message_size: 67108864
+  # Maximum message size (25MB) - aligned with SMTP and industry standard (Gmail)
+  max_message_size: 26214400
   
   # Maximum simultaneous commands
   max_commands: 5

@@ -1,51 +1,45 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  InMemoryRateLimiter,
+  RATE_LIMIT_TIERS,
+  type RateLimitResult,
+} from "@email/utils";
 
 /**
  * Security Middleware for Enterprise Email Platform
  *
  * Implements:
  * - Security headers (CSP, HSTS, XSS protection)
- * - Rate limiting
+ * - Rate limiting (using @email/utils rate limiter)
  * - CSRF protection validation
  * - Authentication checks
+ *
+ * Note: For horizontal scaling in production, replace InMemoryRateLimiter
+ * with RedisRateLimiter from @email/utils in API routes, or use an
+ * Edge-compatible Redis client like Upstash for middleware.
  */
 
-// Rate limiting store (in production, use Redis)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+// Rate limiter instance - uses InMemoryRateLimiter for Edge compatibility
+// In production with multiple instances, use Redis-based rate limiting
+// via API routes or Upstash Redis for Edge middleware
+const rateLimiter = new InMemoryRateLimiter();
 
-const RATE_LIMITS = {
-  auth: { requests: 5, windowMs: 60000 }, // 5 requests per minute for auth
-  api: { requests: 100, windowMs: 60000 }, // 100 requests per minute for API
-  default: { requests: 300, windowMs: 60000 }, // 300 requests per minute default
-};
-
-function getRateLimit(pathname: string) {
-  if (pathname.startsWith("/api/auth")) return RATE_LIMITS.auth;
-  if (pathname.startsWith("/api/")) return RATE_LIMITS.api;
-  return RATE_LIMITS.default;
+function getRateLimitTier(pathname: string): "auth" | "api" | "web" {
+  if (pathname.startsWith("/api/auth")) return "auth";
+  if (pathname.startsWith("/api/")) return "api";
+  return "web";
 }
 
-function checkRateLimit(
+async function checkRateLimit(
   identifier: string,
-  limit: { requests: number; windowMs: number }
-): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(identifier);
-
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(identifier, { count: 1, resetTime: now + limit.windowMs });
-    return true;
-  }
-
-  if (record.count >= limit.requests) {
-    return false;
-  }
-
-  record.count++;
-  return true;
+  pathname: string
+): Promise<RateLimitResult> {
+  const tier = getRateLimitTier(pathname);
+  const configs = RATE_LIMIT_TIERS[tier];
+  return rateLimiter.checkMultiple(identifier, configs);
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const { pathname } = request.nextUrl;
 
@@ -53,18 +47,20 @@ export function middleware(request: NextRequest) {
   const identifier =
     request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "unknown";
 
-  // Rate limiting
-  const rateLimit = getRateLimit(pathname);
+  // Rate limiting using @email/utils rate limiter
   const rateLimitKey = `${identifier}:${pathname}`;
+  const rateLimitResult = await checkRateLimit(rateLimitKey, pathname);
 
-  if (!checkRateLimit(rateLimitKey, rateLimit)) {
+  if (!rateLimitResult.allowed) {
     return new NextResponse(
       JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
       {
         status: 429,
         headers: {
           "Content-Type": "application/json",
-          "Retry-After": "60",
+          "Retry-After": String(rateLimitResult.retryAfter || 60),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(rateLimitResult.resetAt),
         },
       }
     );
@@ -125,16 +121,9 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Clean up old rate limit entries periodically
-  if (Math.random() < 0.01) {
-    // 1% chance to clean up
-    const now = Date.now();
-    for (const [key, value] of rateLimitMap.entries()) {
-      if (now > value.resetTime) {
-        rateLimitMap.delete(key);
-      }
-    }
-  }
+  // Add rate limit headers to successful responses
+  response.headers.set("X-RateLimit-Remaining", String(rateLimitResult.remaining));
+  response.headers.set("X-RateLimit-Reset", String(rateLimitResult.resetAt));
 
   return response;
 }

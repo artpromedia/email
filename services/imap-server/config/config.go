@@ -236,7 +236,7 @@ func applyDefaults(cfg *Config) {
 		cfg.IMAP.DefaultNamespaceMode = "unified"
 	}
 	if cfg.IMAP.MaxMessageSize == 0 {
-		cfg.IMAP.MaxMessageSize = 50 * 1024 * 1024 // 50MB
+		cfg.IMAP.MaxMessageSize = 25 * 1024 * 1024 // 25MB - aligned with SMTP and industry standard
 	}
 	if cfg.IMAP.MaxFetchSize == 0 {
 		cfg.IMAP.MaxFetchSize = 10 * 1024 * 1024 // 10MB
