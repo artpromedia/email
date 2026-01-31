@@ -330,6 +330,307 @@ services:
     networks:
       - email-network
 
+  # ============================================
+  # BACKEND APPLICATION SERVICES
+  # ============================================
+
+  # Auth Service - Authentication & User Management
+  auth:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: enterprise-email-auth
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-168h}
+      BCRYPT_COST: ${BCRYPT_COST:-12}
+      RATE_LIMIT_REQUESTS: ${AUTH_RATE_LIMIT:-100}
+      RATE_LIMIT_WINDOW: ${AUTH_RATE_WINDOW:-1m}
+    ports:
+      - "${AUTH_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
+  # Storage Service - Email Storage with S3/MinIO
+  storage:
+    build:
+      context: ./services/storage
+      dockerfile: Dockerfile
+    container_name: enterprise-email-storage
+    restart: unless-stopped
+    environment:
+      PORT: "8081"
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      S3_ENDPOINT: "http://minio:9000"
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET:-attachments}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_USE_PATH_STYLE: "true"
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-26214400}
+      QUOTA_ENABLED: ${QUOTA_ENABLED:-true}
+      DEFAULT_QUOTA_MB: ${DEFAULT_QUOTA_MB:-5120}
+    ports:
+      - "${STORAGE_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
+  # Domain Manager - Domain Configuration & DNS
+  domain-manager:
+    build:
+      context: ./services/domain-manager
+      dockerfile: Dockerfile
+    container_name: enterprise-email-domain-manager
+    restart: unless-stopped
+    environment:
+      PORT: "8083"
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DB_HOST: pgbouncer
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      DKIM_ENCRYPTION_KEY: ${DKIM_ENCRYPTION_KEY:?DKIM_ENCRYPTION_KEY is required}
+    ports:
+      - "${DOMAIN_MANAGER_PORT:-8083}:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
+  # SMTP Server - Email Sending & Receiving
+  smtp-server:
+    build:
+      context: ./services/smtp-server
+      dockerfile: Dockerfile
+    container_name: enterprise-email-smtp
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      SMTP_HOSTNAME: ${SMTP_HOSTNAME:-mail.localhost}
+      DB_HOST: pgbouncer
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      TLS_CERT_FILE: /app/certs/server.crt
+      TLS_KEY_FILE: /app/certs/server.key
+      QUEUE_WORKERS: ${SMTP_QUEUE_WORKERS:-4}
+      MAX_MESSAGE_SIZE: ${MAX_MESSAGE_SIZE:-26214400}
+      MAX_RECIPIENTS: ${MAX_RECIPIENTS:-100}
+    ports:
+      - "${SMTP_PORT:-25}:25"
+      - "${SMTP_SUBMISSION_PORT:-587}:587"
+      - "${SMTP_METRICS_PORT:-9092}:9090"
+    volumes:
+      - ./docker/certs/smtp:/app/certs:ro
+      - smtp_queue_data:/app/data/queue
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "25"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - email-network
+
+  # IMAP Server - Email Access Protocol
+  imap-server:
+    build:
+      context: ./services/imap-server
+      dockerfile: Dockerfile
+    container_name: enterprise-email-imap
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      IMAP_HOST: "0.0.0.0"
+      IMAP_PORT: "143"
+      IMAP_TLS_PORT: "993"
+      DB_HOST: pgbouncer
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      S3_ENDPOINT: "http://minio:9000"
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET:-attachments}
+      TLS_CERT_FILE: /etc/ssl/certs/imap.crt
+      TLS_KEY_FILE: /etc/ssl/private/imap.key
+    ports:
+      - "${IMAP_PORT:-143}:143"
+      - "${IMAP_TLS_PORT:-993}:993"
+      - "${IMAP_METRICS_PORT:-9093}:9090"
+    volumes:
+      - ./docker/certs/imap:/etc/ssl/certs:ro
+      - ./docker/certs/imap:/etc/ssl/private:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "143"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - email-network
+
+  # AI Assistant - Email Analysis & Smart Features
+  ai-assistant:
+    build:
+      context: ./services/ai-assistant
+      dockerfile: Dockerfile
+    container_name: enterprise-email-ai-assistant
+    restart: unless-stopped
+    environment:
+      PORT: "8090"
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DB_HOST: pgbouncer
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MODEL: ${AI_MODEL:-gpt-4-turbo-preview}
+    ports:
+      - "${AI_ASSISTANT_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
+  # Transactional API - SendGrid-compatible Email API
+  transactional-api:
+    build:
+      context: ./services/transactional-api
+      dockerfile: Dockerfile
+    container_name: enterprise-email-transactional-api
+    restart: unless-stopped
+    environment:
+      PORT: "8085"
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      SMTP_HOST: smtp-server
+      SMTP_PORT: "25"
+      SMTP_QUEUE_URL: "redis://:${REDIS_PASSWORD}@redis:6379/1"
+      TRACKING_ENABLED: ${TRACKING_ENABLED:-true}
+      TRACKING_URL: ${TRACKING_URL:-http://localhost:8085}
+      WEBHOOK_SIGNATURE_KEY: ${WEBHOOK_SIGNATURE_KEY:-}
+      S3_ENDPOINT: "http://minio:9000"
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: templates
+      BASE_URL: ${TRANSACTIONAL_API_URL:-http://localhost:8085}
+    ports:
+      - "${TRANSACTIONAL_API_PORT:-8085}:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      smtp-server:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - email-network
+
   # Calendar Service - CalDAV Support
   calendar:
     build:
@@ -338,10 +639,10 @@ services:
     container_name: enterprise-email-calendar
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
+      SMTP_HOST: smtp-server
+      SMTP_PORT: "25"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       DOMAIN: ${CALENDAR_DOMAIN:-calendar.localhost}
     ports:
@@ -351,6 +652,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/health"]
       interval: 30s
@@ -368,18 +671,20 @@ services:
     container_name: enterprise-email-contacts
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=disable"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       DOMAIN: ${CONTACTS_DOMAIN:-contacts.localhost}
     ports:
-      - "${CONTACTS_PORT:-8083}:8083"
+      - "${CONTACTS_PORT:-8084}:8084"
     volumes:
       - contacts_photos:/data/photos
     depends_on:
       postgres:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8084/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -401,6 +706,8 @@ volumes:
   prometheus_data:
     driver: local
   grafana_data:
+    driver: local
+  smtp_queue_data:
     driver: local
   contacts_photos:
     driver: local
