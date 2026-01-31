@@ -3,9 +3,13 @@ package otp
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -79,7 +83,7 @@ type VerifyResponse struct {
 type OTPRecord struct {
 	ID             string    `db:"id"`
 	PhoneNumber    string    `db:"phone_number"`
-	Code           string    `db:"code"`
+	Code           string    `db:"code"` // Stored as SHA-256 hash, never plaintext
 	Purpose        Purpose   `db:"purpose"`
 	UserID         string    `db:"user_id"`
 	OrganizationID string    `db:"organization_id"`
@@ -92,6 +96,12 @@ type OTPRecord struct {
 	CreatedAt      time.Time `db:"created_at"`
 	IPAddress      string    `db:"ip_address"`
 	UserAgent      string    `db:"user_agent"`
+}
+
+// hashOTPCode creates a SHA-256 hash of the OTP code for secure storage
+func hashOTPCode(code string) string {
+	hash := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(hash[:])
 }
 
 // Service handles OTP generation and verification
@@ -131,11 +141,18 @@ func (s *Service) Send(ctx context.Context, req *SendRequest) (*SendResponse, er
 		return nil, fmt.Errorf("failed to generate OTP: %w", err)
 	}
 
-	// Create OTP record
+	// Create OTP record - store hashed code, never plaintext
 	expiresAt := time.Now().Add(time.Duration(s.config.ExpiryMinutes) * time.Minute)
+
+	// Normalize case for consistent hashing if not case-sensitive
+	codeToHash := code
+	if !s.config.CaseSensitive {
+		codeToHash = strings.ToUpper(code)
+	}
+
 	record := &OTPRecord{
 		PhoneNumber:    req.PhoneNumber,
-		Code:           code,
+		Code:           hashOTPCode(codeToHash), // Hash the code before storage
 		Purpose:        req.Purpose,
 		UserID:         req.UserID,
 		OrganizationID: req.OrganizationID,
@@ -289,11 +306,19 @@ func (s *Service) generateAlphanumericCode(length int) (string, error) {
 	return string(code), nil
 }
 
-func (s *Service) verifyCode(stored, provided string) bool {
-	if s.config.CaseSensitive {
-		return stored == provided
+// verifyCode compares the stored hash with the hash of the provided code
+// using constant-time comparison to prevent timing attacks
+func (s *Service) verifyCode(storedHash, providedCode string) bool {
+	// Normalize case if not case-sensitive
+	if !s.config.CaseSensitive {
+		providedCode = strings.ToUpper(providedCode)
 	}
-	return stored == provided
+
+	// Hash the provided code for comparison
+	providedHash := hashOTPCode(providedCode)
+
+	// Use constant-time comparison to prevent timing attacks
+	return subtle.ConstantTimeCompare([]byte(storedHash), []byte(providedHash)) == 1
 }
 
 // Cancel cancels an active OTP

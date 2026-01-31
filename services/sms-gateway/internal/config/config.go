@@ -37,8 +37,9 @@ type RedisConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret  string `yaml:"jwtSecret"`
-	APIKeyAuth bool   `yaml:"apiKeyAuth"`
+	JWTSecret      string   `yaml:"jwtSecret"`
+	APIKeyAuth     bool     `yaml:"apiKeyAuth"`
+	AllowedOrigins []string `yaml:"allowedOrigins"`
 }
 
 type MetricsConfig struct {

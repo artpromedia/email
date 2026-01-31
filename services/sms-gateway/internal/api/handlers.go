@@ -254,8 +254,8 @@ func (s *Server) listMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// TODO: Get organization ID from auth context
-	orgID := ""
+	// Get organization ID from auth context
+	orgID := s.getOrganizationID(r)
 
 	messages, total, err := s.repo.ListMessages(r.Context(), orgID, limit, offset)
 	if err != nil {
@@ -429,7 +429,7 @@ func (s *Server) getOTPStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listTemplates(w http.ResponseWriter, r *http.Request) {
 	templateType := r.URL.Query().Get("type")
-	orgID := "" // TODO: Get from auth context
+	orgID := s.getOrganizationID(r)
 
 	tpls, err := s.templates.ListTemplates(r.Context(), orgID, templateType)
 	if err != nil {
@@ -617,21 +617,56 @@ func (s *Server) handleVonageWebhook(w http.ResponseWriter, r *http.Request) {
 // =============================================================================
 
 func (s *Server) getAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement analytics
+	orgID := s.getOrganizationID(r)
+
+	// Get analytics from repository
+	summary, err := s.repo.GetAnalyticsSummary(r.Context(), orgID)
+	if err != nil {
+		s.logger.Error("Failed to get analytics summary", zap.Error(err))
+		// Return zeros on error rather than failing
+		s.sendSuccess(w, http.StatusOK, map[string]interface{}{
+			"total_sent":      0,
+			"total_delivered": 0,
+			"total_failed":    0,
+			"delivery_rate":   0.0,
+		})
+		return
+	}
+
+	// Calculate delivery rate
+	var deliveryRate float64
+	if summary.TotalSent > 0 {
+		deliveryRate = float64(summary.TotalDelivered) / float64(summary.TotalSent) * 100
+	}
+
 	s.sendSuccess(w, http.StatusOK, map[string]interface{}{
-		"total_sent":     0,
-		"total_delivered": 0,
-		"total_failed":   0,
-		"delivery_rate":  0,
+		"total_sent":      summary.TotalSent,
+		"total_delivered": summary.TotalDelivered,
+		"total_failed":    summary.TotalFailed,
+		"delivery_rate":   deliveryRate,
 	})
 }
 
 func (s *Server) getUsageStats(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement usage stats
+	orgID := s.getOrganizationID(r)
+
+	// Get usage stats from repository
+	stats, err := s.repo.GetUsageStats(r.Context(), orgID)
+	if err != nil {
+		s.logger.Error("Failed to get usage stats", zap.Error(err))
+		// Return zeros on error rather than failing
+		s.sendSuccess(w, http.StatusOK, map[string]interface{}{
+			"messages_today": 0,
+			"messages_week":  0,
+			"messages_month": 0,
+		})
+		return
+	}
+
 	s.sendSuccess(w, http.StatusOK, map[string]interface{}{
-		"messages_today": 0,
-		"messages_week":  0,
-		"messages_month": 0,
+		"messages_today": stats.Today,
+		"messages_week":  stats.Week,
+		"messages_month": stats.Month,
 	})
 }
 
@@ -658,4 +693,29 @@ func (s *Server) sendError(w http.ResponseWriter, status int, code, message stri
 			Message: message,
 		},
 	})
+}
+
+// =============================================================================
+// Context Helpers
+// =============================================================================
+
+// getOrganizationID extracts the organization ID from the request context
+func (s *Server) getOrganizationID(r *http.Request) string {
+	// Check for API key context first
+	if keyInfo, ok := r.Context().Value(apiKeyContextKey).(*APIKeyInfo); ok && keyInfo != nil {
+		return keyInfo.OrganizationID
+	}
+	// Check for user claims context
+	if userClaims, ok := r.Context().Value(userContextKey).(*UserClaims); ok && userClaims != nil {
+		return userClaims.OrganizationID
+	}
+	return ""
+}
+
+// getUserID extracts the user ID from the request context
+func (s *Server) getUserID(r *http.Request) string {
+	if userClaims, ok := r.Context().Value(userContextKey).(*UserClaims); ok && userClaims != nil {
+		return userClaims.UserID
+	}
+	return ""
 }

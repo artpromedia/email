@@ -135,6 +135,8 @@ docker exec email-test-minio mc alias set local http://localhost:9000 test_acces
 docker exec email-test-minio mc mb --ignore-existing local/test-attachments 2>/dev/null || true
 
 # Set environment variables for local test run
+# SECURITY NOTE: sslmode=disable is ONLY acceptable for local Docker test containers.
+# NEVER use sslmode=disable in production - always use sslmode=require or sslmode=verify-full
 export DATABASE_URL="postgres://test_user:test_password@localhost:5433/email_test?sslmode=disable"
 export REDIS_URL="redis://localhost:6380"
 export MINIO_ENDPOINT="localhost:9002"

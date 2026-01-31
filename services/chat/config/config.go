@@ -36,8 +36,9 @@ type RedisConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret   string `yaml:"jwtSecret"`
-	ServiceURL  string `yaml:"serviceUrl"`
+	JWTSecret      string   `yaml:"jwtSecret"`
+	ServiceURL     string   `yaml:"serviceUrl"`
+	AllowedOrigins []string `yaml:"allowedOrigins"`
 }
 
 type StorageConfig struct {

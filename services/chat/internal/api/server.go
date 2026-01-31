@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -43,11 +45,18 @@ func (s *Server) Router() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	// CORS configuration - use configured allowed origins, never wildcard in production
+	allowedOrigins := s.cfg.Auth.AllowedOrigins
+	if len(allowedOrigins) == 0 {
+		// Default to restrictive origins if not configured
+		allowedOrigins = []string{"https://app.example.com", "https://admin.example.com"}
+		s.logger.Warn("No CORS origins configured, using defaults. Set AUTH_ALLOWED_ORIGINS in production.")
+	}
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
+		ExposedHeaders:   []string{"Link", "X-Request-ID"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
@@ -132,12 +141,46 @@ func (s *Server) Router() http.Handler {
 	return r
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Configure properly in production
-	},
+// createUpgrader creates a WebSocket upgrader with proper origin checking
+func (s *Server) createUpgrader() websocket.Upgrader {
+	return websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				// Allow requests without Origin header (same-origin requests)
+				return true
+			}
+
+			// Parse the origin URL
+			originURL, err := url.Parse(origin)
+			if err != nil {
+				s.logger.Warn("Invalid WebSocket origin", zap.String("origin", origin), zap.Error(err))
+				return false
+			}
+
+			// Check against allowed origins
+			allowedOrigins := s.cfg.Auth.AllowedOrigins
+			if len(allowedOrigins) == 0 {
+				// Default restrictive origins if not configured
+				allowedOrigins = []string{"https://app.example.com", "https://admin.example.com"}
+			}
+
+			originHost := strings.ToLower(originURL.Scheme + "://" + originURL.Host)
+			for _, allowed := range allowedOrigins {
+				if strings.EqualFold(allowed, originHost) {
+					return true
+				}
+			}
+
+			s.logger.Warn("WebSocket connection rejected - origin not allowed",
+				zap.String("origin", origin),
+				zap.Strings("allowed_origins", allowedOrigins),
+			)
+			return false
+		},
+	}
 }
 
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {

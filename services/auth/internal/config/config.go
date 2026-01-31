@@ -111,7 +111,7 @@ func Load() *Config {
 			User:         getEnv("DATABASE_USER", "postgres"),
 			Password:     getEnv("DATABASE_PASSWORD", ""),
 			Database:     getEnv("DATABASE_NAME", "email"),
-			SSLMode:      getEnv("DATABASE_SSL_MODE", "prefer"),
+			SSLMode:      getEnv("DATABASE_SSL_MODE", "require"), // Default to require - prefer allows downgrade attacks
 			MaxOpenConns: getEnvInt("DATABASE_MAX_OPEN_CONNS", 25),
 			MaxIdleConns: getEnvInt("DATABASE_MAX_IDLE_CONNS", 5),
 			MaxLifetime:  getEnvDuration("DATABASE_MAX_LIFETIME", 5*time.Minute),
