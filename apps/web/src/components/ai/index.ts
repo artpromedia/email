@@ -40,3 +40,7 @@ export {
   AutoReplyAuditLog,
   AutoReplySettings,
 } from "./AutoReplySettings";
+
+// AI Settings Pages
+export { AISettingsPage } from "./AISettingsPage";
+export { AdminAISettingsPage } from "./AdminAISettingsPage";

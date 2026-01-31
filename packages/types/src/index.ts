@@ -98,3 +98,6 @@ export {
   type WebhookEvent,
   type RateLimitInfo,
 } from "./api.js";
+
+// AI Settings types
+export * from "./ai-settings.js";
