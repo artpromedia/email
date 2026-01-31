@@ -2,6 +2,7 @@ package domain
 
 import (
 	"crypto/rsa"
+	"fmt"
 	"time"
 )
 
@@ -52,7 +53,7 @@ type DomainPolicies struct {
 // DefaultPolicies returns default domain policies
 func DefaultPolicies() *DomainPolicies {
 	return &DomainPolicies{
-		MaxMessageSize:     52428800, // 50MB
+		MaxMessageSize:     26214400, // 25MB - aligned with SMTP config and industry standard (Gmail)
 		RequireTLS:         false,
 		RejectUnknownUsers: true,
 		SpamThreshold:      5.0,
@@ -61,6 +62,32 @@ func DefaultPolicies() *DomainPolicies {
 		RateLimitPerHour:   1000,
 		RateLimitPerDay:    10000,
 	}
+}
+
+// MaxMessageSizeLimit is the maximum allowed message size (100MB)
+const MaxMessageSizeLimit = 104857600
+
+// DefaultMessageSize is the standard message size limit (25MB)
+const DefaultMessageSize = 26214400
+
+// ValidatePolicies validates domain policies and returns any issues
+func (p *DomainPolicies) Validate() error {
+	if p.MaxMessageSize > MaxMessageSizeLimit {
+		return fmt.Errorf("max_message_size %d exceeds maximum allowed %d", p.MaxMessageSize, MaxMessageSizeLimit)
+	}
+	if p.MaxMessageSize <= 0 {
+		p.MaxMessageSize = DefaultMessageSize
+	}
+	if p.RateLimitPerHour < 0 {
+		return fmt.Errorf("rate_limit_per_hour cannot be negative")
+	}
+	if p.RateLimitPerDay < 0 {
+		return fmt.Errorf("rate_limit_per_day cannot be negative")
+	}
+	if p.RateLimitPerDay > 0 && p.RateLimitPerHour > 0 && p.RateLimitPerHour*24 > p.RateLimitPerDay {
+		// Warn but don't error - daily limit will be the effective cap
+	}
+	return nil
 }
 
 // DKIMKey represents a DKIM signing key for a domain

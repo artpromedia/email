@@ -150,7 +150,7 @@ func DefaultConfig() *Config {
 			ReadTimeout:       60 * time.Second,
 			WriteTimeout:      60 * time.Second,
 			MaxRecipients:     100,
-			MaxMessageSize:    52428800, // 50MB
+			MaxMessageSize:    26214400, // 25MB - aligned with database defaults and industry standard
 			MaxConnections:    1000,
 			RequireAuth:       false,
 			AllowInsecureAuth: false,

@@ -568,3 +568,17 @@ export {
 } from "date-fns";
 
 export { nanoid } from "nanoid";
+
+// ============================================================
+// Rate Limiting
+// ============================================================
+export {
+  RedisRateLimiter,
+  InMemoryRateLimiter,
+  createRateLimiter,
+  RATE_LIMIT_TIERS,
+  type RateLimitResult,
+  type RateLimiterOptions,
+  type RateLimitConfig,
+  type RateLimitTier,
+} from "./rate-limiter";
