@@ -22,6 +22,7 @@ import { cn } from "@email/ui";
 import { useMailStore, type EmailListItem } from "@/lib/mail";
 
 import { EmailListItemComponent, EmailListItemSkeleton } from "./EmailListItem";
+import { EmailThreadGroup } from "./EmailThreadGroup";
 
 // No-operation function for disabled handlers
 const noop = () => {
@@ -60,7 +61,7 @@ function EmailListToolbar({
   onDelete,
   onStar,
   onRefresh,
-}: EmailListToolbarProps) {
+}: Readonly<EmailListToolbarProps>) {
   return (
     <div className="flex items-center gap-2 border-b border-neutral-200 bg-white px-4 py-2 dark:border-neutral-700 dark:bg-neutral-900">
       {/* Select All Checkbox */}
@@ -74,9 +75,14 @@ function EmailListToolbar({
             "focus:ring-blue-500 focus:ring-offset-0",
             "dark:border-neutral-600 dark:bg-neutral-800"
           )}
+          aria-label={isAllSelected ? "Deselect all emails" : "Select all emails"}
         />
-        <button className="rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800">
-          <ChevronDown className="h-4 w-4 text-neutral-500" />
+        <button
+          className="rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          aria-label="Selection options"
+          aria-haspopup="menu"
+        >
+          <ChevronDown className="h-4 w-4 text-neutral-500" aria-hidden="true" />
         </button>
       </div>
 
@@ -88,9 +94,10 @@ function EmailListToolbar({
           "rounded p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800",
           isRefreshing && "animate-spin"
         )}
-        title="Refresh"
+        aria-label={isRefreshing ? "Refreshing emails..." : "Refresh email list"}
       >
-        <RefreshCw className="h-4 w-4" />
+        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+        <span className="sr-only">{isRefreshing ? "Refreshing..." : "Refresh"}</span>
       </button>
 
       {/* Divider */}
@@ -106,48 +113,55 @@ function EmailListToolbar({
           <button
             onClick={onMarkAsRead}
             className="rounded p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="Mark as read"
+            aria-label={`Mark ${selectedCount} selected email${selectedCount === 1 ? "" : "s"} as read`}
           >
-            <MailOpen className="h-4 w-4" />
+            <MailOpen className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Mark as read</span>
           </button>
 
           <button
             onClick={onMarkAsUnread}
             className="rounded p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="Mark as unread"
+            aria-label={`Mark ${selectedCount} selected email${selectedCount === 1 ? "" : "s"} as unread`}
           >
-            <Mail className="h-4 w-4" />
+            <Mail className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Mark as unread</span>
           </button>
 
           <button
             onClick={onStar}
             className="rounded p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="Star"
+            aria-label={`Star ${selectedCount} selected email${selectedCount === 1 ? "" : "s"}`}
           >
-            <Star className="h-4 w-4" />
+            <Star className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Star</span>
           </button>
 
           <button
             onClick={onArchive}
             className="rounded p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="Archive"
+            aria-label={`Archive ${selectedCount} selected email${selectedCount === 1 ? "" : "s"}`}
           >
-            <Archive className="h-4 w-4" />
+            <Archive className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Archive</span>
           </button>
 
           <button
             onClick={onDelete}
             className="rounded p-2 text-red-600 hover:bg-neutral-100 dark:text-red-400 dark:hover:bg-neutral-800"
-            title="Delete"
+            aria-label={`Delete ${selectedCount} selected email${selectedCount === 1 ? "" : "s"}`}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Delete</span>
           </button>
 
           <button
             className="rounded p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="More actions"
+            aria-label="More actions"
+            aria-haspopup="menu"
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">More actions</span>
           </button>
         </>
       ) : (
@@ -167,7 +181,7 @@ interface EmailListEmptyProps {
   folder: string;
 }
 
-function EmailListEmpty({ folder }: EmailListEmptyProps) {
+function EmailListEmpty({ folder }: Readonly<EmailListEmptyProps>) {
   const messages: Record<string, { title: string; description: string }> = {
     inbox: {
       title: "Your inbox is empty",
@@ -236,7 +250,7 @@ export function EmailList({
   onLoadMore,
   hasMore,
   className,
-}: EmailListProps) {
+}: Readonly<EmailListProps>) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -283,7 +297,7 @@ export function EmailList({
     if (!onLoadMore || !hasMore) return;
 
     const items = rowVirtualizer.getVirtualItems();
-    const lastItem = items[items.length - 1];
+    const lastItem = items.at(-1);
 
     if (lastItem && lastItem.index >= emails.length - 5) {
       onLoadMore();
@@ -330,6 +344,41 @@ export function EmailList({
       }
     },
     [emails, starEmails, unstarEmails]
+  );
+
+  // Handle quick action: Archive single email
+  const handleQuickArchive = useCallback(
+    (emailId: string) => {
+      moveEmails([emailId], {
+        domainId: "",
+        mailboxId: "",
+        folderId: "archive",
+        folderName: "Archive",
+        domainName: "",
+      });
+    },
+    [moveEmails]
+  );
+
+  // Handle quick action: Delete single email
+  const handleQuickDelete = useCallback(
+    (emailId: string) => {
+      deleteEmails([emailId]);
+    },
+    [deleteEmails]
+  );
+
+  // Handle quick action: Toggle read/unread single email
+  const handleQuickToggleRead = useCallback(
+    (emailId: string) => {
+      const email = emails.find((e) => e.id === emailId);
+      if (email?.isRead) {
+        markAsUnread([emailId]);
+      } else {
+        markAsRead([emailId]);
+      }
+    },
+    [emails, markAsRead, markAsUnread]
   );
 
   // Bulk action handlers
@@ -379,7 +428,7 @@ export function EmailList({
         />
         <div className="flex-1 overflow-hidden">
           {Array.from({ length: 10 }).map((_, i) => (
-            <EmailListItemSkeleton key={i} density={viewPreferences.density} />
+            <EmailListItemSkeleton key={`skeleton-${i}`} density={viewPreferences.density} />
           ))}
         </div>
       </div>
@@ -425,51 +474,96 @@ export function EmailList({
         onRefresh={onRefresh}
       />
 
-      <div ref={parentRef} className="flex-1 overflow-auto">
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
+      {viewPreferences.groupByConversation ? (
+        /* Threaded View */
+        <ul
+          className="flex-1 list-none overflow-auto"
+          aria-label="Email conversations"
+          id="email-list"
         >
-          {rowVirtualizer.getVirtualItems().map((virtualItem: VirtualItem) => {
-            const email = emails[virtualItem.index];
-            if (!email) return null;
-            return (
-              <div
-                key={email.id}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <EmailListItemComponent
-                  email={email}
-                  isSelected={selectedEmails.has(email.id)}
-                  isFocused={focusedEmailId === email.id}
-                  showDomainBadge={showDomainBadges}
-                  onSelect={handleSelect}
-                  onClick={handleClick}
-                  onStar={handleStar}
-                  density={viewPreferences.density}
-                />
-              </div>
-            );
-          })}
-        </div>
+          <EmailThreadGroup
+            emails={emails}
+            showDomainBadge={showDomainBadges}
+            density={viewPreferences.density}
+            onEmailClick={handleClick}
+            onSelect={handleSelect}
+            onStar={handleStar}
+            onArchive={handleQuickArchive}
+            onDelete={handleQuickDelete}
+            onToggleRead={handleQuickToggleRead}
+            isSelected={(id) => selectedEmails.has(id)}
+            isFocused={(id) => focusedEmailId === id}
+          />
 
-        {/* Load more indicator */}
-        {hasMore && (
-          <div className="flex items-center justify-center py-4">
-            <RefreshCw className="h-5 w-5 animate-spin text-neutral-400" />
+          {/* Load more indicator */}
+          {hasMore && (
+            <li className="flex list-none items-center justify-center py-4">
+              <RefreshCw
+                className="h-5 w-5 animate-spin text-neutral-400"
+                aria-label="Loading more emails"
+              />
+            </li>
+          )}
+        </ul>
+      ) : (
+        /* Flat View with Virtualization */
+        <ul
+          ref={parentRef}
+          className="flex-1 list-none overflow-auto"
+          aria-label="Email list"
+          id="email-list"
+        >
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualItem: VirtualItem) => {
+              const email = emails[virtualItem.index];
+              if (!email) return null;
+              return (
+                <div
+                  key={email.id}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <EmailListItemComponent
+                    email={email}
+                    isSelected={selectedEmails.has(email.id)}
+                    isFocused={focusedEmailId === email.id}
+                    showDomainBadge={showDomainBadges}
+                    onSelect={handleSelect}
+                    onClick={handleClick}
+                    onStar={handleStar}
+                    onArchive={handleQuickArchive}
+                    onDelete={handleQuickDelete}
+                    onToggleRead={handleQuickToggleRead}
+                    density={viewPreferences.density}
+                  />
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          {/* Load more indicator */}
+          {hasMore && (
+            <li className="flex list-none items-center justify-center py-4">
+              <RefreshCw
+                className="h-5 w-5 animate-spin text-neutral-400"
+                aria-label="Loading more emails"
+              />
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }

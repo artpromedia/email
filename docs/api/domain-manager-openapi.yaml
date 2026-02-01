@@ -1,0 +1,950 @@
+openapi: 3.0.3
+info:
+  title: Domain Manager API
+  description: |
+    REST API for the Domain Manager service.
+
+    ## Authentication
+    All endpoints require Bearer token authentication:
+    ```
+    Authorization: Bearer <your-token>
+    ```
+
+    ## Features
+    - Domain registration and verification
+    - DNS record management
+    - DKIM key generation and rotation
+    - MTA-STS configuration
+    - BIMI setup
+    - Domain branding
+    - Email policies
+
+  version: 1.0.0
+  contact:
+    name: Domain Manager Support
+    email: domains@enterpriseemail.com
+
+servers:
+  - url: http://localhost:8086
+    description: Development server
+  - url: https://domains.enterpriseemail.com
+    description: Production server
+
+tags:
+  - name: Domains
+    description: Domain management
+  - name: Verification
+    description: Domain verification
+  - name: DKIM
+    description: DKIM key management
+  - name: DNS
+    description: DNS record management
+  - name: Branding
+    description: Domain branding
+  - name: Policies
+    description: Email policies
+  - name: Stats
+    description: Domain statistics
+  - name: Public
+    description: Public endpoints (no auth)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+    Domain:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        domain_name:
+          type: string
+          example: "example.com"
+        display_name:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, suspended, failed]
+        is_primary:
+          type: boolean
+        is_verified:
+          type: boolean
+        verification_token:
+          type: string
+        verification_type:
+          type: string
+          enum: [dns_txt, dns_cname, http]
+        verified_at:
+          type: string
+          format: date-time
+        mx_verified:
+          type: boolean
+        spf_verified:
+          type: boolean
+        dkim_verified:
+          type: boolean
+        dmarc_verified:
+          type: boolean
+        mta_sts_enabled:
+          type: boolean
+        bimi_enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DomainWithRecords:
+      allOf:
+        - $ref: "#/components/schemas/Domain"
+        - type: object
+          properties:
+            dns_records:
+              type: array
+              items:
+                $ref: "#/components/schemas/DNSRecord"
+
+    DNSRecord:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [TXT, CNAME, MX, A, AAAA]
+        name:
+          type: string
+        value:
+          type: string
+        priority:
+          type: integer
+        ttl:
+          type: integer
+        purpose:
+          type: string
+          enum: [verification, spf, dkim, dmarc, mx, mta-sts, bimi]
+        is_verified:
+          type: boolean
+
+    DKIMKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        domain_id:
+          type: string
+          format: uuid
+        selector:
+          type: string
+        public_key:
+          type: string
+        key_type:
+          type: string
+          enum: [rsa, ed25519]
+        key_size:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        rotated_at:
+          type: string
+          format: date-time
+
+    Branding:
+      type: object
+      properties:
+        domain_id:
+          type: string
+          format: uuid
+        logo_url:
+          type: string
+          format: uri
+        brand_color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        company_name:
+          type: string
+        footer_text:
+          type: string
+        disclaimer_text:
+          type: string
+
+    Policies:
+      type: object
+      properties:
+        domain_id:
+          type: string
+          format: uuid
+        require_tls:
+          type: boolean
+        require_dkim:
+          type: boolean
+        max_attachment_size:
+          type: integer
+          description: Maximum attachment size in bytes
+        allowed_attachment_types:
+          type: array
+          items:
+            type: string
+        block_external_images:
+          type: boolean
+        scan_attachments:
+          type: boolean
+        retention_days:
+          type: integer
+
+    CatchAll:
+      type: object
+      properties:
+        domain_id:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+        forward_to:
+          type: string
+          format: email
+        action:
+          type: string
+          enum: [forward, reject, drop]
+
+    DomainStats:
+      type: object
+      properties:
+        domain_id:
+          type: string
+          format: uuid
+        emails_sent:
+          type: integer
+        emails_received:
+          type: integer
+        emails_bounced:
+          type: integer
+        spam_blocked:
+          type: integer
+        period:
+          type: string
+          enum: [day, week, month]
+        date:
+          type: string
+          format: date
+
+    CreateDomainRequest:
+      type: object
+      required:
+        - organization_id
+        - domain_name
+      properties:
+        organization_id:
+          type: string
+          format: uuid
+        domain_name:
+          type: string
+          description: Fully qualified domain name
+        display_name:
+          type: string
+        is_primary:
+          type: boolean
+
+    UpdateDomainRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+        is_primary:
+          type: boolean
+
+    GenerateDKIMRequest:
+      type: object
+      properties:
+        selector:
+          type: string
+          description: DKIM selector (default auto-generated)
+        key_type:
+          type: string
+          enum: [rsa, ed25519]
+          default: rsa
+        key_size:
+          type: integer
+          enum: [1024, 2048, 4096]
+          default: 2048
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/domains:
+    get:
+      tags:
+        - Domains
+      summary: List domains
+      description: Get all domains for the organization
+      parameters:
+        - name: organization_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, active, suspended, failed]
+        - name: verified
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        "200":
+          description: Domain list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domains:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Domain"
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+    post:
+      tags:
+        - Domains
+      summary: Create domain
+      description: Register a new domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDomainRequest"
+      responses:
+        "201":
+          description: Domain created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainWithRecords"
+        "400":
+          description: Invalid request
+        "409":
+          description: Domain already exists
+
+  /api/domains/{id}:
+    get:
+      tags:
+        - Domains
+      summary: Get domain
+      description: Get domain details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include_dns
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Include required DNS records
+      responses:
+        "200":
+          description: Domain details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainWithRecords"
+        "404":
+          description: Domain not found
+
+    put:
+      tags:
+        - Domains
+      summary: Update domain
+      description: Update domain settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDomainRequest"
+      responses:
+        "200":
+          description: Domain updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Domain"
+        "404":
+          description: Domain not found
+
+    delete:
+      tags:
+        - Domains
+      summary: Delete domain
+      description: Remove a domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Domain deleted
+        "404":
+          description: Domain not found
+        "409":
+          description: Cannot delete primary domain
+
+  /api/domains/{id}/verify:
+    post:
+      tags:
+        - Verification
+      summary: Verify domain
+      description: Initiate domain verification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                verification_type:
+                  type: string
+                  enum: [dns_txt, dns_cname, http]
+                  default: dns_txt
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verified:
+                    type: boolean
+                  message:
+                    type: string
+                  domain:
+                    $ref: "#/components/schemas/Domain"
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/check-dns:
+    post:
+      tags:
+        - Verification
+      summary: Check DNS records
+      description: Verify all DNS records are configured correctly
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: DNS check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mx_verified:
+                    type: boolean
+                  spf_verified:
+                    type: boolean
+                  dkim_verified:
+                    type: boolean
+                  dmarc_verified:
+                    type: boolean
+                  mta_sts_verified:
+                    type: boolean
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        name:
+                          type: string
+                        expected:
+                          type: string
+                        actual:
+                          type: string
+                        verified:
+                          type: boolean
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/dkim:
+    get:
+      tags:
+        - DKIM
+      summary: List DKIM keys
+      description: Get all DKIM keys for the domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: DKIM key list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DKIMKey"
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/dkim/generate:
+    post:
+      tags:
+        - DKIM
+      summary: Generate DKIM key
+      description: Generate a new DKIM key pair
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateDKIMRequest"
+      responses:
+        "201":
+          description: DKIM key generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: "#/components/schemas/DKIMKey"
+                  dns_record:
+                    $ref: "#/components/schemas/DNSRecord"
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/dkim/{keyId}/activate:
+    post:
+      tags:
+        - DKIM
+      summary: Activate DKIM key
+      description: Set a DKIM key as the active signing key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: DKIM key activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DKIMKey"
+        "404":
+          description: Domain or key not found
+
+  /api/domains/{id}/dkim/{keyId}/rotate:
+    post:
+      tags:
+        - DKIM
+      summary: Rotate DKIM key
+      description: Generate a new key and schedule rotation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: DKIM rotation initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  old_key:
+                    $ref: "#/components/schemas/DKIMKey"
+                  new_key:
+                    $ref: "#/components/schemas/DKIMKey"
+                  rotation_complete_at:
+                    type: string
+                    format: date-time
+        "404":
+          description: Domain or key not found
+
+  /api/domains/{id}/dkim/{keyId}:
+    delete:
+      tags:
+        - DKIM
+      summary: Delete DKIM key
+      description: Delete a DKIM key (cannot delete active key)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: DKIM key deleted
+        "404":
+          description: Domain or key not found
+        "409":
+          description: Cannot delete active key
+
+  /api/domains/{id}/branding:
+    get:
+      tags:
+        - Branding
+      summary: Get branding
+      description: Get domain branding settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Branding settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branding"
+        "404":
+          description: Domain not found
+
+    put:
+      tags:
+        - Branding
+      summary: Update branding
+      description: Update domain branding settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Branding"
+      responses:
+        "200":
+          description: Branding updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branding"
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/policies:
+    get:
+      tags:
+        - Policies
+      summary: Get policies
+      description: Get domain email policies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Policy settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policies"
+        "404":
+          description: Domain not found
+
+    put:
+      tags:
+        - Policies
+      summary: Update policies
+      description: Update domain email policies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Policies"
+      responses:
+        "200":
+          description: Policies updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policies"
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/catch-all:
+    get:
+      tags:
+        - Policies
+      summary: Get catch-all settings
+      description: Get domain catch-all configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Catch-all settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatchAll"
+        "404":
+          description: Domain not found
+
+    put:
+      tags:
+        - Policies
+      summary: Update catch-all
+      description: Configure domain catch-all behavior
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatchAll"
+      responses:
+        "200":
+          description: Catch-all updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatchAll"
+        "404":
+          description: Domain not found
+
+  /api/domains/{id}/stats:
+    get:
+      tags:
+        - Stats
+      summary: Get domain stats
+      description: Get email statistics for the domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: week
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Domain statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain_id:
+                    type: string
+                  stats:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DomainStats"
+                  totals:
+                    type: object
+                    properties:
+                      emails_sent:
+                        type: integer
+                      emails_received:
+                        type: integer
+                      emails_bounced:
+                        type: integer
+                      spam_blocked:
+                        type: integer
+        "404":
+          description: Domain not found
+
+  /.well-known/mta-sts.txt:
+    get:
+      tags:
+        - Public
+      summary: MTA-STS Policy
+      description: Serve MTA-STS policy file (public, no auth)
+      security: []
+      parameters:
+        - name: host
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: MTA-STS policy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  version: STSv1
+                  mode: enforce
+                  mx: mail.example.com
+                  max_age: 604800
+        "404":
+          description: MTA-STS not configured for domain
+
+  /health:
+    get:
+      tags:
+        - Public
+      summary: Health check
+      description: Service health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  version:
+                    type: string

@@ -24,7 +24,10 @@ const API_BASE = "/api/v1";
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
     ...options,
-    headers: Object.assign({ "Content-Type": "application/json" }, options?.headers),
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
   });
 
   if (!response.ok) {
@@ -256,23 +259,152 @@ interface SendEmailResponse {
 }
 
 /**
- * Send an email
+ * Pending email for delayed send (undo send feature)
+ */
+export interface PendingEmail {
+  id: string;
+  request: SendEmailRequest;
+  scheduledAt: Date;
+  timeoutId?: NodeJS.Timeout;
+}
+
+// In-memory store for pending emails (can be moved to a store if needed)
+const pendingEmails = new Map<string, PendingEmail>();
+
+/**
+ * Send an email immediately (internal function)
+ */
+async function sendEmailImmediately(request: SendEmailRequest): Promise<SendEmailResponse> {
+  return fetchJson<SendEmailResponse>("/mail/send", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * Send an email with optional delay for undo feature
  */
 export function useSendEmail() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: SendEmailRequest) =>
-      fetchJson<SendEmailResponse>("/mail/send", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
-    onSuccess: () => {
+    mutationFn: async ({
+      request,
+      delaySeconds = 0,
+    }: {
+      request: SendEmailRequest;
+      delaySeconds?: number;
+    }) => {
+      // If no delay, send immediately
+      if (delaySeconds === 0) {
+        return sendEmailImmediately(request);
+      }
+
+      // Return a pending email object
+      const pendingId = `pending-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      return {
+        success: false,
+        emailId: pendingId,
+        messageId: "",
+        isPending: true,
+        delaySeconds,
+      } as SendEmailResponse & { isPending: boolean; delaySeconds: number };
+    },
+    onSuccess: (data) => {
+      // Only invalidate if email was actually sent (not pending)
+      if ("isPending" in data && data.isPending) {
+        return;
+      }
+
       // Invalidate sent folder and unread counts
       void queryClient.invalidateQueries({ queryKey: mailKeys.emails() });
       void queryClient.invalidateQueries({ queryKey: mailKeys.unreadCounts() });
     },
   });
+}
+
+/**
+ * Schedule a delayed send with undo capability
+ */
+export function useScheduleDelayedSend() {
+  const queryClient = useQueryClient();
+
+  return {
+    /**
+     * Schedule an email to be sent after a delay
+     */
+    scheduleEmail: (
+      id: string,
+      request: SendEmailRequest,
+      delaySeconds: number,
+      onComplete: (response: SendEmailResponse) => void,
+      onError: (error: Error) => void
+    ) => {
+      const scheduledAt = new Date(Date.now() + delaySeconds * 1000);
+
+      // Create timeout to send email
+      const timeoutId = setTimeout(async () => {
+        try {
+          const response = await sendEmailImmediately(request);
+          pendingEmails.delete(id);
+          onComplete(response);
+
+          // Invalidate queries after successful send
+          void queryClient.invalidateQueries({ queryKey: mailKeys.emails() });
+          void queryClient.invalidateQueries({ queryKey: mailKeys.unreadCounts() });
+        } catch (error) {
+          pendingEmails.delete(id);
+          onError(error instanceof Error ? error : new Error("Failed to send email"));
+        }
+      }, delaySeconds * 1000);
+
+      // Store pending email
+      const pendingEmail: PendingEmail = {
+        id,
+        request,
+        scheduledAt,
+        timeoutId,
+      };
+      pendingEmails.set(id, pendingEmail);
+
+      return id;
+    },
+
+    /**
+     * Cancel a pending email (undo send)
+     */
+    cancelEmail: (id: string): boolean => {
+      const pending = pendingEmails.get(id);
+      if (!pending) return false;
+
+      if (pending.timeoutId) {
+        clearTimeout(pending.timeoutId);
+      }
+      pendingEmails.delete(id);
+      return true;
+    },
+
+    /**
+     * Get a pending email by ID
+     */
+    getPendingEmail: (id: string): PendingEmail | undefined => {
+      return pendingEmails.get(id);
+    },
+
+    /**
+     * Get all pending emails
+     */
+    getAllPendingEmails: (): PendingEmail[] => {
+      return Array.from(pendingEmails.values());
+    },
+
+    /**
+     * Check if an email is pending
+     */
+    isPending: (id: string): boolean => {
+      return pendingEmails.has(id);
+    },
+  };
 }
 
 // ============================================================

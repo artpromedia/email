@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validateEnv, createEnvConfig, resetEnv, getEnv, envSchema } from './env';
+import { validateEnv, createEnvConfig, resetEnv, getEnv } from './env.js';
 
 // Base valid environment for tests
 const baseValidEnv = {

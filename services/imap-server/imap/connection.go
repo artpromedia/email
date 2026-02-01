@@ -19,20 +19,21 @@ import (
 
 // Connection represents an IMAP client connection
 type Connection struct {
-	id           string
-	conn         net.Conn
-	server       *Server
-	config       *config.Config
-	repo         *repository.Repository
-	logger       *zap.Logger
-	notifyHub    *NotifyHub
-	ctx          *ConnectionContext
-	reader       *bufio.Reader
-	writer       *bufio.Writer
-	writeMu      sync.Mutex
-	shutdownChan chan struct{}
-	idleChan     chan IdleNotification
-	idleStopChan chan struct{}
+	id              string
+	conn            net.Conn
+	server          *Server
+	config          *config.Config
+	repo            *repository.Repository
+	logger          *zap.Logger
+	notifyHub       *NotifyHub
+	oauth2Validator *OAuth2Validator
+	ctx             *ConnectionContext
+	reader          *bufio.Reader
+	writer          *bufio.Writer
+	writeMu         sync.Mutex
+	shutdownChan    chan struct{}
+	idleChan        chan IdleNotification
+	idleStopChan    chan struct{}
 }
 
 // Handle handles the IMAP connection

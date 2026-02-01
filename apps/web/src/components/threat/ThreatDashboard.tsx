@@ -133,7 +133,7 @@ interface TrendData {
 // THREAT DASHBOARD COMPONENT
 // ============================================================
 
-export function ThreatDashboard({ orgId }: ThreatDashboardProps) {
+export function ThreatDashboard({ orgId }: Readonly<ThreatDashboardProps>) {
   const [period, setPeriod] = useState("30d");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -159,7 +159,52 @@ export function ThreatDashboard({ orgId }: ThreatDashboardProps) {
   }, [fetchDashboardData]);
 
   const exportReport = () => {
-    // TODO: Would generate and download PDF/CSV report
+    // Generate CSV report with current dashboard data
+    const csvData = generateCSVReport(dashboardData, period);
+    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    link.href = url;
+    link.download = `threat-report-${period}-${new Date().toISOString().split("T")[0]}.csv`;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    // NOTE: For PDF export, integrate a library like jsPDF or pdfmake
+    // Example: const pdf = new jsPDF(); pdf.text('Threat Report', 10, 10); pdf.save('report.pdf');
+  };
+
+  // Helper function to generate CSV from dashboard data
+  const generateCSVReport = (data: typeof dashboardData, period: string): string => {
+    const lines: string[] = [
+      "Threat Intelligence Report",
+      `Generated: ${new Date().toISOString()}`,
+      `Period: ${period}`,
+      "",
+      "Summary Statistics",
+      `Total Threats Detected,${data.summary.totalThreats}`,
+      `Blocked Attempts,${data.summary.blocked}`,
+      `High Severity Threats,${data.summary.highSeverity}`,
+      `Active Investigations,${data.summary.investigations}`,
+      "",
+      "Threat Types",
+      "Type,Count,Percentage",
+      ...data.threatTypes.map(
+        (t) => `${t.type},${t.count},${((t.count / data.summary.totalThreats) * 100).toFixed(1)}%`
+      ),
+      "",
+      "Recent Threats",
+      "Time,Type,Severity,Source,Status",
+      ...data.recentThreats.map(
+        (t) => `${t.timestamp},${t.type},${t.severity},${t.source},${t.status}`
+      ),
+    ];
+
+    return lines.join("\n");
   };
 
   if (loading) {
@@ -394,7 +439,7 @@ function StatsCard({
   icon: Icon,
   color,
   trend,
-}: StatsCardProps) {
+}: Readonly<StatsCardProps>) {
   const colorClasses = {
     green: "text-green-600 bg-green-50",
     red: "text-red-600 bg-red-50",
@@ -443,7 +488,7 @@ function StatsCard({
   );
 }
 
-function ThreatTrendChart({ data }: { data: TrendData }) {
+function ThreatTrendChart({ data }: Readonly<{ data: TrendData }>) {
   const chartData = data.labels.map((label, i) => ({
     name: label,
     spam: data.spam_counts[i] ?? 0,
@@ -485,11 +530,11 @@ function ClassificationPieChart({
   spam,
   phishing,
   clean,
-}: {
+}: Readonly<{
   spam: number;
   phishing: number;
   clean: number;
-}) {
+}>) {
   const data = [
     { name: "Clean", value: clean, color: "#22c55e" },
     { name: "Spam", value: spam, color: "#f97316" },
@@ -509,8 +554,8 @@ function ClassificationPieChart({
             paddingAngle={2}
             dataKey="value"
           >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
+            {data.map((entry) => (
+              <Cell key={`cell-${entry.name}`} fill={entry.color} />
             ))}
           </Pie>
           <Tooltip />
@@ -529,7 +574,7 @@ function ClassificationPieChart({
   );
 }
 
-function RecentThreatsTable({ threats }: { threats: RecentThreat[] }) {
+function RecentThreatsTable({ threats }: Readonly<{ threats: RecentThreat[] }>) {
   const severityColors = {
     low: "bg-blue-100 text-blue-800",
     medium: "bg-yellow-100 text-yellow-800",
@@ -586,7 +631,7 @@ function RecentThreatsTable({ threats }: { threats: RecentThreat[] }) {
   );
 }
 
-function BlockedSendersTable({ senders }: { senders: BlockedSender[] }) {
+function BlockedSendersTable({ senders }: Readonly<{ senders: BlockedSender[] }>) {
   return (
     <Table>
       <TableHeader>
@@ -600,8 +645,8 @@ function BlockedSendersTable({ senders }: { senders: BlockedSender[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {senders.map((sender, index) => (
-          <TableRow key={index}>
+        {senders.map((sender) => (
+          <TableRow key={sender.email}>
             <TableCell className="max-w-[200px] truncate font-medium">{sender.email}</TableCell>
             <TableCell>{sender.domain}</TableCell>
             <TableCell>{sender.block_count}</TableCell>
@@ -631,7 +676,7 @@ function BlockedSendersTable({ senders }: { senders: BlockedSender[] }) {
   );
 }
 
-function FeedbackSummary({ stats }: { stats: FeedbackStats }) {
+function FeedbackSummary({ stats }: Readonly<{ stats: FeedbackStats }>) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       <div className="rounded-lg bg-muted p-4">

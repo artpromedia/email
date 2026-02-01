@@ -8,7 +8,7 @@
 
 import { useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, RefreshCw, Settings, HelpCircle } from "lucide-react";
+import { RefreshCw, Settings, HelpCircle } from "lucide-react";
 import { cn } from "@email/ui";
 
 import {
@@ -16,6 +16,8 @@ import {
   useEmails,
   DomainFilterToolbar,
   EmailList,
+  AdvancedSearchBar,
+  parseSearchQuery,
   type EmailListItem,
   type EmailListQuery,
   type Domain,
@@ -81,42 +83,6 @@ function EmailPreviewPane({ email, onClose }: EmailPreviewPaneProps) {
   );
 }
 
-// ============================================================
-// SEARCH BAR
-// ============================================================
-
-interface SearchBarProps {
-  value: string;
-  onChange: (value: string) => void;
-  onClear: () => void;
-}
-
-function SearchBar({ value, onChange, onClear }: SearchBarProps) {
-  return (
-    <div className="relative max-w-xl flex-1">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-      <input
-        type="text"
-        placeholder="Search emails..."
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "w-full rounded-lg py-2 pl-9 pr-9 text-sm",
-          "bg-neutral-100 dark:bg-neutral-800",
-          "border border-transparent",
-          "focus:border-blue-500 focus:bg-white focus:outline-none dark:focus:bg-neutral-900",
-          "text-neutral-900 placeholder-neutral-500 dark:text-white"
-        )}
-      />
-      {value && (
-        <button
-          onClick={onClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
-    </div>
   );
 }
 
@@ -229,7 +195,14 @@ function InboxContent() {
           </div>
 
           <div className="flex items-center gap-2">
-            <SearchBar value={searchValue} onChange={handleSearch} onClear={clearSearch} />
+            <AdvancedSearchBar
+              value={searchValue}
+              onChange={handleSearch}
+              onClear={clearSearch}
+              recentSearches={[]}
+              contacts={[]}
+              className="max-w-xl flex-1"
+            />
             <button
               onClick={handleRefresh}
               disabled={isRefetching}

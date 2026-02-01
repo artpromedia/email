@@ -6,11 +6,26 @@ This directory contains k6 load tests for the Enterprise Email Platform.
 
 The load tests validate system performance under realistic and stress conditions:
 
-| Test | Target | Standard Load | Stress Load |
-|------|--------|---------------|-------------|
-| SMTP | smtp-server | 1,000 concurrent | 2,000 concurrent |
-| IMAP | imap-server | 5,000 concurrent | 10,000 concurrent |
-| API | web app | 500 concurrent | 2,000 concurrent |
+| Test     | Target        | Standard Load    | Stress Load       |
+| -------- | ------------- | ---------------- | ----------------- |
+| SMTP     | smtp-server   | 1,000 concurrent | 2,000 concurrent  |
+| IMAP     | imap-server   | 5,000 concurrent | 10,000 concurrent |
+| API      | web app       | 2,000 RPS        | 3,000 RPS         |
+| Combined | Full workflow | 200 concurrent   | 500 concurrent    |
+
+## Test Files
+
+| File                             | Description                            |
+| -------------------------------- | -------------------------------------- |
+| `smtp-load-test.js`              | Basic SMTP load test                   |
+| `smtp-high-throughput.js`        | 1000+ concurrent SMTP connections test |
+| `imap-load-test.js`              | IMAP server concurrent sessions test   |
+| `api-load-test.js`               | API endpoint load test                 |
+| `api-high-rps.js`                | 2000+ RPS API test                     |
+| `combined-workflow-test.js`      | Full email workflow (send/receive)     |
+| `stress-test.js`                 | System stress and breaking point test  |
+| `database-load-test.js`          | Database performance test              |
+| `concurrent-connections-test.js` | Connection pool testing                |
 
 ## Prerequisites
 
@@ -59,24 +74,26 @@ chmod +x run-load-tests.sh
 
 ## Test Profiles
 
-| Profile | Duration | Description |
-|---------|----------|-------------|
-| `smoke` | 1 min | Quick validation, low load |
-| `standard` | 10 min | Recommended for beta testing |
-| `stress` | 15 min | High load, find breaking points |
-| `soak` | 60 min | Extended duration, find memory leaks |
+| Profile    | Duration | Description                          |
+| ---------- | -------- | ------------------------------------ |
+| `smoke`    | 1 min    | Quick validation, low load           |
+| `standard` | 10 min   | Recommended for beta testing         |
+| `stress`   | 15 min   | High load, find breaking points      |
+| `soak`     | 60 min   | Extended duration, find memory leaks |
 
 ## Test Details
 
 ### SMTP Load Test (`smtp-load-test.js`)
 
 Tests SMTP server performance:
+
 - Connection establishment
 - Email sending with various sizes
 - Concurrent connection handling
 - Error handling under load
 
 **Metrics:**
+
 - `smtp_connect_duration` - Time to establish connection
 - `smtp_send_duration` - Time to send email
 - `email_success_rate` - Percentage of successful sends
@@ -84,12 +101,14 @@ Tests SMTP server performance:
 ### IMAP Load Test (`imap-load-test.js`)
 
 Tests IMAP server with realistic user behaviors:
+
 - Quick check (50%) - Check for new mail
 - Read emails (30%) - Fetch and read messages
 - IDLE session (15%) - Long-running push connections
 - Heavy sync (5%) - Full mailbox synchronization
 
 **Metrics:**
+
 - `imap_connect_duration` - Connection time
 - `imap_login_duration` - Authentication time
 - `imap_select_duration` - Mailbox selection time
@@ -99,6 +118,7 @@ Tests IMAP server with realistic user behaviors:
 ### API Load Test (`api-load-test.js`)
 
 Tests web API endpoints:
+
 - Authentication flow
 - Email listing and pagination
 - Email fetching
@@ -107,6 +127,7 @@ Tests web API endpoints:
 - Email management (read, delete)
 
 **Metrics:**
+
 - `api_latency` - Overall API response time
 - `auth_latency` - Authentication time
 - `email_list_latency` - List endpoint time
@@ -169,20 +190,21 @@ results/
 
 Default performance thresholds (adjust based on requirements):
 
-| Metric | Threshold | Description |
-|--------|-----------|-------------|
-| SMTP connect | p95 < 1s | 95% of connections under 1 second |
-| SMTP send | p95 < 5s | 95% of sends under 5 seconds |
-| IMAP connect | p95 < 2s | 95% of connections under 2 seconds |
-| IMAP login | p95 < 1s | 95% of logins under 1 second |
-| API response | p95 < 500ms | 95% of API calls under 500ms |
-| Success rate | > 99% | At least 99% successful operations |
+| Metric       | Threshold   | Description                        |
+| ------------ | ----------- | ---------------------------------- |
+| SMTP connect | p95 < 1s    | 95% of connections under 1 second  |
+| SMTP send    | p95 < 5s    | 95% of sends under 5 seconds       |
+| IMAP connect | p95 < 2s    | 95% of connections under 2 seconds |
+| IMAP login   | p95 < 1s    | 95% of logins under 1 second       |
+| API response | p95 < 500ms | 95% of API calls under 500ms       |
+| Success rate | > 99%       | At least 99% successful operations |
 
 ## Monitoring During Tests
 
 ### Grafana Dashboard
 
 Import the k6 dashboard in Grafana:
+
 1. Add InfluxDB as data source
 2. Import dashboard ID: 2587
 

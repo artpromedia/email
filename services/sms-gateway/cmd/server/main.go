@@ -17,6 +17,8 @@ import (
 	"sms-gateway/internal/config"
 	"sms-gateway/internal/otp"
 	"sms-gateway/internal/providers"
+	"sms-gateway/internal/providers/gsm"
+	"sms-gateway/internal/providers/smpp"
 	"sms-gateway/internal/providers/twilio"
 	"sms-gateway/internal/providers/vonage"
 	"sms-gateway/internal/ratelimit"
@@ -142,7 +144,10 @@ func initLogger(level string) *zap.Logger {
 func initProviders(cfg *config.Config, logger *zap.Logger) *providers.Manager {
 	manager := providers.NewManager(logger)
 
-	// Register Twilio provider
+	// Count of supported providers registered
+	supportedCount := 0
+
+	// Register Twilio provider (SUPPORTED)
 	if cfg.Providers.Twilio.Enabled {
 		twilioProvider := twilio.New(
 			cfg.Providers.Twilio.AccountSID,
@@ -153,9 +158,10 @@ func initProviders(cfg *config.Config, logger *zap.Logger) *providers.Manager {
 		)
 		manager.Register("twilio", twilioProvider, cfg.Providers.Twilio.Priority)
 		logger.Info("Registered Twilio provider", zap.Int("priority", cfg.Providers.Twilio.Priority))
+		supportedCount++
 	}
 
-	// Register Vonage provider
+	// Register Vonage provider (SUPPORTED)
 	if cfg.Providers.Vonage.Enabled {
 		vonageProvider := vonage.New(
 			cfg.Providers.Vonage.APIKey,
@@ -167,6 +173,62 @@ func initProviders(cfg *config.Config, logger *zap.Logger) *providers.Manager {
 		)
 		manager.Register("vonage", vonageProvider, cfg.Providers.Vonage.Priority)
 		logger.Info("Registered Vonage provider", zap.Int("priority", cfg.Providers.Vonage.Priority))
+		supportedCount++
+	}
+
+	// SMPP Provider - NOT SUPPORTED
+	// Log error if enabled in config, do not register
+	if cfg.Providers.SMPP.Enabled {
+		logger.Error("SMPP provider is enabled in configuration but NOT SUPPORTED",
+			zap.String("provider", "smpp"),
+			zap.String("status", "UNSUPPORTED"),
+			zap.String("recommendation", "Disable SMPP and use Twilio or Vonage instead"),
+			zap.String("config_key", "providers.smpp.enabled"),
+		)
+
+		// Create provider instance to verify it logs appropriate warnings
+		// Do NOT register it as it would cause all sends to fail
+		_ = smpp.New(smpp.Config{
+			Host:       cfg.Providers.SMPP.Host,
+			Port:       cfg.Providers.SMPP.Port,
+			SystemID:   cfg.Providers.SMPP.SystemID,
+			Password:   cfg.Providers.SMPP.Password,
+			SystemType: cfg.Providers.SMPP.SystemType,
+		}, logger)
+	}
+
+	// GSM Modem Provider - NOT SUPPORTED
+	// Log error if enabled in config, do not register
+	if cfg.Providers.GSM.Enabled {
+		logger.Error("GSM modem provider is enabled in configuration but NOT SUPPORTED",
+			zap.String("provider", "gsm"),
+			zap.String("status", "UNSUPPORTED"),
+			zap.String("reason", "Requires physical hardware not available in cloud deployments"),
+			zap.String("recommendation", "Disable GSM and use Twilio or Vonage instead"),
+			zap.String("config_key", "providers.gsm.enabled"),
+		)
+
+		// Create provider instance to verify it logs appropriate warnings
+		// Do NOT register it as it would cause all sends to fail
+		_ = gsm.New(gsm.Config{
+			DevicePath: cfg.Providers.GSM.DevicePath,
+			BaudRate:   cfg.Providers.GSM.BaudRate,
+			PIN:        cfg.Providers.GSM.PIN,
+		}, logger)
+	}
+
+	// Warn if no supported providers are registered
+	if supportedCount == 0 {
+		logger.Warn("No supported SMS providers registered!",
+			zap.String("impact", "All SMS operations will fail"),
+			zap.String("action", "Enable Twilio or Vonage provider in configuration"),
+		)
+	} else {
+		logger.Info("SMS provider initialization complete",
+			zap.Int("supported_providers", supportedCount),
+			zap.Bool("smpp_requested_but_unsupported", cfg.Providers.SMPP.Enabled),
+			zap.Bool("gsm_requested_but_unsupported", cfg.Providers.GSM.Enabled),
+		)
 	}
 
 	return manager

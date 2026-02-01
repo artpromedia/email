@@ -7,7 +7,17 @@
 
 import { forwardRef, memo } from "react";
 import { format, isToday, isYesterday, isThisYear } from "date-fns";
-import { Star, Paperclip, Reply, Forward, AlertCircle } from "lucide-react";
+import {
+  Star,
+  Paperclip,
+  Reply,
+  Forward,
+  AlertCircle,
+  Archive,
+  Trash2,
+  Mail,
+  MailOpen,
+} from "lucide-react";
 import type { EmailPriority } from "@email/types";
 import { cn } from "@email/ui";
 
@@ -50,7 +60,7 @@ interface DomainBadgeInlineProps {
   color: string;
 }
 
-function DomainBadgeInline({ domain, color }: DomainBadgeInlineProps) {
+function DomainBadgeInline({ domain, color }: Readonly<DomainBadgeInlineProps>) {
   return (
     <span
       className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium"
@@ -70,12 +80,12 @@ function DomainBadgeInline({ domain, color }: DomainBadgeInlineProps) {
 // ============================================================
 
 interface SenderAvatarProps {
-  name?: string | undefined;
+  name?: string;
   email: string;
   size?: "sm" | "md";
 }
 
-function SenderAvatar({ name, email, size = "md" }: SenderAvatarProps) {
+function SenderAvatar({ name, email, size = "md" }: Readonly<SenderAvatarProps>) {
   const initials = name
     ? name
         .split(" ")
@@ -91,7 +101,7 @@ function SenderAvatar({ name, email, size = "md" }: SenderAvatarProps) {
   // Generate consistent color from email
   let hash = 0;
   for (let i = 0; i < email.length; i++) {
-    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+    hash = (email.codePointAt(i) ?? 0) + ((hash << 5) - hash);
   }
   const hue = Math.abs(hash % 360);
 
@@ -120,6 +130,9 @@ export interface EmailListItemProps {
   onSelect: (emailId: string, event: React.MouseEvent) => void;
   onClick: (emailId: string) => void;
   onStar: (emailId: string) => void;
+  onArchive?: (emailId: string) => void;
+  onDelete?: (emailId: string) => void;
+  onToggleRead?: (emailId: string) => void;
   density?: "comfortable" | "compact" | "cozy";
   className?: string;
 }
@@ -135,6 +148,9 @@ export const EmailListItemComponent = memo(
         onSelect,
         onClick,
         onStar,
+        onArchive,
+        onDelete,
+        onToggleRead,
         density = "comfortable",
         className,
         ...props
@@ -146,18 +162,9 @@ export const EmailListItemComponent = memo(
       const receivedDate = new Date(email.receivedAt ?? email.createdAt);
 
       return (
-        <div
+        <li
           ref={ref}
-          role="row"
-          aria-selected={isSelected}
-          tabIndex={0}
-          onClick={() => onClick(email.id)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onClick(email.id);
-            }
-          }}
+          aria-label={`Email from ${senderName}: ${email.subject || "(No Subject)"}`}
           className={cn(
             "group relative flex cursor-pointer border-b border-neutral-100 dark:border-neutral-800",
             "transition-colors duration-100",
@@ -173,6 +180,19 @@ export const EmailListItemComponent = memo(
           )}
           {...props}
         >
+          <button
+            onClick={() => onClick(email.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick(email.id);
+              }
+            }}
+            className="absolute inset-0 z-0"
+            aria-label={`Open email from ${senderName}`}
+          >
+            <span className="sr-only">Open email</span>
+          </button>
           {/* Selection Checkbox */}
           <div className="flex items-center pr-3">
             <input
@@ -207,6 +227,71 @@ export const EmailListItemComponent = memo(
             <Star className="h-4 w-4" fill={email.isStarred ? "currentColor" : "none"} />
           </button>
 
+          {/* Quick Actions (visible on hover) */}
+          <div
+            className={cn(
+              "flex items-center gap-1 pr-3",
+              "opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+            )}
+          >
+            {/* Mark as Read/Unread */}
+            {onToggleRead && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleRead(email.id);
+                }}
+                className={cn(
+                  "rounded p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700",
+                  "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200",
+                  "transition-colors"
+                )}
+                title={email.isRead ? "Mark as unread" : "Mark as read"}
+                aria-label={email.isRead ? "Mark as unread" : "Mark as read"}
+              >
+                {email.isRead ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}
+              </button>
+            )}
+
+            {/* Archive */}
+            {onArchive && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive(email.id);
+                }}
+                className={cn(
+                  "rounded p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700",
+                  "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200",
+                  "transition-colors"
+                )}
+                title="Archive"
+                aria-label="Archive email"
+              >
+                <Archive className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Delete */}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(email.id);
+                }}
+                className={cn(
+                  "rounded p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30",
+                  "text-neutral-500 hover:text-red-600 dark:text-neutral-400 dark:hover:text-red-400",
+                  "transition-colors"
+                )}
+                title="Delete"
+                aria-label="Delete email"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
           {/* Avatar */}
           <div className="flex items-center pr-3">
             <SenderAvatar
@@ -223,9 +308,9 @@ export const EmailListItemComponent = memo(
               <span
                 className={cn(
                   "truncate",
-                  !email.isRead
-                    ? "font-semibold text-neutral-900 dark:text-white"
-                    : "font-medium text-neutral-700 dark:text-neutral-300"
+                  email.isRead
+                    ? "font-medium text-neutral-700 dark:text-neutral-300"
+                    : "font-semibold text-neutral-900 dark:text-white"
                 )}
               >
                 {senderName}
@@ -266,9 +351,9 @@ export const EmailListItemComponent = memo(
             <div
               className={cn(
                 "mt-0.5 truncate",
-                !email.isRead
-                  ? "text-neutral-900 dark:text-white"
-                  : "text-neutral-600 dark:text-neutral-400"
+                email.isRead
+                  ? "text-neutral-600 dark:text-neutral-400"
+                  : "text-neutral-900 dark:text-white"
               )}
             >
               {email.subject || "(No Subject)"}
@@ -298,7 +383,7 @@ export const EmailListItemComponent = memo(
               </div>
             )}
           </div>
-        </div>
+        </li>
       );
     }
   )
@@ -312,9 +397,9 @@ EmailListItemComponent.displayName = "EmailListItem";
 
 export function EmailListItemSkeleton({
   density = "comfortable",
-}: {
+}: Readonly<{
   density?: "comfortable" | "compact" | "cozy";
-}) {
+}>) {
   return (
     <div
       className={cn(

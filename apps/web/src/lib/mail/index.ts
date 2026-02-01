@@ -61,13 +61,30 @@ export {
   useRecipientHints,
   useCheckRecipientInternal,
   useSendEmail,
+  useScheduleDelayedSend,
   useSaveDraft,
   useDeleteDraft,
   useUploadAttachment,
 } from "./compose-api";
+export type { PendingEmail } from "./compose-api";
+
+// Undo Send
+export { useUndoSend, useUndoSendSettings } from "./use-undo-send";
+export type { UndoSendSettings } from "./use-undo-send";
 
 // WebSocket
 export { useMailWebSocket, useMailRealtime } from "./websocket";
+
+// Search
+export {
+  parseSearchQuery,
+  stringifySearchQuery,
+  getSearchSuggestions,
+  highlightSearchTerms,
+  extractSearchSnippet,
+  SEARCH_OPERATORS,
+} from "./search";
+export type { SearchOperator, ParsedSearchQuery, SearchSuggestion } from "./search";
 
 // Components
 export {
@@ -77,6 +94,7 @@ export {
   EmailList,
   DomainFilterToolbar,
   MoveEmailDialog,
+  AdvancedSearchBar,
 } from "@/components/mail";
 export type { EmailListItemProps } from "@/components/mail";
 

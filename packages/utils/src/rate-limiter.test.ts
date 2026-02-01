@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { InMemoryRateLimiter, RATE_LIMIT_TIERS } from './rate-limiter';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { InMemoryRateLimiter, RATE_LIMIT_TIERS } from './rate-limiter.js';
 
 describe('InMemoryRateLimiter', () => {
   let limiter: InMemoryRateLimiter;

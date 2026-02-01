@@ -56,12 +56,13 @@ var (
 
 // Server represents the IMAP server
 type Server struct {
-	config     *config.Config
-	repo       *repository.Repository
-	logger     *zap.Logger
-	tlsConfig  *tls.Config
-	listener   net.Listener
-	tlsListener net.Listener
+	config          *config.Config
+	repo            *repository.Repository
+	logger          *zap.Logger
+	tlsConfig       *tls.Config
+	listener        net.Listener
+	tlsListener     net.Listener
+	oauth2Validator *OAuth2Validator
 
 	connections     map[string]*Connection
 	connectionsMu   sync.RWMutex
@@ -97,6 +98,20 @@ func NewServer(cfg *config.Config, repo *repository.Repository, logger *zap.Logg
 	}
 
 	return s, nil
+}
+
+// SetOAuth2Config configures OAuth2 authentication support
+func (s *Server) SetOAuth2Config(oauth2Config *OAuth2Config) {
+	if oauth2Config != nil && oauth2Config.Enabled {
+		s.oauth2Validator = NewOAuth2Validator(oauth2Config, s.logger.Named("oauth2"))
+		s.logger.Info("OAuth2 authentication enabled",
+			zap.Any("providers", oauth2Config.AllowedProviders))
+	}
+}
+
+// SupportsOAuth2 returns true if OAuth2 authentication is enabled
+func (s *Server) SupportsOAuth2() bool {
+	return s.oauth2Validator != nil && s.oauth2Validator.config.Enabled
 }
 
 // Start starts the IMAP server
@@ -221,13 +236,14 @@ func (s *Server) newConnection(conn net.Conn, isTLS bool) *Connection {
 	activeConnections.Inc()
 
 	return &Connection{
-		id:         generateConnectionID(),
-		conn:       conn,
-		server:     s,
-		config:     s.config,
-		repo:       s.repo,
-		logger:     s.logger.With(zap.String("conn_id", generateConnectionID())),
-		notifyHub:  s.notifyHub,
+		id:              generateConnectionID(),
+		conn:            conn,
+		server:          s,
+		config:          s.config,
+		repo:            s.repo,
+		logger:          s.logger.With(zap.String("conn_id", generateConnectionID())),
+		notifyHub:       s.notifyHub,
+		oauth2Validator: s.oauth2Validator,
 		ctx: &ConnectionContext{
 			TLSEnabled:     isTLS,
 			Capabilities:   s.getCapabilities(isTLS),
@@ -280,6 +296,11 @@ func (s *Server) getCapabilities(isTLS bool) []string {
 
 	if s.config.IMAP.EnableCompression {
 		caps = append(caps, "COMPRESS=DEFLATE")
+	}
+
+	// Add OAuth2 capabilities if enabled
+	if s.oauth2Validator != nil && s.oauth2Validator.config.Enabled {
+		caps = append(caps, "AUTH=XOAUTH2", "AUTH=OAUTHBEARER")
 	}
 
 	return caps

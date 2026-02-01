@@ -47,7 +47,7 @@ export function generateSecureToken(length = 32): string {
   for (let i = 0; i < length; i++) {
     const randomValue = randomValues[i];
     if (randomValue !== undefined) {
-      result += chars[randomValue % chars.length];
+      result += chars[randomValue % chars.length] ?? "";
     }
   }
   return result;
@@ -64,7 +64,7 @@ export function generateShortCode(length = 6): string {
   for (let i = 0; i < length; i++) {
     const randomValue = randomValues[i];
     if (randomValue !== undefined) {
-      result += chars[randomValue % chars.length];
+      result += chars[randomValue % chars.length] ?? "";
     }
   }
   return result;
@@ -122,7 +122,7 @@ export function maskEmail(email: string): string {
   const maskedLocal =
     localPart.length <= 2
       ? "*".repeat(localPart.length)
-      : localPart[0] + "*".repeat(localPart.length - 2) + localPart.at(-1);
+      : (localPart[0] ?? "*") + "*".repeat(localPart.length - 2) + (localPart.at(-1) ?? "*");
 
   return `${maskedLocal}@${domain}`;
 }
@@ -219,10 +219,7 @@ export function toISOString(date: Date | string): string {
 /**
  * Format date for display
  */
-export function formatDate(
-  date: Date | string,
-  formatStr = "MMM d, yyyy"
-): string {
+export function formatDate(date: Date | string, formatStr = "MMM d, yyyy"): string {
   const d = typeof date === "string" ? parseISO(date) : date;
   return format(d, formatStr);
 }
@@ -230,10 +227,7 @@ export function formatDate(
 /**
  * Format date and time for display
  */
-export function formatDateTime(
-  date: Date | string,
-  formatStr = "MMM d, yyyy h:mm a"
-): string {
+export function formatDateTime(date: Date | string, formatStr = "MMM d, yyyy h:mm a"): string {
   const d = typeof date === "string" ? parseISO(date) : date;
   return format(d, formatStr);
 }
@@ -256,11 +250,7 @@ export function isValidDate(date: unknown): date is Date {
 /**
  * Add time to a date
  */
-export function addTime(
-  date: Date,
-  amount: number,
-  unit: "minutes" | "hours" | "days"
-): Date {
+export function addTime(date: Date, amount: number, unit: "minutes" | "hours" | "days"): Date {
   switch (unit) {
     case "minutes":
       return addMinutes(date, amount);
@@ -399,11 +389,12 @@ export function omit<T extends Record<string, unknown>, K extends keyof T>(
   obj: T,
   keys: K[]
 ): Omit<T, K> {
-  const result = { ...obj };
+  const result = { ...obj } as Record<string, unknown>;
   for (const key of keys) {
-    delete result[key];
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete result[key as string];
   }
-  return result;
+  return result as Omit<T, K>;
 }
 
 /**
@@ -451,19 +442,17 @@ export function uniqueBy<T>(array: T[], key: keyof T): T[] {
 /**
  * Group array items by key
  */
-export function groupBy<T extends Record<string, unknown>>(array: T[], key: keyof T): Record<string, T[]> {
-  return array.reduce<Record<string, T[]>>(
-    (acc, item) => {
-      const value = item[key];
-      const k = typeof value === "string" ? value : JSON.stringify(value);
-      if (!acc[k]) {
-        acc[k] = [];
-      }
-      acc[k].push(item);
-      return acc;
-    },
-    {}
-  );
+export function groupBy<T extends Record<string, unknown>>(
+  array: T[],
+  key: keyof T
+): Record<string, T[]> {
+  return array.reduce<Record<string, T[]>>((acc, item) => {
+    const value = item[key];
+    const k = typeof value === "string" ? value : JSON.stringify(value);
+    acc[k] ??= [];
+    acc[k].push(item);
+    return acc;
+  }, {});
 }
 
 // ============================================================
@@ -490,15 +479,9 @@ export async function retry<T>(
     onRetry?: (error: Error, attempt: number) => void;
   } = {}
 ): Promise<T> {
-  const {
-    maxAttempts = 3,
-    initialDelay = 1000,
-    maxDelay = 30000,
-    factor = 2,
-    onRetry,
-  } = options;
+  const { maxAttempts = 3, initialDelay = 1000, maxDelay = 30000, factor = 2, onRetry } = options;
 
-  let lastError: Error | undefined;
+  let lastError: Error = new Error("Retry failed");
   let delay = initialDelay;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -521,25 +504,22 @@ export async function retry<T>(
 /**
  * Execute promises with concurrency limit
  */
-export async function pLimit<T>(
-  tasks: (() => Promise<T>)[],
-  concurrency: number
-): Promise<T[]> {
+export async function pLimit<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
   const results: T[] = [];
-  const executing: Promise<void>[] = [];
+  const executing = new Set<Promise<void>>();
 
   for (const task of tasks) {
-    const promise = task().then((result) => {
+    const resultPromise = (async () => {
+      const result = await task();
       results.push(result);
+    })();
+
+    const executingPromise = resultPromise.finally(() => {
+      executing.delete(executingPromise);
     });
+    executing.add(executingPromise);
 
-    const executingPromise = promise.then(() => {
-      executing.splice(executing.indexOf(executingPromise), 1);
-    });
-
-    executing.push(executingPromise);
-
-    if (executing.length >= concurrency) {
+    if (executing.size >= concurrency) {
       await Promise.race(executing);
     }
   }
@@ -581,4 +561,4 @@ export {
   type RateLimiterOptions,
   type RateLimitConfig,
   type RateLimitTier,
-} from "./rate-limiter";
+} from "./rate-limiter.js";

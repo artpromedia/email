@@ -3,13 +3,13 @@
  * Replaces in-memory rate limiting in middleware.ts
  */
 
-import type { Redis } from 'ioredis';
+import type { Redis } from "ioredis";
 
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: number; // Unix timestamp in seconds
-  retryAfter?: number; // Seconds until rate limit resets
+  retryAfter: number | undefined; // Seconds until rate limit resets
 }
 
 export interface RateLimiterOptions {
@@ -33,7 +33,7 @@ export class RedisRateLimiter {
 
   constructor(options: RateLimiterOptions) {
     this.redis = options.redis;
-    this.prefix = options.prefix || 'ratelimit';
+    this.prefix = options.prefix || "ratelimit";
     this.fallbackToAllow = options.fallbackToAllow ?? true;
   }
 
@@ -43,11 +43,7 @@ export class RedisRateLimiter {
    * @param limit Maximum requests allowed in the window
    * @param windowMs Time window in milliseconds
    */
-  async check(
-    identifier: string,
-    limit: number,
-    windowMs: number
-  ): Promise<RateLimitResult> {
+  async check(identifier: string, limit: number, windowMs: number): Promise<RateLimitResult> {
     const now = Date.now();
     const windowKey = `${this.prefix}:${identifier}:${Math.floor(now / windowMs)}`;
     const windowStart = Math.floor(now / windowMs) * windowMs;
@@ -80,7 +76,7 @@ export class RedisRateLimiter {
         retryAfter: allowed ? undefined : Math.ceil((windowStart + windowMs - now) / 1000),
       };
     } catch (error) {
-      console.error('Rate limiter Redis error:', error);
+      console.error("Rate limiter Redis error:", error);
       return this.fallbackResult(limit, resetAt);
     }
   }
@@ -88,24 +84,19 @@ export class RedisRateLimiter {
   /**
    * Check multiple rate limits (e.g., per-second AND per-minute)
    */
-  async checkMultiple(
-    identifier: string,
-    configs: RateLimitConfig[]
-  ): Promise<RateLimitResult> {
+  async checkMultiple(identifier: string, configs: RateLimitConfig[]): Promise<RateLimitResult> {
     const results = await Promise.all(
-      configs.map(config => this.check(identifier, config.limit, config.windowMs))
+      configs.map((config) => this.check(identifier, config.limit, config.windowMs))
     );
 
     // Return the most restrictive result
-    const denied = results.find(r => !r.allowed);
+    const denied = results.find((r) => !r.allowed);
     if (denied) {
       return denied;
     }
 
     // All passed - return the one with lowest remaining
-    return results.reduce((min, r) =>
-      r.remaining < min.remaining ? r : min
-    );
+    return results.reduce((min, r) => (r.remaining < min.remaining ? r : min));
   }
 
   /**
@@ -119,7 +110,7 @@ export class RedisRateLimiter {
         await this.redis.del(...keys);
       }
     } catch (error) {
-      console.error('Rate limiter reset error:', error);
+      console.error("Rate limiter reset error:", error);
     }
   }
 
@@ -141,7 +132,7 @@ export class RedisRateLimiter {
         limit: 0,
       };
     } catch (error) {
-      console.error('Rate limiter getUsage error:', error);
+      console.error("Rate limiter getUsage error:", error);
       return null;
     }
   }
@@ -153,6 +144,7 @@ export class RedisRateLimiter {
       allowed: this.fallbackToAllow,
       remaining: this.fallbackToAllow ? limit : 0,
       resetAt,
+      retryAfter: undefined,
     };
   }
 }
@@ -162,7 +154,7 @@ export class RedisRateLimiter {
  * or for development/testing
  */
 export class InMemoryRateLimiter {
-  private windows: Map<string, { count: number; resetAt: number }> = new Map();
+  private windows = new Map<string, { count: number; resetAt: number }>();
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
@@ -170,11 +162,7 @@ export class InMemoryRateLimiter {
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
   }
 
-  async check(
-    identifier: string,
-    limit: number,
-    windowMs: number
-  ): Promise<RateLimitResult> {
+  check(identifier: string, limit: number, windowMs: number): Promise<RateLimitResult> {
     const now = Date.now();
     const windowStart = Math.floor(now / windowMs) * windowMs;
     const key = `${identifier}:${windowStart}`;
@@ -191,38 +179,34 @@ export class InMemoryRateLimiter {
     const allowed = entry.count <= limit;
     const remaining = Math.max(0, limit - entry.count);
 
-    return {
+    return Promise.resolve({
       allowed,
       remaining,
       resetAt,
       retryAfter: allowed ? undefined : Math.ceil((entry.resetAt - now) / 1000),
-    };
+    });
   }
 
-  async checkMultiple(
-    identifier: string,
-    configs: RateLimitConfig[]
-  ): Promise<RateLimitResult> {
+  async checkMultiple(identifier: string, configs: RateLimitConfig[]): Promise<RateLimitResult> {
     const results = await Promise.all(
-      configs.map(config => this.check(identifier, config.limit, config.windowMs))
+      configs.map((config) => this.check(identifier, config.limit, config.windowMs))
     );
 
-    const denied = results.find(r => !r.allowed);
+    const denied = results.find((r) => !r.allowed);
     if (denied) return denied;
 
-    return results.reduce((min, r) =>
-      r.remaining < min.remaining ? r : min
-    );
+    return results.reduce((min, r) => (r.remaining < min.remaining ? r : min));
   }
 
-  async reset(identifier: string): Promise<void> {
+  reset(identifier: string): Promise<void> {
     const keysToDelete: string[] = [];
     for (const key of this.windows.keys()) {
-      if (key.startsWith(identifier + ':')) {
+      if (key.startsWith(`${identifier}:`)) {
         keysToDelete.push(key);
       }
     }
-    keysToDelete.forEach(key => this.windows.delete(key));
+    keysToDelete.forEach((key) => this.windows.delete(key));
+    return Promise.resolve();
   }
 
   private cleanup(): void {
@@ -262,24 +246,24 @@ export function createRateLimiter(
 export const RATE_LIMIT_TIERS = {
   // Authentication endpoints - strict limits
   auth: [
-    { limit: 5, windowMs: 60 * 1000 },      // 5 per minute
+    { limit: 5, windowMs: 60 * 1000 }, // 5 per minute
     { limit: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour
   ],
 
   // API endpoints - moderate limits
   api: [
-    { limit: 100, windowMs: 60 * 1000 },     // 100 per minute
+    { limit: 100, windowMs: 60 * 1000 }, // 100 per minute
     { limit: 1000, windowMs: 60 * 60 * 1000 }, // 1000 per hour
   ],
 
   // General web requests - lenient limits
   web: [
-    { limit: 300, windowMs: 60 * 1000 },     // 300 per minute
+    { limit: 300, windowMs: 60 * 1000 }, // 300 per minute
   ],
 
   // Expensive operations - very strict
   expensive: [
-    { limit: 10, windowMs: 60 * 1000 },      // 10 per minute
+    { limit: 10, windowMs: 60 * 1000 }, // 10 per minute
     { limit: 50, windowMs: 60 * 60 * 1000 }, // 50 per hour
   ],
 } as const;

@@ -86,6 +86,10 @@ func (c *Connection) handleAuthenticate(tag, args string) error {
 		return c.authenticatePlain(tag, parts)
 	case "LOGIN":
 		return c.authenticateLogin(tag)
+	case "XOAUTH2":
+		return c.handleAuthenticateXOAuth2(tag, parts)
+	case "OAUTHBEARER":
+		return c.handleAuthenticateOAuthBearer(tag, parts)
 	default:
 		c.sendTagged(tag, "NO [CANNOT] Unsupported authentication mechanism")
 		return nil

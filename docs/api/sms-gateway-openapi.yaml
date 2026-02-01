@@ -1,0 +1,771 @@
+openapi: 3.0.3
+info:
+  title: SMS Gateway API
+  description: |
+    REST API for the SMS Gateway service.
+
+    ## Authentication
+    All endpoints require API key authentication:
+    ```
+    X-API-Key: <your-api-key>
+    ```
+    Or Bearer token:
+    ```
+    Authorization: Bearer <your-token>
+    ```
+
+    ## Rate Limiting
+    - Default: 30 requests/minute, 500/hour, 5000/day
+    - OTP: 3/minute, 10/hour, 5/phone/day
+
+    ## Providers
+    Supported: Twilio, Vonage
+    Not Supported: SMPP, GSM Modem
+
+  version: 1.0.0
+  contact:
+    name: SMS Gateway Support
+    email: sms-support@enterpriseemail.com
+
+servers:
+  - url: http://localhost:8087
+    description: Development server
+  - url: https://sms.enterpriseemail.com
+    description: Production server
+
+tags:
+  - name: SMS
+    description: SMS sending and management
+  - name: OTP
+    description: One-time password operations
+  - name: Providers
+    description: Provider management
+  - name: Templates
+    description: SMS template management
+  - name: Webhooks
+    description: Delivery status webhooks
+
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    SendSMSRequest:
+      type: object
+      required:
+        - to
+        - message
+      properties:
+        to:
+          type: string
+          description: Recipient phone number (E.164 format)
+          example: "+1234567890"
+        from:
+          type: string
+          description: Sender ID or phone number
+        message:
+          type: string
+          description: Message content
+          maxLength: 1600
+        template_id:
+          type: string
+          description: Template ID (if using template)
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          description: Template variables
+        provider:
+          type: string
+          enum: [twilio, vonage]
+          description: Force specific provider
+        scheduled_at:
+          type: string
+          format: date-time
+          description: Schedule delivery time
+        callback_url:
+          type: string
+          format: uri
+          description: Webhook URL for delivery status
+
+    SendSMSResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            message_id:
+              type: string
+            status:
+              type: string
+              enum: [pending, queued, sent, delivered, failed]
+            provider:
+              type: string
+            segment_count:
+              type: integer
+            cost:
+              type: number
+
+    MessageStatus:
+      type: object
+      properties:
+        message_id:
+          type: string
+        provider_id:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum: [pending, queued, sent, delivered, failed, expired, rejected, unknown]
+        status_message:
+          type: string
+        delivered_at:
+          type: string
+          format: date-time
+        error_code:
+          type: string
+        error_message:
+          type: string
+
+    OTPRequest:
+      type: object
+      required:
+        - phone_number
+        - purpose
+      properties:
+        phone_number:
+          type: string
+          description: Recipient phone number (E.164 format)
+          example: "+1234567890"
+        purpose:
+          type: string
+          description: Purpose of OTP (e.g., login, signup, password_reset)
+        template_id:
+          type: string
+          description: Custom template ID
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+
+    OTPResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            request_id:
+              type: string
+            expires_in:
+              type: integer
+              description: Seconds until OTP expires
+            message_id:
+              type: string
+
+    OTPVerifyRequest:
+      type: object
+      required:
+        - phone_number
+        - code
+      properties:
+        request_id:
+          type: string
+        phone_number:
+          type: string
+        code:
+          type: string
+        purpose:
+          type: string
+
+    OTPVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            valid:
+              type: boolean
+            attempts_remaining:
+              type: integer
+
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        content:
+          type: string
+        variables:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ProviderStatus:
+      type: object
+      additionalProperties:
+        type: boolean
+      example:
+        twilio: true
+        vonage: true
+
+    ProviderBalance:
+      type: object
+      properties:
+        provider:
+          type: string
+        balance:
+          type: number
+        currency:
+          type: string
+
+paths:
+  /api/sms/send:
+    post:
+      tags:
+        - SMS
+      summary: Send SMS
+      description: Send an SMS message to a recipient
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendSMSRequest"
+      responses:
+        "200":
+          description: SMS sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendSMSResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Rate limit exceeded
+        "500":
+          description: Internal server error
+
+  /api/sms/bulk:
+    post:
+      tags:
+        - SMS
+      summary: Send bulk SMS
+      description: Send SMS messages to multiple recipients
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/SendSMSRequest"
+                  maxItems: 1000
+      responses:
+        "200":
+          description: Bulk SMS processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SendSMSResponse"
+                      total:
+                        type: integer
+                      success:
+                        type: integer
+                      failed:
+                        type: integer
+        "400":
+          description: Invalid request
+        "429":
+          description: Rate limit exceeded
+
+  /api/sms/status/{messageId}:
+    get:
+      tags:
+        - SMS
+      summary: Get message status
+      description: Get delivery status of a sent message
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/MessageStatus"
+        "404":
+          description: Message not found
+
+  /api/otp/send:
+    post:
+      tags:
+        - OTP
+      summary: Send OTP
+      description: Generate and send a one-time password
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OTPRequest"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OTPResponse"
+        "400":
+          description: Invalid request
+        "429":
+          description: Rate limit exceeded (too many OTP requests)
+
+  /api/otp/verify:
+    post:
+      tags:
+        - OTP
+      summary: Verify OTP
+      description: Verify a one-time password
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OTPVerifyRequest"
+      responses:
+        "200":
+          description: OTP verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OTPVerifyResponse"
+        "400":
+          description: Invalid request
+        "429":
+          description: Too many verification attempts
+
+  /api/otp/resend:
+    post:
+      tags:
+        - OTP
+      summary: Resend OTP
+      description: Resend a one-time password (subject to cooldown)
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - request_id
+              properties:
+                request_id:
+                  type: string
+      responses:
+        "200":
+          description: OTP resent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OTPResponse"
+        "400":
+          description: Invalid request or cooldown active
+        "429":
+          description: Rate limit exceeded
+
+  /api/providers:
+    get:
+      tags:
+        - Providers
+      summary: List providers
+      description: Get list of registered SMS providers
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Provider list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: string
+                    example: ["twilio", "vonage"]
+
+  /api/providers/status:
+    get:
+      tags:
+        - Providers
+      summary: Get provider status
+      description: Get health status of all providers
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Provider status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/ProviderStatus"
+
+  /api/providers/balance:
+    get:
+      tags:
+        - Providers
+      summary: Get provider balance
+      description: Get account balance for providers
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: query
+          schema:
+            type: string
+          description: Specific provider name (optional)
+      responses:
+        "200":
+          description: Provider balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    oneOf:
+                      - $ref: "#/components/schemas/ProviderBalance"
+                      - type: array
+                        items:
+                          $ref: "#/components/schemas/ProviderBalance"
+
+  /api/templates:
+    get:
+      tags:
+        - Templates
+      summary: List templates
+      description: Get all SMS templates
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        "200":
+          description: Template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Template"
+
+    post:
+      tags:
+        - Templates
+      summary: Create template
+      description: Create a new SMS template
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - content
+              properties:
+                name:
+                  type: string
+                content:
+                  type: string
+                  description: "Template content with {{variable}} placeholders"
+                variables:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Template"
+        "400":
+          description: Invalid template
+
+  /api/templates/{id}:
+    get:
+      tags:
+        - Templates
+      summary: Get template
+      description: Get a specific template
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Template details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Template"
+        "404":
+          description: Template not found
+
+    put:
+      tags:
+        - Templates
+      summary: Update template
+      description: Update an existing template
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                content:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Template updated
+        "404":
+          description: Template not found
+
+    delete:
+      tags:
+        - Templates
+      summary: Delete template
+      description: Delete a template
+      security:
+        - apiKeyAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Template deleted
+        "404":
+          description: Template not found
+
+  /webhooks/twilio:
+    post:
+      tags:
+        - Webhooks
+      summary: Twilio webhook
+      description: Receive delivery status updates from Twilio
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                MessageSid:
+                  type: string
+                MessageStatus:
+                  type: string
+                To:
+                  type: string
+                From:
+                  type: string
+                ErrorCode:
+                  type: string
+      responses:
+        "200":
+          description: Webhook processed
+
+  /webhooks/vonage:
+    post:
+      tags:
+        - Webhooks
+      summary: Vonage webhook
+      description: Receive delivery status updates from Vonage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message-id:
+                  type: string
+                status:
+                  type: string
+                to:
+                  type: string
+                err-code:
+                  type: string
+      responses:
+        "200":
+          description: Webhook processed
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Basic health check endpoint
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: Prometheus-compatible metrics endpoint
+      responses:
+        "200":
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string

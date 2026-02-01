@@ -9,11 +9,196 @@ import { RATE_LIMIT_TIERS, type RateLimitResult, type RateLimitConfig } from "@e
  * - Rate limiting with Redis (Upstash for Edge compatibility)
  * - CSRF protection validation
  * - Authentication checks
+ * - Nonce-based inline script support
  *
  * For horizontal scaling, this middleware uses Upstash Redis which is
  * Edge-compatible. Configure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
  * environment variables for production.
+ *
+ * CSP Configuration (environment variables):
+ * - CSP_CONNECT_DOMAINS: Comma-separated list of allowed API/WebSocket domains
+ * - CSP_SCRIPT_DOMAINS: Comma-separated list of allowed script domains
+ * - CSP_STYLE_DOMAINS: Comma-separated list of allowed style domains
+ * - CSP_REPORT_URI: URL for CSP violation reports
+ * - CSP_REPORT_ONLY: Set to "true" to use report-only mode
+ * - API_URL: Primary API URL (auto-added to connect-src)
  */
+
+// CSP Configuration from environment
+interface CSPEnvConfig {
+  connectDomains: string[];
+  scriptDomains: string[];
+  styleDomains: string[];
+  fontDomains: string[];
+  imgDomains: string[];
+  reportUri: string;
+  reportOnly: boolean;
+  isDevelopment: boolean;
+}
+
+function getCSPConfig(): CSPEnvConfig {
+  const isDevelopment = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+
+  const parseDomainsEnv = (envVar: string | undefined): string[] => {
+    if (!envVar) return [];
+    return envVar
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
+  };
+
+  // Build connect domains from API_URL and explicit CSP_CONNECT_DOMAINS
+  const connectDomains: string[] = [];
+  if (process.env.API_URL) {
+    try {
+      const apiUrl = new URL(process.env.API_URL);
+      connectDomains.push(apiUrl.origin);
+      // Add WebSocket equivalent
+      const wsProtocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+      connectDomains.push(`${wsProtocol}//${apiUrl.host}`);
+    } catch {
+      // Invalid URL, skip
+    }
+  }
+  if (process.env.WEB_APP_URL) {
+    try {
+      const webUrl = new URL(process.env.WEB_APP_URL);
+      connectDomains.push(webUrl.origin);
+    } catch {
+      // Invalid URL, skip
+    }
+  }
+  connectDomains.push(...parseDomainsEnv(process.env.CSP_CONNECT_DOMAINS));
+
+  return {
+    connectDomains,
+    scriptDomains: parseDomainsEnv(process.env.CSP_SCRIPT_DOMAINS),
+    styleDomains: parseDomainsEnv(process.env.CSP_STYLE_DOMAINS),
+    fontDomains: parseDomainsEnv(process.env.CSP_FONT_DOMAINS),
+    imgDomains: parseDomainsEnv(process.env.CSP_IMG_DOMAINS),
+    reportUri: process.env.CSP_REPORT_URI || "/api/csp-report",
+    reportOnly: process.env.CSP_REPORT_ONLY === "true",
+    isDevelopment,
+  };
+}
+
+/**
+ * Generate a cryptographically secure nonce for CSP
+ */
+function generateNonce(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCodePoint(...array));
+}
+
+/**
+ * Build CSP header from configuration
+ */
+function buildCSPHeader(config: CSPEnvConfig, nonce: string): string {
+  const directives: string[] = [];
+
+  // Default sources
+  directives.push("default-src 'self'");
+
+  // Script sources with nonce
+  const scriptSources = ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net"];
+  if (config.scriptDomains.length > 0) {
+    scriptSources.push(...config.scriptDomains);
+  }
+  // Development: allow unsafe-inline and unsafe-eval for hot reload
+  if (config.isDevelopment) {
+    scriptSources.push("'unsafe-inline'", "'unsafe-eval'");
+  }
+  directives.push(`script-src ${scriptSources.join(" ")}`);
+
+  // Style sources with nonce
+  const styleSources = [
+    "'self'",
+    `'nonce-${nonce}'`,
+    "'unsafe-inline'",
+    "https://fonts.googleapis.com",
+  ];
+  if (config.styleDomains.length > 0) {
+    styleSources.push(...config.styleDomains);
+  }
+  directives.push(`style-src ${styleSources.join(" ")}`);
+
+  // Font sources
+  const fontSources = ["'self'", "https://fonts.gstatic.com", "data:"];
+  if (config.fontDomains.length > 0) {
+    fontSources.push(...config.fontDomains);
+  }
+  directives.push(`font-src ${fontSources.join(" ")}`);
+
+  // Image sources
+  const imgSources = ["'self'", "data:", "https:", "blob:"];
+  if (config.imgDomains.length > 0) {
+    imgSources.push(...config.imgDomains);
+  }
+  directives.push(`img-src ${imgSources.join(" ")}`);
+
+  // Connect sources (API, WebSockets)
+  const connectSources = ["'self'"];
+  if (config.connectDomains.length > 0) {
+    connectSources.push(...config.connectDomains);
+  }
+  // Development: allow localhost
+  if (config.isDevelopment) {
+    connectSources.push(
+      "http://localhost:*",
+      "ws://localhost:*",
+      "http://127.0.0.1:*",
+      "ws://127.0.0.1:*"
+    );
+  }
+  directives.push(
+    `connect-src ${connectSources.join(" ")}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "worker-src 'self' blob:"
+  );
+
+  // Report URI for violation logging
+  if (config.reportUri) {
+    directives.push(`report-uri ${config.reportUri}`);
+  }
+
+  return directives.join("; ");
+}
+
+// Cache CSP config (parsed once at startup)
+let cachedCSPConfig: CSPEnvConfig | null = null;
+
+function getOrCreateCSPConfig(): CSPEnvConfig {
+  if (!cachedCSPConfig) {
+    cachedCSPConfig = getCSPConfig();
+    // Validate at startup
+    validateCSPConfigAtStartup(cachedCSPConfig);
+  }
+  return cachedCSPConfig;
+}
+
+function validateCSPConfigAtStartup(config: CSPEnvConfig): void {
+  const warnings: string[] = [];
+
+  if (config.connectDomains.length === 0 && !config.isDevelopment) {
+    warnings.push("CSP: No connect domains configured. API calls may be blocked.");
+  }
+
+  if (!config.reportUri && !config.isDevelopment) {
+    warnings.push("CSP: No report URI configured. Violations won't be logged.");
+  }
+
+  if (warnings.length > 0) {
+    console.warn("[CSP Config Warnings]", warnings.join(" | "));
+  }
+
+  if (!config.isDevelopment) {
+    console.log("[CSP Config] Loaded with", config.connectDomains.length, "connect domains");
+  }
+}
 
 // Edge-compatible Redis rate limiter using Upstash REST API
 class EdgeRedisRateLimiter {
@@ -98,7 +283,7 @@ class EdgeRedisRateLimiter {
 
   async checkMultiple(identifier: string, configs: RateLimitConfig[]): Promise<RateLimitResult> {
     if (configs.length === 0) {
-      return { allowed: true, remaining: 0, resetAt: Math.floor(Date.now() / 1000) };
+      return { allowed: true, remaining: 0, resetAt: Math.floor(Date.now() / 1000), retryAfter: undefined };
     }
 
     const results = await Promise.all(
@@ -120,6 +305,7 @@ class EdgeRedisRateLimiter {
       allowed: this.fallbackToAllow,
       remaining: this.fallbackToAllow ? limit : 0,
       resetAt,
+      retryAfter: undefined,
     };
   }
 }
@@ -157,7 +343,7 @@ class EdgeInMemoryRateLimiter {
 
   checkMultiple(identifier: string, configs: RateLimitConfig[]): RateLimitResult {
     if (configs.length === 0) {
-      return { allowed: true, remaining: 0, resetAt: Math.floor(Date.now() / 1000) };
+      return { allowed: true, remaining: 0, resetAt: Math.floor(Date.now() / 1000), retryAfter: undefined };
     }
 
     const results = configs.map((config) => this.check(identifier, config.limit, config.windowMs));
@@ -203,6 +389,11 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const { pathname } = request.nextUrl;
 
+  // Skip CSP report endpoint to avoid circular issues
+  if (pathname === "/api/csp-report") {
+    return response;
+  }
+
   // Get client identifier (IP address or user ID)
   const identifier =
     request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "unknown";
@@ -226,6 +417,16 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // Generate nonce for this request
+  const nonce = generateNonce();
+
+  // Get CSP configuration
+  const cspConfig = getOrCreateCSPConfig();
+  const cspHeader = buildCSPHeader(cspConfig, nonce);
+  const cspHeaderName = cspConfig.reportOnly
+    ? "Content-Security-Policy-Report-Only"
+    : "Content-Security-Policy";
+
   // Security Headers
   const securityHeaders = {
     // Strict-Transport-Security: Force HTTPS
@@ -246,18 +447,11 @@ export async function middleware(request: NextRequest) {
     // Permissions-Policy: Control browser features
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 
-    // Content-Security-Policy: Prevent XSS and injection attacks
-    "Content-Security-Policy": [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://api.yourdomain.com wss://api.yourdomain.com",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; "),
+    // Content-Security-Policy: Dynamic based on environment
+    [cspHeaderName]: cspHeader,
+
+    // X-Nonce: Pass nonce to application for inline scripts
+    "X-Nonce": nonce,
   };
 
   // Apply security headers

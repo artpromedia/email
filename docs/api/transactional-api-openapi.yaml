@@ -1,0 +1,931 @@
+openapi: 3.0.3
+info:
+  title: Transactional Email API
+  description: |
+    REST API for sending transactional emails.
+
+    ## Authentication
+    All endpoints require API key authentication:
+    ```
+    X-API-Key: <your-api-key>
+    ```
+
+    ## Rate Limiting
+    - Default: 100 requests/minute per API key
+    - Batch: 10 requests/minute
+    - Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+
+    ## Webhooks
+    Configure webhooks to receive delivery status updates.
+
+  version: 1.0.0
+  contact:
+    name: Transactional API Support
+    email: transactional@enterpriseemail.com
+
+servers:
+  - url: http://localhost:8085
+    description: Development server
+  - url: https://transactional.enterpriseemail.com
+    description: Production server
+
+tags:
+  - name: Send
+    description: Email sending
+  - name: Templates
+    description: Email template management
+  - name: Messages
+    description: Message tracking
+  - name: Webhooks
+    description: Webhook configuration
+  - name: Suppressions
+    description: Suppression list management
+
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    EmailAddress:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+
+    Attachment:
+      type: object
+      required:
+        - filename
+        - content
+        - content_type
+      properties:
+        filename:
+          type: string
+        content:
+          type: string
+          format: byte
+          description: Base64-encoded content
+        content_type:
+          type: string
+        content_id:
+          type: string
+          description: Content-ID for inline attachments
+
+    SendEmailRequest:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          $ref: "#/components/schemas/EmailAddress"
+        to:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailAddress"
+          minItems: 1
+          maxItems: 50
+        cc:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailAddress"
+        bcc:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailAddress"
+        reply_to:
+          $ref: "#/components/schemas/EmailAddress"
+        subject:
+          type: string
+          maxLength: 998
+        text_body:
+          type: string
+        html_body:
+          type: string
+        template_id:
+          type: string
+          format: uuid
+        template_data:
+          type: object
+          additionalProperties: true
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
+          maxItems: 10
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom metadata (returned in webhooks)
+        track_opens:
+          type: boolean
+          default: true
+        track_clicks:
+          type: boolean
+          default: true
+        scheduled_at:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+
+    SendEmailResponse:
+      type: object
+      properties:
+        message_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, sending, sent, delivered, failed, bounced]
+        queued_at:
+          type: string
+          format: date-time
+
+    BatchSendRequest:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SendEmailRequest"
+          maxItems: 1000
+
+    BatchSendResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        accepted:
+          type: integer
+        rejected:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message_id:
+                type: string
+                format: uuid
+              status:
+                type: string
+              error:
+                type: string
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: email
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+        subject:
+          type: string
+        status:
+          type: string
+          enum: [queued, sending, sent, delivered, failed, bounced, complained]
+        opens:
+          type: integer
+        clicks:
+          type: integer
+        metadata:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+        delivered_at:
+          type: string
+          format: date-time
+
+    MessageEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        message_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum: [queued, sent, delivered, bounced, complained, opened, clicked, unsubscribed]
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: object
+          additionalProperties: true
+
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        subject:
+          type: string
+        text_body:
+          type: string
+        html_body:
+          type: string
+        variables:
+          type: array
+          items:
+            type: string
+        version:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTemplateRequest:
+      type: object
+      required:
+        - name
+        - subject
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+          description: "Subject template with {{variable}} placeholders"
+        text_body:
+          type: string
+        html_body:
+          type: string
+        variables:
+          type: array
+          items:
+            type: string
+          description: List of expected template variables
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+            enum: [delivered, bounced, complained, opened, clicked, unsubscribed]
+        secret:
+          type: string
+          description: Signing secret for webhook verification
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Suppression:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        reason:
+          type: string
+          enum: [bounce, complaint, unsubscribe, manual]
+        created_at:
+          type: string
+          format: date-time
+
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: {}
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_count:
+          type: integer
+        total_pages:
+          type: integer
+
+security:
+  - apiKeyAuth: []
+
+paths:
+  /api/v1/send:
+    post:
+      tags:
+        - Send
+      summary: Send email
+      description: Send a single transactional email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendEmailRequest"
+      responses:
+        "202":
+          description: Email queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendEmailResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limit exceeded
+
+  /api/v1/send/batch:
+    post:
+      tags:
+        - Send
+      summary: Send batch emails
+      description: Send multiple emails in a single request (max 1000)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchSendRequest"
+      responses:
+        "202":
+          description: Batch queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchSendResponse"
+        "400":
+          description: Invalid request
+        "429":
+          description: Rate limit exceeded
+
+  /api/v1/messages:
+    get:
+      tags:
+        - Messages
+      summary: List messages
+      description: Get sent messages with filtering
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [queued, sending, sent, delivered, failed, bounced, complained]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: email
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: email
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        "200":
+          description: Message list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Message"
+
+  /api/v1/messages/{messageId}:
+    get:
+      tags:
+        - Messages
+      summary: Get message
+      description: Get details of a specific message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Message details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "404":
+          description: Message not found
+
+  /api/v1/messages/{messageId}/events:
+    get:
+      tags:
+        - Messages
+      summary: Get message events
+      description: Get events for a specific message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Message events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MessageEvent"
+        "404":
+          description: Message not found
+
+  /api/v1/messages/{messageId}/cancel:
+    post:
+      tags:
+        - Messages
+      summary: Cancel scheduled message
+      description: Cancel a message that is scheduled but not yet sent
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Message cancelled
+        "404":
+          description: Message not found
+        "409":
+          description: Message already sent
+
+  /api/v1/templates:
+    get:
+      tags:
+        - Templates
+      summary: List templates
+      description: Get all email templates
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Template list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Template"
+
+    post:
+      tags:
+        - Templates
+      summary: Create template
+      description: Create a new email template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateRequest"
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "400":
+          description: Invalid template
+
+  /api/v1/templates/{templateId}:
+    get:
+      tags:
+        - Templates
+      summary: Get template
+      description: Get a specific template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "404":
+          description: Template not found
+
+    put:
+      tags:
+        - Templates
+      summary: Update template
+      description: Update an existing template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateRequest"
+      responses:
+        "200":
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "404":
+          description: Template not found
+
+    delete:
+      tags:
+        - Templates
+      summary: Delete template
+      description: Delete a template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Template deleted
+        "404":
+          description: Template not found
+
+  /api/v1/templates/{templateId}/preview:
+    post:
+      tags:
+        - Templates
+      summary: Preview template
+      description: Render a template with sample data
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Rendered template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subject:
+                    type: string
+                  text_body:
+                    type: string
+                  html_body:
+                    type: string
+        "404":
+          description: Template not found
+
+  /api/v1/webhooks:
+    get:
+      tags:
+        - Webhooks
+      summary: List webhooks
+      description: Get all configured webhooks
+      responses:
+        "200":
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Webhook"
+
+    post:
+      tags:
+        - Webhooks
+      summary: Create webhook
+      description: Create a new webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - events
+              properties:
+                url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum: [delivered, bounced, complained, opened, clicked, unsubscribed]
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+
+  /api/v1/webhooks/{webhookId}:
+    delete:
+      tags:
+        - Webhooks
+      summary: Delete webhook
+      description: Delete a webhook
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Webhook deleted
+        "404":
+          description: Webhook not found
+
+  /api/v1/webhooks/{webhookId}/test:
+    post:
+      tags:
+        - Webhooks
+      summary: Test webhook
+      description: Send a test payload to the webhook
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Test sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  response_code:
+                    type: integer
+                  response_time_ms:
+                    type: integer
+        "404":
+          description: Webhook not found
+
+  /api/v1/suppressions:
+    get:
+      tags:
+        - Suppressions
+      summary: List suppressions
+      description: Get all email addresses on the suppression list
+      parameters:
+        - name: reason
+          in: query
+          schema:
+            type: string
+            enum: [bounce, complaint, unsubscribe, manual]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Suppression list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Suppression"
+
+    post:
+      tags:
+        - Suppressions
+      summary: Add suppression
+      description: Manually add an email to the suppression list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                reason:
+                  type: string
+                  default: manual
+      responses:
+        "201":
+          description: Suppression added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Suppression"
+
+  /api/v1/suppressions/{email}:
+    delete:
+      tags:
+        - Suppressions
+      summary: Remove suppression
+      description: Remove an email from the suppression list
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "204":
+          description: Suppression removed
+        "404":
+          description: Email not on suppression list
+
+    get:
+      tags:
+        - Suppressions
+      summary: Check suppression
+      description: Check if an email is on the suppression list
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Suppression status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Suppression"
+        "404":
+          description: Email not suppressed
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Service health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string

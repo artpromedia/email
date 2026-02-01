@@ -2,6 +2,17 @@
 
 Welcome to the Enterprise Email Platform API documentation.
 
+## OpenAPI Specifications
+
+The platform provides OpenAPI 3.0 documentation for all services:
+
+| Service               | Spec File                                                          | Description                                              |
+| --------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| **Web App**           | [openapi.yaml](./openapi.yaml)                                     | Main web application API (mail compose, templates, etc.) |
+| **SMS Gateway**       | [sms-gateway-openapi.yaml](./sms-gateway-openapi.yaml)             | SMS sending, OTP, and provider management                |
+| **Domain Manager**    | [domain-manager-openapi.yaml](./domain-manager-openapi.yaml)       | Domain registration, verification, DKIM, policies        |
+| **Transactional API** | [transactional-api-openapi.yaml](./transactional-api-openapi.yaml) | Transactional email sending and webhooks                 |
+
 ## Interactive API Documentation
 
 View the interactive API documentation with Swagger UI:
@@ -9,22 +20,24 @@ View the interactive API documentation with Swagger UI:
 **Web App:** http://localhost:3000/api/docs **Admin App:** http://localhost:3001/api/docs
 **Production:** https://api.enterpriseemail.com/docs
 
-## OpenAPI Specification
-
-The complete OpenAPI 3.0 specification is available at:
-
-- YAML: [`/docs/api/openapi.yaml`](./openapi.yaml)
-- JSON: Generate from YAML using `pnpm run api:convert`
-
 ## Quick Start
 
 ### Authentication
 
-All API endpoints require authentication via Bearer token:
+Most API endpoints require authentication. Different services use different methods:
+
+**Bearer Token (Web/Admin Apps):**
 
 ```bash
 curl -H "Authorization: Bearer <your-token>" \
   https://api.enterpriseemail.com/v1/mail/compose/addresses
+```
+
+**API Key (SMS Gateway, Transactional API):**
+
+```bash
+curl -H "X-API-Key: <your-api-key>" \
+  https://sms.enterpriseemail.com/api/sms/send
 ```
 
 ### Rate Limiting

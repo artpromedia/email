@@ -91,6 +91,7 @@ type Authenticator struct {
 	redis  *redis.Client
 	config *Config
 	logger *zap.Logger
+	oauth2 *OAuth2Validator
 }
 
 // NewAuthenticator creates a new SMTP authenticator
@@ -104,6 +105,37 @@ func NewAuthenticator(repo Repository, redisClient *redis.Client, logger *zap.Lo
 		config: config,
 		logger: logger,
 	}
+}
+
+// NewAuthenticatorWithOAuth2 creates a new SMTP authenticator with OAuth2 support
+func NewAuthenticatorWithOAuth2(repo Repository, redisClient *redis.Client, logger *zap.Logger, config *Config, oauth2Config *OAuth2Config) *Authenticator {
+	if config == nil {
+		config = DefaultConfig()
+	}
+	a := &Authenticator{
+		repo:   repo,
+		redis:  redisClient,
+		config: config,
+		logger: logger,
+	}
+	if oauth2Config != nil && oauth2Config.Enabled {
+		a.oauth2 = NewOAuth2Validator(oauth2Config, redisClient, logger.Named("oauth2"))
+	}
+	return a
+}
+
+// SupportsOAuth2 returns true if OAuth2 authentication is enabled
+func (a *Authenticator) SupportsOAuth2() bool {
+	return a.oauth2 != nil && a.oauth2.config.Enabled
+}
+
+// GetSupportedMechanisms returns the list of supported authentication mechanisms
+func (a *Authenticator) GetSupportedMechanisms() []string {
+	mechanisms := []string{"PLAIN", "LOGIN"}
+	if a.SupportsOAuth2() {
+		mechanisms = append(mechanisms, "XOAUTH2", "OAUTHBEARER")
+	}
+	return mechanisms
 }
 
 // AuthenticatePlain handles PLAIN authentication mechanism (RFC 4616)

@@ -7,8 +7,10 @@ export { MailSidebar } from "./MailSidebar";
 export { EmailListItemComponent, EmailListItemSkeleton } from "./EmailListItem";
 export type { EmailListItemProps } from "./EmailListItem";
 export { EmailList } from "./EmailList";
+export { EmailThreadGroup } from "./EmailThreadGroup";
 export { DomainFilterToolbar } from "./DomainFilterToolbar";
 export { MoveEmailDialog } from "./MoveEmailDialog";
+export { AdvancedSearchBar } from "./AdvancedSearchBar";
 
 // Compose components
 export {

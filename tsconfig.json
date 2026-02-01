@@ -13,6 +13,12 @@
       "@email/ui/*": ["packages/ui/src/*"]
     }
   },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  },
+  "ignoreDeprecations": "5.0",
   "include": [],
   "references": [
     { "path": "packages/config" },

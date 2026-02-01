@@ -250,27 +250,18 @@ const baseEnvSchema = z.object({
  * Refinements for cross-field validation
  */
 const envSchemaWithRefinements = baseEnvSchema
-  .refine(
-    (data) => data.ALLOWED_DOMAINS.includes(data.PRIMARY_DOMAIN),
-    {
-      message: "PRIMARY_DOMAIN must be included in ALLOWED_DOMAINS",
-      path: ["PRIMARY_DOMAIN"],
-    }
-  )
-  .refine(
-    (data) => data.ALLOWED_DOMAINS.includes(data.DEFAULT_DOMAIN),
-    {
-      message: "DEFAULT_DOMAIN must be included in ALLOWED_DOMAINS",
-      path: ["DEFAULT_DOMAIN"],
-    }
-  )
-  .refine(
-    (data) => data.DATABASE_POOL_MAX >= data.DATABASE_POOL_MIN,
-    {
-      message: "DATABASE_POOL_MAX must be >= DATABASE_POOL_MIN",
-      path: ["DATABASE_POOL_MAX"],
-    }
-  );
+  .refine((data) => data.ALLOWED_DOMAINS.includes(data.PRIMARY_DOMAIN), {
+    message: "PRIMARY_DOMAIN must be included in ALLOWED_DOMAINS",
+    path: ["PRIMARY_DOMAIN"],
+  })
+  .refine((data) => data.ALLOWED_DOMAINS.includes(data.DEFAULT_DOMAIN), {
+    message: "DEFAULT_DOMAIN must be included in ALLOWED_DOMAINS",
+    path: ["DEFAULT_DOMAIN"],
+  })
+  .refine((data) => data.DATABASE_POOL_MAX >= data.DATABASE_POOL_MIN, {
+    message: "DATABASE_POOL_MAX must be >= DATABASE_POOL_MIN",
+    path: ["DATABASE_POOL_MAX"],
+  });
 
 /**
  * Environment configuration type
@@ -318,7 +309,8 @@ export function createEnvConfig(env: Record<string, string | undefined> = proces
     const host = enrichedEnv["POSTGRES_HOST"] ?? "localhost";
     const port = enrichedEnv["POSTGRES_PORT"] ?? "5432";
     const db = enrichedEnv["POSTGRES_DB"] ?? "enterprise_email";
-    enrichedEnv["DATABASE_URL"] = `postgresql://${user}:${pass}@${host}:${port}/${db}?schema=public`;
+    enrichedEnv["DATABASE_URL"] =
+      `postgresql://${user}:${pass}@${host}:${port}/${db}?schema=public`;
   }
 
   if (!enrichedEnv["REDIS_URL"]) {
@@ -366,9 +358,7 @@ let _env: EnvConfig | null = null;
  * Get the validated environment configuration (singleton)
  */
 export function getEnv(): EnvConfig {
-  if (!_env) {
-    _env = createEnvConfig();
-  }
+  _env ??= createEnvConfig();
   return _env;
 }
 
