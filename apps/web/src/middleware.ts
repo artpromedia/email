@@ -196,7 +196,7 @@ function validateCSPConfigAtStartup(config: CSPEnvConfig): void {
   }
 
   if (!config.isDevelopment) {
-    console.log("[CSP Config] Loaded with", config.connectDomains.length, "connect domains");
+    console.info("[CSP Config] Loaded with", config.connectDomains.length, "connect domains");
   }
 }
 
@@ -283,7 +283,12 @@ class EdgeRedisRateLimiter {
 
   async checkMultiple(identifier: string, configs: RateLimitConfig[]): Promise<RateLimitResult> {
     if (configs.length === 0) {
-      return { allowed: true, remaining: 0, resetAt: Math.floor(Date.now() / 1000), retryAfter: undefined };
+      return {
+        allowed: true,
+        remaining: 0,
+        resetAt: Math.floor(Date.now() / 1000),
+        retryAfter: undefined,
+      };
     }
 
     const results = await Promise.all(
@@ -343,7 +348,12 @@ class EdgeInMemoryRateLimiter {
 
   checkMultiple(identifier: string, configs: RateLimitConfig[]): RateLimitResult {
     if (configs.length === 0) {
-      return { allowed: true, remaining: 0, resetAt: Math.floor(Date.now() / 1000), retryAfter: undefined };
+      return {
+        allowed: true,
+        remaining: 0,
+        resetAt: Math.floor(Date.now() / 1000),
+        retryAfter: undefined,
+      };
     }
 
     const results = configs.map((config) => this.check(identifier, config.limit, config.windowMs));

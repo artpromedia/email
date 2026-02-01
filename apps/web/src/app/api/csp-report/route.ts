@@ -152,7 +152,7 @@ function shouldIgnoreViolation(violation: NormalizedViolation): boolean {
 /**
  * Log violation to configured logging system
  */
-async function logViolation(violation: NormalizedViolation): Promise<void> {
+function logViolation(violation: NormalizedViolation): void {
   // In production, this would send to a logging service (e.g., Elasticsearch, Sentry)
   // For now, we log to console with structured format
 
@@ -178,7 +178,7 @@ async function logViolation(violation: NormalizedViolation): Promise<void> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(logEntry),
-      }).catch((err) => console.error("Failed to send CSP violation to monitoring:", err));
+      }).catch((err: unknown) => console.error("Failed to send CSP violation to monitoring:", err));
     }
 
     // Track high-severity violations
@@ -203,13 +203,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       contentType.includes("application/csp-report") ||
       contentType.includes("application/json")
     ) {
-      const body = await request.json();
+      const body = (await request.json()) as unknown;
 
       // Handle both single reports and arrays (Report-To can batch)
       if (Array.isArray(body)) {
-        reports = body;
+        reports = body as CSPViolationReport[];
       } else {
-        reports = [body];
+        reports = [body as CSPViolationReport];
       }
     } else {
       // Unknown content type
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         continue;
       }
 
-      await logViolation(normalized);
+      logViolation(normalized);
       processed++;
     }
 
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 /**
  * OPTIONS handler for CORS preflight
  */
-export async function OPTIONS(): Promise<NextResponse> {
+export function OPTIONS(): NextResponse {
   return new NextResponse(null, {
     status: 204,
     headers: {
@@ -270,7 +270,7 @@ export async function OPTIONS(): Promise<NextResponse> {
 /**
  * GET handler - health check and documentation
  */
-export async function GET(): Promise<NextResponse> {
+export function GET(): NextResponse {
   return NextResponse.json({
     endpoint: "CSP Violation Report",
     description: "Receives Content Security Policy violation reports from browsers",

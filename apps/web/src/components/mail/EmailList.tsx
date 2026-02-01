@@ -302,7 +302,8 @@ export function EmailList({
     if (lastItem && lastItem.index >= emails.length - 5) {
       onLoadMore();
     }
-  }, [rowVirtualizer.getVirtualItems(), emails.length, onLoadMore, hasMore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emails.length, onLoadMore, hasMore]);
 
   // Handle email selection
   const handleSelect = useCallback(

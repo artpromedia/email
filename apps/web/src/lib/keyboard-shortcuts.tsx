@@ -265,27 +265,15 @@ function KeyboardShortcutsHelp({ onClose }: KeyboardShortcutsHelpProps) {
     }
   };
 
-  const handleDialogClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleDialogKeyDown = (e: React.KeyboardEvent) => {
-    e.stopPropagation();
-  };
-
   return (
-    <div
+    <button
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleOverlayClick}
       onKeyDown={handleOverlayKeyDown}
-      role="button"
-      tabIndex={0}
       aria-label="Close keyboard shortcuts help"
     >
       <div
         className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
-        onClick={handleDialogClick}
-        onKeyDown={handleDialogKeyDown}
         role="dialog"
         aria-modal="true"
         aria-label="Keyboard shortcuts"
@@ -340,7 +328,7 @@ function KeyboardShortcutsHelp({ onClose }: KeyboardShortcutsHelpProps) {
           to toggle this help
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 

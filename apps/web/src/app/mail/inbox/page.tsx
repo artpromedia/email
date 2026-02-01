@@ -8,7 +8,8 @@
 
 import { useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Settings, HelpCircle } from "lucide-react";
+import { X, RefreshCw, Settings, HelpCircle } from "lucide-react";
+
 import { cn } from "@email/ui";
 
 import {
@@ -17,7 +18,6 @@ import {
   DomainFilterToolbar,
   EmailList,
   AdvancedSearchBar,
-  parseSearchQuery,
   type EmailListItem,
   type EmailListQuery,
   type Domain,
@@ -80,9 +80,6 @@ function EmailPreviewPane({ email, onClose }: EmailPreviewPaneProps) {
         </div>
       </div>
     </div>
-  );
-}
-
   );
 }
 

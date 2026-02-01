@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       componentStack: errorInfo.componentStack,
       timestamp: new Date().toISOString(),
       userAgent: typeof navigator === "undefined" ? "unknown" : navigator.userAgent,
-      url: globalThis.window === undefined ? "unknown" : globalThis.window.location.href,
+      url: typeof window === "undefined" ? "unknown" : window.location.href,
     };
 
     console.error("[Error Tracking]", errorReport);
@@ -77,7 +77,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(errorReport),
-      }).catch((err) => console.error("Failed to send error report:", err));
+      }).catch((err: unknown) => console.error("Failed to send error report:", err));
     }
   }
 
@@ -205,13 +205,14 @@ export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   errorBoundaryProps?: Omit<ErrorBoundaryProps, "children">
 ) {
-  return function WithErrorBoundaryWrapper(props: P) {
+  function WithErrorBoundaryWrapper(props: P) {
     return (
       <ErrorBoundary {...errorBoundaryProps}>
         <WrappedComponent {...props} />
       </ErrorBoundary>
     );
-  };
+  }
+  return WithErrorBoundaryWrapper;
 }
 
 export default ErrorBoundary;

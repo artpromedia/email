@@ -325,17 +325,3 @@ export function EmailThreadGroup({
     </div>
   );
 }
-          key={thread.conversationId}
-          thread={thread}
-          showDomainBadge={showDomainBadge}
-          density={density}
-          onEmailClick={onEmailClick}
-          onSelect={onSelect}
-          onStar={onStar}
-          isSelected={isSelected}
-          isFocused={isFocused}
-        />
-      ))}
-    </div>
-  );
-}

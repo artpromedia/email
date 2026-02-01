@@ -4,9 +4,9 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { toast } from "@/components/ui/toast";
 import { useScheduleDelayedSend, type PendingEmail } from "./compose-api";
 import type { SendEmailRequest } from "./types";
-import { toast } from "@/components/ui/toast";
 
 export interface UndoSendSettings {
   /** Delay in seconds before sending (5-30) */
@@ -64,7 +64,7 @@ export function useUndoSend(settings: UndoSendSettings = DEFAULT_SETTINGS) {
           <CountdownToastContent
             duration={settings.delaySeconds}
             message={`Sending to ${recipientDisplay}`}
-            onComplete={async () => {
+            onComplete={() => {
               // This should not be called as we handle completion in scheduleEmail
               toast.dismiss(toastId);
             }}
@@ -233,14 +233,14 @@ export function useUndoSendSettings() {
         // Load from localStorage first (immediate)
         const stored = localStorage.getItem("undo-send-settings");
         if (stored) {
-          setSettings(JSON.parse(stored));
+          setSettings(JSON.parse(stored) as UndoSendSettings);
         }
 
         // Then sync with API (for cross-device preferences)
         // NOTE: Implement API endpoint /api/preferences/undo-send
         const response = await fetch("/api/preferences/undo-send");
         if (response.ok) {
-          const apiSettings = await response.json();
+          const apiSettings = (await response.json()) as UndoSendSettings;
           setSettings(apiSettings);
           localStorage.setItem("undo-send-settings", JSON.stringify(apiSettings));
         }
@@ -271,7 +271,7 @@ export function useUndoSendSettings() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(next),
-      }).catch((error) => console.error("Failed to save undo send settings:", error));
+      }).catch((error: unknown) => console.error("Failed to save undo send settings:", error));
 
       return next;
     });
