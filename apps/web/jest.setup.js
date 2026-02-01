@@ -1,7 +1,7 @@
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
 
 // Mock Next.js router
-jest.mock('next/navigation', () => ({
+jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),
@@ -11,12 +11,12 @@ jest.mock('next/navigation', () => ({
     refresh: jest.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '/',
+  usePathname: () => "/",
   useParams: () => ({}),
 }));
 
 // Mock next/headers
-jest.mock('next/headers', () => ({
+jest.mock("next/headers", () => ({
   cookies: () => ({
     get: jest.fn(),
     set: jest.fn(),
@@ -30,7 +30,7 @@ jest.mock('next/headers', () => ({
 global.Request = class Request {
   constructor(url, options = {}) {
     this.url = url;
-    this.method = options.method || 'GET';
+    this.method = options.method || "GET";
     this.headers = new Headers(options.headers);
     this.body = options.body;
   }
@@ -48,7 +48,7 @@ global.Response = class Response {
   constructor(body, options = {}) {
     this.body = body;
     this.status = options.status || 200;
-    this.statusText = options.statusText || 'OK';
+    this.statusText = options.statusText || "OK";
     this.headers = new Headers(options.headers);
     this.ok = this.status >= 200 && this.status < 300;
   }
@@ -57,7 +57,7 @@ global.Response = class Response {
     return new Response(JSON.stringify(data), {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
     });
@@ -106,19 +106,41 @@ global.Headers = class Headers {
   }
 };
 
-// Mock NextResponse
-jest.mock('next/server', () => ({
-  NextResponse: {
-    next: jest.fn(() => ({
-      headers: new global.Headers(),
-    })),
-    json: jest.fn((data, options = {}) =>
-      global.Response.json(data, options)
-    ),
-    redirect: jest.fn((url, status) =>
-      global.Response.redirect(url, status)
-    ),
-  },
+// Mock NextResponse as a constructor
+global.NextResponse = class NextResponse extends global.Response {
+  constructor(body, options = {}) {
+    super(body, options);
+  }
+
+  static next(options = {}) {
+    return new NextResponse(null, {
+      status: 200,
+      ...options,
+      headers: new global.Headers(options.headers),
+    });
+  }
+
+  static json(data, options = {}) {
+    return new NextResponse(JSON.stringify(data), {
+      ...options,
+      status: options.status || 200,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  }
+
+  static redirect(url, status = 307) {
+    return new NextResponse(null, {
+      status,
+      headers: { Location: url },
+    });
+  }
+};
+
+jest.mock("next/server", () => ({
+  NextResponse: global.NextResponse,
   NextRequest: global.Request,
 }));
 

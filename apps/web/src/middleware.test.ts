@@ -60,9 +60,6 @@ jest.mock('@email/utils', () => {
 describe('Middleware', () => {
   // Import middleware after setting up mocks
   let middleware: (request: unknown) => Promise<unknown>;
-  let NextResponse: {
-    next: jest.Mock;
-  };
   let mockCounts: Map<string, number>;
 
   beforeEach(async () => {
@@ -74,15 +71,9 @@ describe('Middleware', () => {
     mockCounts = (utils as unknown as { __mockCounts: Map<string, number> }).__mockCounts;
     mockCounts.clear();
 
-    // Mock NextResponse
-    NextResponse = {
-      next: jest.fn(() => ({
-        headers: new Map(),
-      })),
-    };
-
+    // Mock NextResponse with the global class
     jest.doMock('next/server', () => ({
-      NextResponse,
+      NextResponse: global.NextResponse,
       NextRequest: global.Request,
     }));
 
