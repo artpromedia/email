@@ -23,6 +23,8 @@ export {
   useKeyboardDrag,
 } from "./DragDropEmail";
 export { PullToRefresh, usePullToRefresh } from "./PullToRefresh";
+export { EmailSnooze, useEmailSnooze } from "./EmailSnooze";
+export type { SnoozedEmail, SnoozeOption } from "./EmailSnooze";
 
 // Compose components
 export {
@@ -34,4 +36,7 @@ export {
   ComposeHeaderCompact,
   EmailCompose,
   ContactPicker,
+  EmailTemplateManager,
+  SAMPLE_TEMPLATES,
 } from "./compose";
+export type { EmailTemplate, TemplateVariable } from "./compose";

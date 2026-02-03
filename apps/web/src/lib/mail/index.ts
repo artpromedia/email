@@ -72,6 +72,21 @@ export type { PendingEmail } from "./compose-api";
 export { useUndoSend, useUndoSendSettings } from "./use-undo-send";
 export type { UndoSendSettings } from "./use-undo-send";
 
+// Threading
+export {
+  useEmailThreading,
+  groupEmailsIntoThreads,
+  ThreadingProvider,
+  useThreadingContext,
+} from "./use-threading";
+export type {
+  EmailThread,
+  ThreadMessage,
+  ThreadParticipant,
+  ThreadAttachment,
+  ThreadingConfig,
+} from "./use-threading";
+
 // WebSocket
 export { useMailWebSocket, useMailRealtime } from "./websocket";
 
