@@ -7,3 +7,4 @@ export { FromAddressSelector, FromAddressBadge } from "./FromAddressSelector";
 export { RecipientInput, InternalBadge } from "./RecipientInput";
 export { ComposeHeader, ComposeHeaderCompact } from "./ComposeHeader";
 export { EmailCompose } from "./EmailCompose";
+export { ContactPicker } from "./ContactPicker";

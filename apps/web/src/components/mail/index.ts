@@ -12,6 +12,17 @@ export { DomainFilterToolbar } from "./DomainFilterToolbar";
 export { MoveEmailDialog } from "./MoveEmailDialog";
 export { AdvancedSearchBar } from "./AdvancedSearchBar";
 
+// Mobile & interaction components
+export { SwipeableEmailItem, useIsTouchDevice } from "./SwipeableEmailItem";
+export {
+  DragDropProvider,
+  DraggableEmail,
+  DroppableFolder,
+  DragOverlay,
+  useDragDrop,
+  useKeyboardDrag,
+} from "./DragDropEmail";
+
 // Compose components
 export {
   FromAddressSelector,
@@ -21,4 +32,5 @@ export {
   ComposeHeader,
   ComposeHeaderCompact,
   EmailCompose,
+  ContactPicker,
 } from "./compose";
