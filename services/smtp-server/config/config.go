@@ -19,6 +19,7 @@ type Config struct {
 	Limits    LimitsConfig    `yaml:"limits"`
 	Metrics   MetricsConfig   `yaml:"metrics"`
 	Logging   LoggingConfig   `yaml:"logging"`
+	Scanner   ScannerConfig   `yaml:"scanner"`
 }
 
 // ServerConfig holds SMTP server settings
@@ -112,6 +113,19 @@ type LoggingConfig struct {
 	Level      string `yaml:"level"`
 	Format     string `yaml:"format"`
 	Output     string `yaml:"output"`
+}
+
+// ScannerConfig holds virus scanner (ClamAV) settings
+type ScannerConfig struct {
+	Enabled        bool          `yaml:"enabled"`
+	Address        string        `yaml:"address"`         // clamd socket: unix:/var/run/clamav/clamd.sock or tcp://127.0.0.1:3310
+	ConnectionPool int           `yaml:"connection_pool"` // number of pooled connections
+	Timeout        time.Duration `yaml:"timeout"`         // scan timeout
+	MaxSize        int64         `yaml:"max_size"`        // max message size to scan (bytes)
+	ScanOnReceive  bool          `yaml:"scan_on_receive"` // scan incoming messages
+	ScanOnDelivery bool          `yaml:"scan_on_delivery"` // scan before delivery
+	RejectInfected bool          `yaml:"reject_infected"` // reject infected messages
+	QuarantineDir  string        `yaml:"quarantine_dir"`  // directory for quarantined messages
 }
 
 // Load loads configuration from file or environment
@@ -216,6 +230,17 @@ func DefaultConfig() *Config {
 			Format: "json",
 			Output: "stdout",
 		},
+		Scanner: ScannerConfig{
+			Enabled:        false, // Disabled by default
+			Address:        "unix:/var/run/clamav/clamd.sock",
+			ConnectionPool: 5,
+			Timeout:        30 * time.Second,
+			MaxSize:        26214400, // 25MB
+			ScanOnReceive:  true,
+			ScanOnDelivery: false,
+			RejectInfected: true,
+			QuarantineDir:  "/var/quarantine/mail",
+		},
 	}
 }
 
@@ -319,8 +344,8 @@ func (c *Config) loadFromEnv() {
 
 // DSN returns PostgreSQL connection string
 func (c *DatabaseConfig) DSN() string {
-	return "postgres://" + c.User + ":" + c.Password + "@" + 
-		c.Host + ":" + strconv.Itoa(c.Port) + "/" + c.Database + 
+	return "postgres://" + c.User + ":" + c.Password + "@" +
+		c.Host + ":" + strconv.Itoa(c.Port) + "/" + c.Database +
 		"?sslmode=" + c.SSLMode
 }
 

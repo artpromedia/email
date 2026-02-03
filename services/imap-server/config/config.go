@@ -97,6 +97,7 @@ type IMAPConfig struct {
 	EnableCompression     bool     `yaml:"enable_compression"`
 	EnableQRESYNC         bool     `yaml:"enable_qresync"`
 	EnableCONDSTORE       bool     `yaml:"enable_condstore"`
+	EnableThread          bool     `yaml:"enable_thread"` // RFC 5256 THREAD extension
 }
 
 // MetricsConfig contains metrics settings

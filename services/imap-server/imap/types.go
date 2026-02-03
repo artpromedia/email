@@ -156,6 +156,7 @@ type Message struct {
 	SequenceNum  uint32        `json:"sequence_num"`
 	MessageID    string        `json:"message_id"`
 	InReplyTo    string        `json:"in_reply_to"`
+	References   []string      `json:"references"` // RFC 5322 References header for threading
 	Subject      string        `json:"subject"`
 	From         string        `json:"from"`
 	To           []string      `json:"to"`
@@ -212,6 +213,8 @@ type ConnectionContext struct {
 	ReadOnly        bool            `json:"read_only"`        // EXAMINE vs SELECT
 	IdleActive      bool            `json:"idle_active"`
 	CompressionOn   bool            `json:"compression_on"`
+	QRESYNCEnabled  bool            `json:"qresync_enabled"`  // QRESYNC extension enabled
+	CONDSTOREEnabled bool           `json:"condstore_enabled"` // CONDSTORE extension enabled
 	ClientAddr      string          `json:"client_addr"`
 	ConnectedAt     time.Time       `json:"connected_at"`
 	LastActivityAt  time.Time       `json:"last_activity_at"`

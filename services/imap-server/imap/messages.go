@@ -198,11 +198,17 @@ func (c *Connection) handleExpunge(tag string) error {
 		return nil
 	}
 
-	expunged := c.expungeMessages()
+	expunged, expungedUIDs := c.expungeMessages()
 
-	// Send EXPUNGE responses in reverse order
-	for i := len(expunged) - 1; i >= 0; i-- {
-		c.sendUntagged("%d EXPUNGE", expunged[i])
+	// For QRESYNC, send VANISHED response with UIDs
+	if c.ctx.QRESYNCEnabled && len(expungedUIDs) > 0 {
+		uidList := formatUIDSet(expungedUIDs)
+		c.sendUntagged("VANISHED %s", uidList)
+	} else {
+		// Send EXPUNGE responses in reverse order (traditional)
+		for i := len(expunged) - 1; i >= 0; i-- {
+			c.sendUntagged("%d EXPUNGE", expunged[i])
+		}
 	}
 
 	c.sendTagged(tag, "OK EXPUNGE completed")
@@ -325,6 +331,9 @@ func (c *Connection) buildFetchResponse(msg *Message, items []string, uid bool) 
 
 		case upperItem == "BODYSTRUCTURE":
 			parts = append(parts, fmt.Sprintf("BODYSTRUCTURE %s", c.buildBodyStructure(msg)))
+
+		case upperItem == "MODSEQ":
+			parts = append(parts, fmt.Sprintf("MODSEQ (%d)", msg.ModSeq))
 
 		case strings.HasPrefix(upperItem, "BODY[") || strings.HasPrefix(upperItem, "BODY.PEEK["):
 			section := extractBodySection(item)
@@ -504,25 +513,63 @@ func (c *Connection) shouldMarkSeen(items []string) bool {
 }
 
 // expungeMessages removes messages with \Deleted flag
-func (c *Connection) expungeMessages() []uint32 {
+// Returns both sequence numbers (for EXPUNGE) and UIDs (for VANISHED)
+func (c *Connection) expungeMessages() ([]uint32, []uint32) {
 	ctx, cancel := c.getContext()
 	defer cancel()
 
 	messages, _ := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, "1:*", false)
 
 	var expunged []uint32
+	var expungedUIDs []uint32
 	for _, msg := range messages {
 		for _, flag := range msg.Flags {
 			if flag == "\\Deleted" {
 				// Delete message
 				// Would call repo.DeleteMessage here
 				expunged = append(expunged, msg.SequenceNumber)
+				expungedUIDs = append(expungedUIDs, msg.UID)
 				break
 			}
 		}
 	}
 
-	return expunged
+	return expunged, expungedUIDs
+}
+
+// formatUIDSet formats a list of UIDs into a compact IMAP UID set format
+// e.g., [1, 2, 3, 5, 6, 8] becomes "1:3,5:6,8"
+func formatUIDSet(uids []uint32) string {
+	if len(uids) == 0 {
+		return ""
+	}
+
+	var result []string
+	start := uids[0]
+	end := uids[0]
+
+	for i := 1; i < len(uids); i++ {
+		if uids[i] == end+1 {
+			end = uids[i]
+		} else {
+			if start == end {
+				result = append(result, fmt.Sprintf("%d", start))
+			} else {
+				result = append(result, fmt.Sprintf("%d:%d", start, end))
+			}
+			start = uids[i]
+			end = uids[i]
+		}
+	}
+
+	// Add the last range
+	if start == end {
+		result = append(result, fmt.Sprintf("%d", start))
+	} else {
+		result = append(result, fmt.Sprintf("%d:%d", start, end))
+	}
+
+	return strings.Join(result, ",")
 }
 
 // searchMessages searches messages based on criteria

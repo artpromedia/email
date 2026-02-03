@@ -188,6 +188,8 @@ func (c *Connection) processCommand(line string) error {
 		return c.handleID(tag, args)
 	case "ENABLE":
 		return c.handleEnable(tag, args)
+	case "THREAD":
+		return c.handleThread(tag, args, false)
 	default:
 		// Check for UID prefix
 		if command == "UID" && len(args) > 0 {
@@ -211,6 +213,8 @@ func (c *Connection) processCommand(line string) error {
 					return c.handleSearch(tag, uidArgs, true)
 				case "EXPUNGE":
 					return c.handleUIDExpunge(tag, uidArgs)
+				case "THREAD":
+					return c.handleThread(tag, uidArgs, true)
 				}
 			}
 		}

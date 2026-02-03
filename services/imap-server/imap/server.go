@@ -93,7 +93,12 @@ func NewServer(cfg *config.Config, repo *repository.Repository, logger *zap.Logg
 
 		s.tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
-			MinVersion:   tls.VersionTLS12,
+			MinVersion:   tls.VersionTLS13,
+			CurvePreferences: []tls.CurveID{
+				tls.X25519,
+				tls.CurveP384,
+				tls.CurveP256,
+			},
 		}
 	}
 
@@ -298,11 +303,14 @@ func (s *Server) getCapabilities(isTLS bool) []string {
 		caps = append(caps, "COMPRESS=DEFLATE")
 	}
 
+	if s.config.IMAP.EnableThread {
+		caps = append(caps, "THREAD=ORDEREDSUBJECT", "THREAD=REFERENCES")
+	}
+
 	// Add OAuth2 capabilities if enabled
 	if s.oauth2Validator != nil && s.oauth2Validator.config.Enabled {
 		caps = append(caps, "AUTH=XOAUTH2", "AUTH=OAUTHBEARER")
 	}
-
 	return caps
 }
 

@@ -235,6 +235,7 @@ func (c *Connection) handleMove(tag, args string, uid bool) error {
 	// Send EXPUNGE for moved messages
 	var srcUIDs, destUIDs string
 	var expungeSeqs []uint32
+	var expungeUIDs []uint32
 
 	for srcUID, destUID := range uidMap {
 		if srcUIDs != "" {
@@ -248,14 +249,21 @@ func (c *Connection) handleMove(tag, args string, uid bool) error {
 		for _, msg := range messages {
 			if msg.UID == srcUID {
 				expungeSeqs = append(expungeSeqs, msg.SequenceNumber)
+				expungeUIDs = append(expungeUIDs, msg.UID)
 				break
 			}
 		}
 	}
 
-	// Send EXPUNGE in reverse order
-	for i := len(expungeSeqs) - 1; i >= 0; i-- {
-		c.sendUntagged("%d EXPUNGE", expungeSeqs[i])
+	// For QRESYNC, send VANISHED response with UIDs
+	if c.ctx.QRESYNCEnabled && len(expungeUIDs) > 0 {
+		uidList := formatUIDSet(expungeUIDs)
+		c.sendUntagged("VANISHED %s", uidList)
+	} else {
+		// Send EXPUNGE in reverse order (traditional)
+		for i := len(expungeSeqs) - 1; i >= 0; i-- {
+			c.sendUntagged("%d EXPUNGE", expungeSeqs[i])
+		}
 	}
 
 	c.logger.Info("Messages moved",

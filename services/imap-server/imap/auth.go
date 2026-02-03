@@ -269,10 +269,16 @@ func (c *Connection) handleEnable(tag, args string) error {
 		case "QRESYNC":
 			if c.config.IMAP.EnableQRESYNC {
 				enabled = append(enabled, "QRESYNC")
+				c.ctx.QRESYNCEnabled = true
+				// QRESYNC implies CONDSTORE
+				if !c.ctx.CONDSTOREEnabled {
+					c.ctx.CONDSTOREEnabled = true
+				}
 			}
 		case "CONDSTORE":
 			if c.config.IMAP.EnableCONDSTORE {
 				enabled = append(enabled, "CONDSTORE")
+				c.ctx.CONDSTOREEnabled = true
 			}
 		}
 	}

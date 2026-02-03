@@ -389,11 +389,16 @@ func (w *Worker) deliverToHost(ctx context.Context, host string, msg *domain.Mes
 		return fmt.Errorf("HELO: %w", err)
 	}
 
-	// Try STARTTLS
+	// Try STARTTLS with TLS 1.3 preferred
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		config := &tls.Config{
 			ServerName: host,
-			MinVersion: tls.VersionTLS12,
+			MinVersion: tls.VersionTLS12, // Allow TLS 1.2 for outbound compatibility
+			CurvePreferences: []tls.CurveID{
+				tls.X25519,
+				tls.CurveP384,
+				tls.CurveP256,
+			},
 		}
 		if err := client.StartTLS(config); err != nil {
 			w.logger.Debug("STARTTLS failed, continuing without TLS",
