@@ -7,17 +7,17 @@
 // PWA STATE INTERFACE TESTS
 // ============================================================
 
-describe("PWA State Interface", () => {
-  interface PWAState {
-    isInstalled: boolean;
-    canInstall: boolean;
-    isOnline: boolean;
-    updateAvailable: boolean;
-    isServiceWorkerActive: boolean;
-    pushSupported: boolean;
-    pushPermission: NotificationPermission | "unsupported";
-  }
+interface PWAState {
+  isInstalled: boolean;
+  canInstall: boolean;
+  isOnline: boolean;
+  updateAvailable: boolean;
+  isServiceWorkerActive: boolean;
+  pushSupported: boolean;
+  pushPermission: NotificationPermission | "unsupported";
+}
 
+describe("PWA State Interface", () => {
   const defaultState: PWAState = {
     isInstalled: false,
     canInstall: false,
@@ -70,12 +70,12 @@ describe("urlBase64ToUint8Array", () => {
   // Re-implement the function for testing
   const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const base64 = (base64String + padding).replaceAll("-", "+").replaceAll("_", "/");
     const rawData = atob(base64);
     const outputArray = new Uint8Array(rawData.length);
 
     for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
+      outputArray[i] = rawData.codePointAt(i) ?? 0;
     }
 
     return outputArray;
@@ -150,8 +150,12 @@ describe("Install prompt handling", () => {
   });
 
   it("clears deferred prompt on appinstalled", () => {
-    let deferredPrompt: Event | null = new Event("beforeinstallprompt");
+    const initialPrompt: Event = new Event("beforeinstallprompt");
+    let deferredPrompt: Event | null = initialPrompt;
     let isInstalled = false;
+
+    // Verify initial state
+    expect(deferredPrompt).toBe(initialPrompt);
 
     // Simulate appinstalled
     deferredPrompt = null;
@@ -181,7 +185,7 @@ describe("Install prompt handling", () => {
 describe("Service worker registration", () => {
   it("returns null when window is undefined", async () => {
     const register = async () => {
-      if (typeof window === "undefined") {
+      if (globalThis.window === undefined) {
         return null;
       }
       return { scope: "/" };
@@ -252,12 +256,12 @@ describe("Skip waiting message", () => {
 
 describe("Push notifications", () => {
   it("checks PushManager support", () => {
-    const pushSupported = "PushManager" in window;
+    const pushSupported = "PushManager" in globalThis;
     expect(typeof pushSupported).toBe("boolean");
   });
 
   it("checks Notification support", () => {
-    const notificationSupported = "Notification" in window;
+    const notificationSupported = "Notification" in globalThis;
     expect(typeof notificationSupported).toBe("boolean");
   });
 
@@ -274,7 +278,7 @@ describe("Push notifications", () => {
 
 describe("Clear caches", () => {
   it("checks caches support", () => {
-    const cachesSupported = "caches" in window;
+    const cachesSupported = "caches" in globalThis;
     expect(typeof cachesSupported).toBe("boolean");
   });
 
@@ -282,7 +286,7 @@ describe("Clear caches", () => {
     let executed = false;
 
     const clearCaches = async () => {
-      if (!("caches" in window)) return;
+      if (!("caches" in globalThis)) return;
       executed = true;
     };
 

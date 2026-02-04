@@ -51,11 +51,9 @@ describe("authKeys", () => {
 
 describe("Token Storage", () => {
   let mockLocalStorage: Record<string, string>;
-  let mockSessionStorage: Record<string, string>;
 
   beforeEach(() => {
     mockLocalStorage = {};
-    mockSessionStorage = {};
 
     jest.spyOn(Storage.prototype, "setItem").mockImplementation((key, value) => {
       mockLocalStorage[key] = value;
@@ -127,10 +125,14 @@ describe("Domain Detection", () => {
   });
 
   describe("enabled condition", () => {
+    const computeEnabled = (isFeatureEnabled: boolean, domain: string | undefined): boolean => {
+      return isFeatureEnabled && !!domain && domain.includes(".");
+    };
+
     it("is enabled when domain is valid", () => {
       const email = "user@example.com";
       const domain = email.split("@")[1];
-      const enabled = true && !!domain && domain.includes(".");
+      const enabled = computeEnabled(true, domain);
 
       expect(enabled).toBe(true);
     });
@@ -138,7 +140,7 @@ describe("Domain Detection", () => {
     it("is disabled for invalid domain", () => {
       const email = "user@localhost";
       const domain = email.split("@")[1];
-      const enabled = true && !!domain && domain.includes(".");
+      const enabled = computeEnabled(true, domain);
 
       expect(enabled).toBe(false);
     });
@@ -146,7 +148,7 @@ describe("Domain Detection", () => {
     it("is disabled when explicitly disabled", () => {
       const email = "user@example.com";
       const domain = email.split("@")[1];
-      const enabled = false && !!domain && domain.includes(".");
+      const enabled = computeEnabled(false, domain);
 
       expect(enabled).toBe(false);
     });
@@ -154,7 +156,7 @@ describe("Domain Detection", () => {
     it("is disabled for empty email", () => {
       const email = "";
       const domain = email.split("@")[1];
-      const enabled = true && !!domain && domain?.includes(".");
+      const enabled = computeEnabled(true, domain);
 
       expect(enabled).toBe(false);
     });

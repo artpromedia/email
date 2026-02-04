@@ -6,16 +6,7 @@
  * of Set objects. We test the store logic through isolated unit tests.
  */
 
-import type {
-  EmailListItem,
-  EmailListQuery,
-  ViewMode,
-  ViewPreferences,
-  MoveDestination,
-  Domain,
-  Mailbox,
-  MailFolder,
-} from "./types";
+import type { EmailListItem, EmailListQuery, ViewMode, ViewPreferences, Domain } from "./types";
 
 // ============================================================
 // DEFAULT VALUES TESTS
@@ -92,10 +83,11 @@ describe("Default View Preferences", () => {
 describe("Email List Operations", () => {
   describe("setEmails", () => {
     it("replaces entire email list", () => {
-      const oldEmails: Partial<EmailListItem>[] = [{ id: "1" }, { id: "2" }];
+      const previousEmails: Partial<EmailListItem>[] = [{ id: "1" }, { id: "2" }];
       const newEmails: Partial<EmailListItem>[] = [{ id: "3" }, { id: "4" }];
 
-      // Simulate the action
+      // Simulate the action - verifying old emails are replaced
+      expect(previousEmails).toContainEqual({ id: "1" });
       const result = newEmails;
       expect(result).toEqual([{ id: "3" }, { id: "4" }]);
       expect(result).not.toContainEqual({ id: "1" });
@@ -241,7 +233,8 @@ describe("Selection Operations", () => {
 
   describe("clearSelection", () => {
     it("clears all selected emails", () => {
-      const selected = new Set(["1", "2", "3"]);
+      const initialSelected = new Set(["1", "2", "3"]);
+      expect(initialSelected.size).toBe(3);
       const cleared = new Set<string>();
       expect(cleared.size).toBe(0);
     });
@@ -256,8 +249,8 @@ describe("Domain Operations", () => {
   describe("setDomains", () => {
     it("sets domains list", () => {
       const domains: Partial<Domain>[] = [
-        { id: "1", name: "example.com" },
-        { id: "2", name: "test.com" },
+        { id: "1", domain: "example.com" },
+        { id: "2", domain: "test.com" },
       ];
       expect(domains.length).toBe(2);
     });
@@ -382,9 +375,10 @@ describe("Query Operations", () => {
 describe("View Preferences Operations", () => {
   describe("setViewMode", () => {
     it("updates view mode", () => {
-      let mode: ViewMode = "unified";
-      mode = "domain";
-      expect(mode).toBe("domain");
+      const setMode = (current: ViewMode, newMode: ViewMode): ViewMode => newMode;
+      const initialMode: ViewMode = "unified";
+      const updatedMode = setMode(initialMode, "domain");
+      expect(updatedMode).toBe("domain");
     });
   });
 
@@ -436,10 +430,10 @@ describe("Bulk Actions", () => {
         { id: "2", isRead: false },
         { id: "3", isRead: true },
       ];
-      const emailIds = ["1", "2"];
+      const emailIdsToMark = new Set(["1", "2"]);
 
       const result = emails.map((e) => {
-        if (emailIds.includes(e.id!) && !e.isRead) {
+        if (emailIdsToMark.has(e.id!) && !e.isRead) {
           return { ...e, isRead: true };
         }
         return e;
@@ -457,10 +451,10 @@ describe("Bulk Actions", () => {
         { id: "1", isRead: true },
         { id: "2", isRead: true },
       ];
-      const emailIds = ["1"];
+      const emailIdsToMark = new Set(["1"]);
 
       const result = emails.map((e) => {
-        if (emailIds.includes(e.id!) && e.isRead) {
+        if (emailIdsToMark.has(e.id!) && e.isRead) {
           return { ...e, isRead: false };
         }
         return e;
@@ -477,10 +471,10 @@ describe("Bulk Actions", () => {
         { id: "1", isStarred: false },
         { id: "2", isStarred: false },
       ];
-      const emailIds = ["1"];
+      const emailIdsToStar = new Set(["1"]);
 
       const result = emails.map((e) => {
-        if (emailIds.includes(e.id!)) {
+        if (emailIdsToStar.has(e.id!)) {
           return { ...e, isStarred: true };
         }
         return e;
@@ -497,10 +491,10 @@ describe("Bulk Actions", () => {
         { id: "1", isStarred: true },
         { id: "2", isStarred: true },
       ];
-      const emailIds = ["2"];
+      const emailIdsToUnstar = new Set(["2"]);
 
       const result = emails.map((e) => {
-        if (emailIds.includes(e.id!)) {
+        if (emailIdsToUnstar.has(e.id!)) {
           return { ...e, isStarred: false };
         }
         return e;
@@ -514,16 +508,16 @@ describe("Bulk Actions", () => {
   describe("moveEmails", () => {
     it("removes moved emails from current view", () => {
       const emails: Partial<EmailListItem>[] = [{ id: "1" }, { id: "2" }, { id: "3" }];
-      const emailIds = ["1", "3"];
+      const emailIdsToMove = new Set(["1", "3"]);
 
-      const idsSet = new Set(emailIds);
-      const result = emails.filter((e) => !idsSet.has(e.id!));
+      const result = emails.filter((e) => !emailIdsToMove.has(e.id!));
 
       expect(result).toEqual([{ id: "2" }]);
     });
 
     it("clears selection after move", () => {
-      const selected = new Set(["1", "3"]);
+      const initialSelected = new Set(["1", "3"]);
+      expect(initialSelected.size).toBe(2);
       const cleared = new Set<string>();
       expect(cleared.size).toBe(0);
     });
@@ -532,10 +526,9 @@ describe("Bulk Actions", () => {
   describe("deleteEmails", () => {
     it("removes deleted emails from list", () => {
       const emails: Partial<EmailListItem>[] = [{ id: "1" }, { id: "2" }];
-      const emailIds = ["1"];
+      const emailIdsToDelete = new Set(["1"]);
 
-      const idsSet = new Set(emailIds);
-      const result = emails.filter((e) => !idsSet.has(e.id!));
+      const result = emails.filter((e) => !emailIdsToDelete.has(e.id!));
 
       expect(result).toEqual([{ id: "2" }]);
     });
@@ -636,7 +629,7 @@ describe("Selectors", () => {
         { id: "1", unreadCount: 5 },
         { id: "2", unreadCount: 3 },
       ];
-      const activeDomain = "1";
+      const activeDomain: string = "1";
 
       const count =
         activeDomain === "all"
@@ -648,7 +641,7 @@ describe("Selectors", () => {
 
     it("returns 0 when domain not found", () => {
       const domains: Partial<Domain>[] = [{ id: "1", unreadCount: 5 }];
-      const activeDomain = "non-existent";
+      const activeDomain: string = "non-existent";
 
       const count =
         activeDomain === "all"
@@ -672,15 +665,15 @@ describe("Selectors", () => {
 
     it("returns domain data when specific domain is active", () => {
       const domains: Partial<Domain>[] = [
-        { id: "1", name: "example.com" },
-        { id: "2", name: "test.com" },
+        { id: "1", domain: "example.com" },
+        { id: "2", domain: "test.com" },
       ];
-      const activeDomain = "1";
+      const activeDomain: string = "1";
 
       const result =
         activeDomain === "all" ? null : (domains.find((d) => d.id === activeDomain) ?? null);
 
-      expect(result).toEqual({ id: "1", name: "example.com" });
+      expect(result).toEqual({ id: "1", domain: "example.com" });
     });
   });
 

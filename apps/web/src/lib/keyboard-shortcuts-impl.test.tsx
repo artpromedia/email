@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
 
 // ============================================================
 // FORMAT KEY FUNCTION TESTS
@@ -410,7 +409,7 @@ describe("Shortcut registration", () => {
 
   it("adds new shortcut to list", () => {
     let shortcuts: Shortcut[] = [];
-    const newShortcut = { key: "j", handler: jest.fn() };
+    const newShortcut: Shortcut = { key: "j", handler: jest.fn() };
 
     // Simulate registerShortcut
     const filtered = shortcuts.filter(
@@ -425,7 +424,7 @@ describe("Shortcut registration", () => {
     const oldHandler = jest.fn();
     const newHandler = jest.fn();
     let shortcuts: Shortcut[] = [{ key: "j", handler: oldHandler }];
-    const newShortcut = { key: "j", handler: newHandler };
+    const newShortcut: Shortcut = { key: "j", handler: newHandler };
 
     const filtered = shortcuts.filter(
       (s) => s.key !== newShortcut.key || s.sequence !== newShortcut.sequence
@@ -437,7 +436,7 @@ describe("Shortcut registration", () => {
   });
 
   it("unregisters shortcut", () => {
-    const shortcut = { key: "j", handler: jest.fn() };
+    const shortcut: Shortcut = { key: "j", handler: jest.fn() };
     let shortcuts: Shortcut[] = [shortcut, { key: "k", handler: jest.fn() }];
 
     // Simulate unregister
@@ -513,15 +512,25 @@ describe("Email navigation", () => {
     expect(getEmailIndex(emails, "999")).toBe(-1);
   });
 
+  // Helper function shared between tests
+  const createSelectByIndex = (
+    emails: Array<{ id: string }>,
+    setFocused: (id: string | null) => void
+  ) => {
+    return (index: number) => {
+      if (index >= 0 && index < emails.length) {
+        setFocused(emails[index]?.id ?? null);
+      }
+    };
+  };
+
   it("selects next email by index", () => {
     const emails = [{ id: "1" }, { id: "2" }, { id: "3" }];
     let focusedId: string | null = null;
 
-    const selectByIndex = (index: number) => {
-      if (index >= 0 && index < emails.length) {
-        focusedId = emails[index]?.id ?? null;
-      }
-    };
+    const selectByIndex = createSelectByIndex(emails, (id) => {
+      focusedId = id;
+    });
 
     selectByIndex(0);
     expect(focusedId).toBe("1");
@@ -534,11 +543,9 @@ describe("Email navigation", () => {
     const emails = [{ id: "1" }, { id: "2" }];
     let focusedId: string | null = "2";
 
-    const selectByIndex = (index: number) => {
-      if (index >= 0 && index < emails.length) {
-        focusedId = emails[index]?.id ?? null;
-      }
-    };
+    const selectByIndex = createSelectByIndex(emails, (id) => {
+      focusedId = id;
+    });
 
     selectByIndex(5); // Out of bounds
     expect(focusedId).toBe("2"); // Unchanged
@@ -610,15 +617,19 @@ describe("Route generation", () => {
 // ============================================================
 
 describe("Pathname checks", () => {
+  const isEmailDetailPage = (pathname: string): boolean => {
+    return pathname.startsWith("/mail/") && pathname !== "/mail";
+  };
+
   it("detects email detail page", () => {
     const pathname = "/mail/email-123";
-    const isEmailDetail = pathname.startsWith("/mail/") && pathname !== "/mail";
+    const isEmailDetail = isEmailDetailPage(pathname);
     expect(isEmailDetail).toBe(true);
   });
 
   it("detects mail list page", () => {
     const pathname = "/mail";
-    const isEmailDetail = pathname.startsWith("/mail/") && pathname !== "/mail";
+    const isEmailDetail = isEmailDetailPage(pathname);
     expect(isEmailDetail).toBe(false);
   });
 });

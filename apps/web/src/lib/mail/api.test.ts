@@ -88,18 +88,18 @@ describe("mailKeys", () => {
 // ============================================================
 
 describe("fetchJson utility", () => {
-  const originalFetch = global.fetch;
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    global.fetch = jest.fn();
+    globalThis.fetch = jest.fn();
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
   });
 
   it("makes GET request with correct headers", async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ data: "test" }),
     });
@@ -357,7 +357,7 @@ describe("Error handling patterns", () => {
       throw new Error("Invalid JSON");
     };
 
-    let errorMessage = "Request failed";
+    let errorMessage = "Initial value";
     try {
       parseError();
     } catch {
@@ -379,27 +379,31 @@ describe("Error handling patterns", () => {
 
 describe("Query enabled conditions", () => {
   describe("useDomain enabled logic", () => {
+    const computeEnabled = (domainId: string | null | undefined): boolean => {
+      return !!domainId && domainId !== "all";
+    };
+
     it("is enabled when domainId is provided and not 'all'", () => {
       const domainId = "domain-1";
-      const enabled = !!domainId && domainId !== "all";
+      const enabled = computeEnabled(domainId);
       expect(enabled).toBe(true);
     });
 
     it("is disabled when domainId is 'all'", () => {
       const domainId = "all";
-      const enabled = !!domainId && domainId !== "all";
+      const enabled = computeEnabled(domainId);
       expect(enabled).toBe(false);
     });
 
     it("is disabled when domainId is empty", () => {
       const domainId = "";
-      const enabled = !!domainId && domainId !== "all";
+      const enabled = computeEnabled(domainId);
       expect(enabled).toBe(false);
     });
 
     it("is disabled when domainId is null", () => {
       const domainId = null;
-      const enabled = !!domainId && domainId !== "all";
+      const enabled = computeEnabled(domainId);
       expect(enabled).toBe(false);
     });
   });

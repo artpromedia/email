@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
 
 // ============================================================
 // SKIP LINK TARGETS TESTS
@@ -122,7 +121,7 @@ describe("getFocusableElements", () => {
     // Since offsetParent is null for elements not in visible DOM
     expect(result.length).toBeGreaterThanOrEqual(0);
 
-    document.body.removeChild(container);
+    container.remove();
   });
 });
 
@@ -250,7 +249,7 @@ describe("ARIA live regions", () => {
 describe("Reduced motion detection", () => {
   it("defaults to false on server", () => {
     const getDefaultValue = () => {
-      if (typeof window === "undefined") return false;
+      if (globalThis.window === undefined) return false;
       return false; // Default
     };
 
@@ -293,41 +292,44 @@ describe("High contrast detection", () => {
 // ============================================================
 
 describe("Keyboard navigation detection", () => {
-  it("sets keyboard user on Tab press", () => {
+  // Shared helper function for keyboard user detection
+  const createKeyboardUserHandler = () => {
     let isKeyboardUser = false;
-
-    const handleKeyDown = (key: string) => {
-      if (key === "Tab") {
-        isKeyboardUser = true;
-      }
+    return {
+      handleKeyDown: (key: string) => {
+        if (key === "Tab") {
+          isKeyboardUser = true;
+        }
+      },
+      isKeyboardUser: () => isKeyboardUser,
+      setKeyboardUser: (value: boolean) => {
+        isKeyboardUser = value;
+      },
     };
+  };
 
-    handleKeyDown("Tab");
-    expect(isKeyboardUser).toBe(true);
+  it("sets keyboard user on Tab press", () => {
+    const handler = createKeyboardUserHandler();
+    handler.handleKeyDown("Tab");
+    expect(handler.isKeyboardUser()).toBe(true);
   });
 
   it("resets keyboard user on mouse click", () => {
-    let isKeyboardUser = true;
+    const handler = createKeyboardUserHandler();
+    handler.setKeyboardUser(true);
 
     const handleMouseDown = () => {
-      isKeyboardUser = false;
+      handler.setKeyboardUser(false);
     };
 
     handleMouseDown();
-    expect(isKeyboardUser).toBe(false);
+    expect(handler.isKeyboardUser()).toBe(false);
   });
 
   it("does not set keyboard user for other keys", () => {
-    let isKeyboardUser = false;
-
-    const handleKeyDown = (key: string) => {
-      if (key === "Tab") {
-        isKeyboardUser = true;
-      }
-    };
-
-    handleKeyDown("Enter");
-    expect(isKeyboardUser).toBe(false);
+    const handler = createKeyboardUserHandler();
+    handler.handleKeyDown("Enter");
+    expect(handler.isKeyboardUser()).toBe(false);
   });
 });
 

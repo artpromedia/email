@@ -237,12 +237,25 @@ describe("ErrorBoundary", () => {
 });
 
 describe("withErrorBoundary HOC", () => {
-  it("wraps component with error boundary", () => {
-    function TestComponent() {
-      return <div>Test component content</div>;
-    }
+  // Test helper components - defined at describe level to avoid SonarLint warning
+  function TestComponentSimple() {
+    return <div>Test component content</div>;
+  }
 
-    const WrappedComponent = withErrorBoundary(TestComponent);
+  function TestComponentWithProps({ message }: Readonly<{ message: string }>) {
+    return <div>{message}</div>;
+  }
+
+  function ComponentThatThrowsHOCError(): React.ReactNode {
+    throw new Error("HOC error");
+  }
+
+  function ComponentThatThrowsTestError(): React.ReactNode {
+    throw new Error("Test error");
+  }
+
+  it("wraps component with error boundary", () => {
+    const WrappedComponent = withErrorBoundary(TestComponentSimple);
 
     render(<WrappedComponent />);
 
@@ -250,11 +263,7 @@ describe("withErrorBoundary HOC", () => {
   });
 
   it("catches errors from wrapped component", () => {
-    function ErrorComponent(): React.ReactNode {
-      throw new Error("HOC error");
-    }
-
-    const WrappedComponent = withErrorBoundary(ErrorComponent);
+    const WrappedComponent = withErrorBoundary(ComponentThatThrowsHOCError);
 
     render(<WrappedComponent />);
 
@@ -263,11 +272,7 @@ describe("withErrorBoundary HOC", () => {
   });
 
   it("passes props to wrapped component", () => {
-    function TestComponent({ message }: { message: string }) {
-      return <div>{message}</div>;
-    }
-
-    const WrappedComponent = withErrorBoundary(TestComponent);
+    const WrappedComponent = withErrorBoundary(TestComponentWithProps);
 
     render(<WrappedComponent message="Hello from props" />);
 
@@ -275,12 +280,8 @@ describe("withErrorBoundary HOC", () => {
   });
 
   it("passes error boundary props", () => {
-    function ErrorComponent(): React.ReactNode {
-      throw new Error("Test error");
-    }
-
     const handleError = jest.fn();
-    const WrappedComponent = withErrorBoundary(ErrorComponent, {
+    const WrappedComponent = withErrorBoundary(ComponentThatThrowsTestError, {
       onError: handleError,
     });
 
@@ -290,11 +291,7 @@ describe("withErrorBoundary HOC", () => {
   });
 
   it("uses custom fallback from HOC props", () => {
-    function ErrorComponent(): React.ReactNode {
-      throw new Error("Test error");
-    }
-
-    const WrappedComponent = withErrorBoundary(ErrorComponent, {
+    const WrappedComponent = withErrorBoundary(ComponentThatThrowsTestError, {
       fallback: <div>Custom HOC fallback</div>,
     });
 
