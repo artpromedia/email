@@ -1,6 +1,6 @@
 # Contacts Service
 
-CardDAV-compatible contacts service for the Enterprise Email platform, providing ZOHO/Google
+CardDAV-compatible contacts service for the OONRUMAIL platform, providing ZOHO/Google
 Contacts parity.
 
 ## Features

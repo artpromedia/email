@@ -1,6 +1,6 @@
 # Transactional Email API Service
 
-A SendGrid-compatible transactional email API for the Enterprise Email platform.
+A SendGrid-compatible transactional email API for the OONRUMAIL platform.
 
 ## Features
 

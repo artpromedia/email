@@ -1,6 +1,6 @@
 #!/bin/bash
 # Chaos Engineering Test Runner
-# Runs chaos experiments against the Enterprise Email system
+# Runs chaos experiments against the OONRUMAIL system
 #
 # Prerequisites:
 #   - Docker and docker-compose installed
@@ -103,8 +103,8 @@ check_prerequisites() {
     fi
 
     # Check if services are running
-    if ! docker ps | grep -q "enterprise-email"; then
-        log_warning "Enterprise Email services may not be running"
+    if ! docker ps | grep -q "oonrumail"; then
+        log_warning "OONRUMAIL services may not be running"
         log_info "Start services with: docker-compose up -d"
     fi
 
@@ -120,10 +120,10 @@ create_snapshot() {
     log_info "Creating pre-chaos snapshot..."
 
     # Capture container states
-    docker ps --filter "name=enterprise-email" --format "{{.Names}}: {{.Status}}" > "${snapshot_dir}/containers.txt"
+    docker ps --filter "name=oonrumail" --format "{{.Names}}: {{.Status}}" > "${snapshot_dir}/containers.txt"
 
     # Capture database state
-    docker exec enterprise-email-postgres pg_dump -U email_admin enterprise_email --schema-only > "${snapshot_dir}/schema.sql" 2>/dev/null || true
+    docker exec oonrumail-postgres pg_dump -U email_admin oonrumail --schema-only > "${snapshot_dir}/schema.sql" 2>/dev/null || true
 
     # Capture metrics
     curl -s http://localhost:9090/api/v1/query?query=up > "${snapshot_dir}/metrics.json" 2>/dev/null || true

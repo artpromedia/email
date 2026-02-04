@@ -1,6 +1,6 @@
 # API Documentation
 
-Welcome to the Enterprise Email Platform API documentation.
+Welcome to the OONRUMAIL Platform API documentation.
 
 ## OpenAPI Specifications
 
@@ -199,7 +199,7 @@ Response:
 ### JavaScript/TypeScript
 
 ```typescript
-import { EmailClient } from "@enterprise-email/client";
+import { EmailClient } from "@oonrumail/client";
 
 const client = new EmailClient({
   apiKey: "your-api-key",
@@ -232,7 +232,7 @@ await client.mail.updateDraft(draft.id, {
 ### Python
 
 ```python
-from enterprise_email import EmailClient
+from oonrumail import EmailClient
 
 client = EmailClient(
     api_key='your-api-key',

@@ -13,7 +13,7 @@ server:
 database:
   host: ${DB_HOST:localhost}
   port: ${DB_PORT:5432}
-  database: ${DB_NAME:enterprise_email}
+  database: ${DB_NAME:oonrumail}
   username: ${DB_USER:postgres}
   password: ${DB_PASSWORD:postgres}
   ssl_mode: ${DB_SSL_MODE:disable}

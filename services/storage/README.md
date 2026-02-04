@@ -1,6 +1,6 @@
 # Multi-Domain Storage Service
 
-A comprehensive Go-based storage service for enterprise email systems with domain-based
+A comprehensive Go-based storage service for OONRUMAIL systems with domain-based
 partitioning, hierarchical quotas, retention policies, data export, and GDPR-compliant deletion.
 
 ## Features
@@ -242,4 +242,4 @@ When a legal hold is active:
 
 ## License
 
-Internal use only - Enterprise Email Platform
+Internal use only - OONRUMAIL Platform

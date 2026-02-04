@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/enterprise-email/storage/models"
+	"github.com/oonrumail/storage/models"
 )
 
 // StorageService defines the interface for object storage operations

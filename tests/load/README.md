@@ -1,6 +1,6 @@
 # Load Testing Suite
 
-This directory contains k6 load tests for the Enterprise Email Platform.
+This directory contains k6 load tests for the OONRUMAIL Platform.
 
 ## Overview
 

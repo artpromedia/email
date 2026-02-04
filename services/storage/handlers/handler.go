@@ -9,8 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/storage/models"
-	"github.com/enterprise-email/storage/storage"
+	"github.com/oonrumail/storage/models"
+	"github.com/oonrumail/storage/storage"
 )
 
 // Handler handles all HTTP requests

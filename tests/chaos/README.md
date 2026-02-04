@@ -1,6 +1,6 @@
 # Chaos Engineering Tests
 
-This directory contains chaos engineering experiments for testing the resilience of the Enterprise Email system.
+This directory contains chaos engineering experiments for testing the resilience of the OONRUMAIL system.
 
 ## Overview
 
@@ -22,7 +22,7 @@ Chaos engineering helps verify that the system can handle various failure scenar
 
 4. **Stress Tools**: Install stress-ng in containers for resource experiments
    ```bash
-   docker exec enterprise-email-web apk add --no-cache stress-ng
+   docker exec oonrumail-web apk add --no-cache stress-ng
    ```
 
 ## Available Experiments

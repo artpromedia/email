@@ -1,8 +1,8 @@
 {
-  "name": "enterprise-email",
+  "name": "oonrumail",
   "version": "1.0.0",
   "private": true,
-  "description": "Enterprise Email System with Multi-Domain Support",
+  "description": "OONRUMAIL - Multi-Domain Email Platform",
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.0.0",

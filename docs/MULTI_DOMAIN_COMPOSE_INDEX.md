@@ -172,7 +172,7 @@ Complete documentation for the multi-domain email compose feature.
 ## 📦 Code Structure
 
 ```
-enterprise-email/
+oonrumail/
 ├── apps/web/src/
 │   ├── components/mail/compose/
 │   │   ├── EmailCompose.tsx          ← Main compose container

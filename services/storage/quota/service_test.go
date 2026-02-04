@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/enterprise-email/storage/models"
+	"github.com/oonrumail/storage/models"
 )
 
 func TestReservation_Expiry(t *testing.T) {

@@ -1,6 +1,6 @@
 # SMS Provider Configuration
 
-This document describes the SMS providers available in the Enterprise Email Platform's SMS Gateway.
+This document describes the SMS providers available in the OONRUMAIL Platform's SMS Gateway.
 
 ## Provider Status
 

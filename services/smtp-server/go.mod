@@ -1,4 +1,4 @@
-module github.com/enterprise-email/smtp-server
+module github.com/oonrumail/smtp-server
 
 go 1.23.0
 

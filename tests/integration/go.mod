@@ -1,4 +1,4 @@
-module github.com/enterprise-email/tests/integration
+module github.com/oonrumail/tests/integration
 
 go 1.22
 

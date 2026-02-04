@@ -14,8 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/storage/config"
-	"github.com/enterprise-email/storage/models"
+	"github.com/oonrumail/storage/config"
+	"github.com/oonrumail/storage/models"
 )
 
 // S3StorageService implements StorageService using S3-compatible storage

@@ -17,12 +17,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/enterprise-email/ai-assistant/analysis"
-	"github.com/enterprise-email/ai-assistant/config"
-	"github.com/enterprise-email/ai-assistant/embedding"
-	"github.com/enterprise-email/ai-assistant/handlers"
-	"github.com/enterprise-email/ai-assistant/provider"
-	"github.com/enterprise-email/ai-assistant/ratelimit"
+	"github.com/oonrumail/ai-assistant/analysis"
+	"github.com/oonrumail/ai-assistant/config"
+	"github.com/oonrumail/ai-assistant/embedding"
+	"github.com/oonrumail/ai-assistant/handlers"
+	"github.com/oonrumail/ai-assistant/provider"
+	"github.com/oonrumail/ai-assistant/ratelimit"
 )
 
 func main() {

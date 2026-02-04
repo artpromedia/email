@@ -2,7 +2,7 @@
   "name": "@email/web",
   "version": "1.0.0",
   "private": true,
-  "description": "Enterprise Email Web Application",
+  "description": "OONRUMAIL Web Application",
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",

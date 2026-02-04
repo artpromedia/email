@@ -1,6 +1,6 @@
 # Domain Manager Service
 
-A Go-based microservice for managing email domains in the Enterprise Email Platform. Provides comprehensive domain lifecycle management, DKIM key management, DNS verification, and monitoring.
+A Go-based microservice for managing email domains in the OONRUMAIL Platform. Provides comprehensive domain lifecycle management, DKIM key management, DNS verification, and monitoring.
 
 ## Features
 
@@ -89,7 +89,7 @@ cp config.yaml config.local.yaml
 ```bash
 export DB_HOST=localhost
 export DB_PORT=5432
-export DB_NAME=enterprise_email
+export DB_NAME=oonrumail
 export DB_USER=postgres
 export DB_PASSWORD=postgres
 export DKIM_ENCRYPTION_KEY=your-32-byte-encryption-key-here
@@ -99,7 +99,7 @@ export DKIM_ENCRYPTION_KEY=your-32-byte-encryption-key-here
 
 Run the migrations:
 ```bash
-psql -h localhost -U postgres -d enterprise_email -f migrations/001_initial_schema.sql
+psql -h localhost -U postgres -d oonrumail -f migrations/001_initial_schema.sql
 ```
 
 ### Build and Run
@@ -147,17 +147,17 @@ For a domain `example.com`:
 
 ### Verification TXT Record
 ```
-example.com. TXT "enterprise-email-verify=<verification_token>"
+example.com. TXT "oonrumail-verify=<verification_token>"
 ```
 
 ### MX Record
 ```
-example.com. MX 10 mx.enterprise-email.com.
+example.com. MX 10 mx.oonrumail.com.
 ```
 
 ### SPF Record
 ```
-example.com. TXT "v=spf1 include:spf.enterprise-email.com ~all"
+example.com. TXT "v=spf1 include:spf.oonrumail.com ~all"
 ```
 
 ### DKIM Record
@@ -167,7 +167,7 @@ mail._domainkey.example.com. TXT "v=DKIM1; k=rsa; p=<public_key>"
 
 ### DMARC Record
 ```
-_dmarc.example.com. TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@enterprise-email.com"
+_dmarc.example.com. TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@oonrumail.com"
 ```
 
 ## DKIM Key Management
@@ -234,4 +234,4 @@ services/domain-manager/
 
 ## License
 
-Copyright © 2024 Enterprise Email Platform
+Copyright © 2024 OONRUMAIL Platform

@@ -1,7 +1,7 @@
-# Enterprise Email System
+# OONRUMAIL
 
-A production-ready enterprise email system with **multi-domain support**, built using a modern
-TypeScript monorepo architecture.
+A production-ready multi-domain email platform built using a modern TypeScript monorepo
+architecture.
 
 ## Features
 
@@ -24,7 +24,7 @@ TypeScript monorepo architecture.
 ## Project Structure
 
 ```
-enterprise-email/
+oonrumail/
 ├── apps/
 │   ├── web/           # Main web application (Next.js)
 │   └── admin/         # Admin dashboard (Next.js)
@@ -98,6 +98,7 @@ The system supports multiple email domains out of the box:
 ### Domain Configuration
 
 Each domain has its own:
+
 - DKIM keys for email signing
 - SPF records for sender verification
 - DMARC policies for email authentication
@@ -137,19 +138,19 @@ _dmarc  IN  TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"
 
 ## Development Services
 
-| Service | Port | URL |
-|---------|------|-----|
-| Web App | 3000 | http://localhost:3000 |
-| Admin App | 3001 | http://localhost:3001 |
-| PostgreSQL | 5432 | - |
-| Redis | 6379 | - |
-| MinIO Console | 9001 | http://localhost:9001 |
-| OpenSearch | 9200 | http://localhost:9200 |
+| Service               | Port | URL                   |
+| --------------------- | ---- | --------------------- |
+| Web App               | 3000 | http://localhost:3000 |
+| Admin App             | 3001 | http://localhost:3001 |
+| PostgreSQL            | 5432 | -                     |
+| Redis                 | 6379 | -                     |
+| MinIO Console         | 9001 | http://localhost:9001 |
+| OpenSearch            | 9200 | http://localhost:9200 |
 | OpenSearch Dashboards | 5601 | http://localhost:5601 |
-| Mailpit (SMTP) | 1025 | - |
-| Mailpit (Web) | 8025 | http://localhost:8025 |
-| Adminer (DB UI) | 8080 | http://localhost:8080 |
-| Redis Commander | 8081 | http://localhost:8081 |
+| Mailpit (SMTP)        | 1025 | -                     |
+| Mailpit (Web)         | 8025 | http://localhost:8025 |
+| Adminer (DB UI)       | 8080 | http://localhost:8080 |
+| Redis Commander       | 8081 | http://localhost:8081 |
 
 ## Packages
 
@@ -158,7 +159,7 @@ _dmarc  IN  TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"
 Shared configuration and environment validation using Zod.
 
 ```typescript
-import { getEnv, validateEnv } from '@email/config';
+import { getEnv, validateEnv } from "@email/config";
 
 const env = getEnv();
 console.log(env.PRIMARY_DOMAIN); // Type-safe environment access
@@ -169,7 +170,7 @@ console.log(env.PRIMARY_DOMAIN); // Type-safe environment access
 Shared TypeScript types for the entire system.
 
 ```typescript
-import type { Email, User, DomainConfig } from '@email/types';
+import type { Email, User, DomainConfig } from "@email/types";
 ```
 
 ### @email/utils
@@ -177,7 +178,7 @@ import type { Email, User, DomainConfig } from '@email/types';
 Shared utility functions.
 
 ```typescript
-import { generateId, formatBytes, retry } from '@email/utils';
+import { generateId, formatBytes, retry } from "@email/utils";
 ```
 
 ### @email/ui
@@ -185,7 +186,7 @@ import { generateId, formatBytes, retry } from '@email/utils';
 Shared UI components built with Radix UI and Tailwind CSS.
 
 ```typescript
-import { Button, Card, Badge } from '@email/ui';
+import { Button, Card, Badge } from "@email/ui";
 ```
 
 ## Contributing
@@ -213,4 +214,4 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## License
 
-MIT © Enterprise Email Team
+MIT © OONRUMAIL Team

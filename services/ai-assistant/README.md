@@ -1,6 +1,6 @@
 # AI Assistant Service
 
-Enterprise email AI assistant service providing email analysis, smart replies, and semantic search
+OONRUMAIL AI assistant service providing email analysis, smart replies, and semantic search
 capabilities.
 
 ## Features

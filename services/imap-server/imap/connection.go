@@ -44,7 +44,7 @@ func (c *Connection) Handle() {
 	c.writer = bufio.NewWriter(c.conn)
 
 	// Send greeting
-	c.sendUntagged("OK [CAPABILITY %s] Enterprise Email IMAP Server ready", strings.Join(c.ctx.Capabilities, " "))
+	c.sendUntagged("OK [CAPABILITY %s] OONRUMAIL IMAP Server ready", strings.Join(c.ctx.Capabilities, " "))
 
 	// Main command loop
 	for {

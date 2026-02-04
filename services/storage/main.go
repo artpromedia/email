@@ -17,14 +17,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/enterprise-email/storage/config"
-	"github.com/enterprise-email/storage/dedup"
-	"github.com/enterprise-email/storage/export"
-	"github.com/enterprise-email/storage/handlers"
-	"github.com/enterprise-email/storage/quota"
-	"github.com/enterprise-email/storage/retention"
-	"github.com/enterprise-email/storage/storage"
-	"github.com/enterprise-email/storage/workers"
+	"github.com/oonrumail/storage/config"
+	"github.com/oonrumail/storage/dedup"
+	"github.com/oonrumail/storage/export"
+	"github.com/oonrumail/storage/handlers"
+	"github.com/oonrumail/storage/quota"
+	"github.com/oonrumail/storage/retention"
+	"github.com/oonrumail/storage/storage"
+	"github.com/oonrumail/storage/workers"
 )
 
 func main() {

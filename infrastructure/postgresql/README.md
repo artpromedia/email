@@ -55,10 +55,10 @@ This directory contains configuration for a highly available PostgreSQL cluster 
 open http://localhost:7000
 
 # Connect to primary
-psql -h localhost -p 5000 -U email_app -d enterprise_email
+psql -h localhost -p 5000 -U email_app -d oonrumail
 
 # Connect to read replica
-psql -h localhost -p 5001 -U email_readonly -d enterprise_email
+psql -h localhost -p 5001 -U email_readonly -d oonrumail
 ```
 
 ## Management Commands

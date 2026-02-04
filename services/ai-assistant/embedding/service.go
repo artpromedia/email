@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/enterprise-email/ai-assistant/provider"
+	"github.com/oonrumail/ai-assistant/provider"
 )
 
 // Service handles embedding generation

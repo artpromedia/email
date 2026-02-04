@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/storage/config"
-	"github.com/enterprise-email/storage/models"
+	"github.com/oonrumail/storage/config"
+	"github.com/oonrumail/storage/models"
 )
 
 // DomainAwareStorage implements DomainStorageService

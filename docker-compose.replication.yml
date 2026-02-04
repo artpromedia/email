@@ -23,7 +23,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+      POSTGRES_DB: ${POSTGRES_DB:-oonrumail}
       PGDATA: /var/lib/postgresql/data/pgdata
       POSTGRES_INITDB_ARGS: "--data-checksums"
     labels:
@@ -33,12 +33,12 @@ services:
   # PostgreSQL Read Replica
   postgres-replica:
     image: postgres:16-alpine
-    container_name: enterprise-email-postgres-replica
+    container_name: oonrumail-postgres-replica
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+      POSTGRES_DB: ${POSTGRES_DB:-oonrumail}
       PGDATA: /var/lib/postgresql/data/pgdata
       POSTGRES_INITDB_ARGS: "--data-checksums"
       # Replication settings
@@ -75,7 +75,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-enterprise_email} && psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:-enterprise_email} -c 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail} && psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail} -c 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -89,7 +89,7 @@ services:
   # PgBouncer with read/write splitting
   pgbouncer:
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oonrumail}"
       # Read replica can be added to pool for read operations
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
@@ -103,10 +103,10 @@ services:
   # Add read-only PgBouncer for replica
   pgbouncer-readonly:
     image: edoburu/pgbouncer:latest
-    container_name: enterprise-email-pgbouncer-readonly
+    container_name: oonrumail-pgbouncer-readonly
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-replica:5432/${POSTGRES_DB:-enterprise_email}"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-replica:5432/${POSTGRES_DB:-oonrumail}"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 500
       DEFAULT_POOL_SIZE: 20
@@ -130,13 +130,13 @@ services:
   # Replication Monitor
   replication-monitor:
     image: postgres:16-alpine
-    container_name: enterprise-email-replication-monitor
+    container_name: oonrumail-replication-monitor
     restart: unless-stopped
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+      POSTGRES_DB: ${POSTGRES_DB:-oonrumail}
     entrypoint: >
       /bin/sh -c "
         while true; do

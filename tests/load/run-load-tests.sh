@@ -34,7 +34,7 @@ TEST="${2:-all}"
 mkdir -p results
 
 show_help() {
-    echo "Load Test Runner for Enterprise Email Platform"
+    echo "Load Test Runner for OONRUMAIL Platform"
     echo ""
     echo "Usage: $0 [profile] [test]"
     echo ""
@@ -224,7 +224,7 @@ esac
 
 check_k6
 
-log_header "Enterprise Email Platform Load Tests"
+log_header "OONRUMAIL Platform Load Tests"
 log_info "Profile: $PROFILE"
 log_info "Test: $TEST"
 

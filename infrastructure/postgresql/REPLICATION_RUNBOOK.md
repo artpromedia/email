@@ -3,7 +3,7 @@
 ## Overview
 
 This runbook documents the operational procedures for managing the PostgreSQL high-availability
-cluster using Patroni, etcd, and HAProxy for the Enterprise Email Platform.
+cluster using Patroni, etcd, and HAProxy for the OONRUMAIL Platform.
 
 ## Table of Contents
 

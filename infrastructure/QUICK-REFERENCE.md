@@ -18,7 +18,7 @@ chmod +x deploy.sh
 # Set environment variables
 export ENVIRONMENT=production
 export AWS_REGION=us-east-1
-export PRIMARY_DOMAIN=enterprise-email.com
+export PRIMARY_DOMAIN=oonrumail.com
 export GRAFANA_PASSWORD=<secure-password>
 
 # Run deployment
@@ -31,7 +31,7 @@ export GRAFANA_PASSWORD=<secure-password>
 
 ```bash
 # 1. Customer adds domain via API
-curl -X POST https://api.enterprise-email.com/domains \
+curl -X POST https://api.oonrumail.com/domains \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
     "domain_name": "example.com",
@@ -160,7 +160,7 @@ psql $DATABASE_URL -c "SELECT name, status, verified FROM domains WHERE name = '
 # 2. Test SMTP connection
 swaks --to user@example.com \
       --from test@test.com \
-      --server mail.enterprise-email.com \
+      --server mail.oonrumail.com \
       --tls
 
 # 3. Check Postfix logs
@@ -351,9 +351,9 @@ kubectl get certificaterequest -n email-system
 receivers:
   - name: "email"
     email_configs:
-      - to: "ops@enterprise-email.com"
-        from: "alerts@enterprise-email.com"
-        smarthost: "smtp.enterprise-email.com:587"
+      - to: "ops@oonrumail.com"
+        from: "alerts@oonrumail.com"
+        smarthost: "smtp.oonrumail.com:587"
   - name: "slack"
     slack_configs:
       - api_url: "$SLACK_WEBHOOK_URL"
@@ -387,7 +387,7 @@ kubectl create secret generic alertmanager-config \
 
 - **Emergency**: Slack #email-ops-emergency
 - **General**: Slack #email-infrastructure
-- **Email**: ops@enterprise-email.com
+- **Email**: ops@oonrumail.com
 - **On-Call**: PagerDuty rotation
 
 ## ⚡ Performance Tips

@@ -1,6 +1,6 @@
 # Production Deployment Runbook
 
-## Enterprise Email Platform
+## OONRUMAIL Platform
 
 **Last Updated:** January 29, 2026 **Version:** 1.0.0
 
@@ -79,7 +79,7 @@ pnpm drizzle-kit push --dry-run
 pnpm drizzle-kit push
 
 # 6. Verify migration
-psql -h $POSTGRES_HOST -U $POSTGRES_USER -d enterprise_email -c "\dt"
+psql -h $POSTGRES_HOST -U $POSTGRES_USER -d oonrumail -c "\dt"
 ```
 
 **Rollback:** If migration fails, restore from backup:
@@ -263,7 +263,7 @@ kubectl scale deployment --all --replicas=0 -n email-platform
 ./scripts/backups/restore-postgres.sh /backups/postgres/pre-deploy/latest.sql.gz
 
 # 3. Verify database state
-psql -h $POSTGRES_HOST -U $POSTGRES_USER -d enterprise_email -c "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 5;"
+psql -h $POSTGRES_HOST -U $POSTGRES_USER -d oonrumail -c "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 5;"
 
 # 4. Restart services with previous version
 kubectl set image deployment/auth auth=email-platform/auth:v0.9.0 -n email-platform
@@ -297,7 +297,7 @@ for service in auth smtp imap storage domain-manager; do
 done
 
 # 2. Database connectivity
-psql -h $POSTGRES_HOST -U $POSTGRES_USER -d enterprise_email -c "SELECT 1;" > /dev/null || exit 1
+psql -h $POSTGRES_HOST -U $POSTGRES_USER -d oonrumail -c "SELECT 1;" > /dev/null || exit 1
 echo "✓ Database connection OK"
 
 # 3. Redis connectivity
@@ -454,7 +454,7 @@ kubectl scale deployment/smtp --replicas=5 -n email-platform
 kubectl port-forward service/postgres 5432:5432 -n email-platform
 
 # Database queries
-psql -h $POSTGRES_HOST -U $POSTGRES_USER -d enterprise_email
+psql -h $POSTGRES_HOST -U $POSTGRES_USER -d oonrumail
 
 # Redis commands
 redis-cli -h $REDIS_HOST -a $REDIS_PASSWORD

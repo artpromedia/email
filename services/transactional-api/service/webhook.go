@@ -186,7 +186,7 @@ func (s *WebhookService) deliverWebhook(ctx context.Context, dispatch *webhookDi
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Enterprise-Email-Webhooks/1.0")
+	req.Header.Set("User-Agent", "OONRUMAIL-Webhooks/1.0")
 	req.Header.Set("X-Webhook-ID", dispatch.Webhook.ID.String())
 	req.Header.Set("X-Webhook-Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 
@@ -261,7 +261,7 @@ func (s *WebhookService) TestWebhook(ctx context.Context, webhook *models.Webhoo
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Enterprise-Email-Webhooks/1.0")
+	req.Header.Set("User-Agent", "OONRUMAIL-Webhooks/1.0")
 	req.Header.Set("X-Webhook-ID", webhook.ID.String())
 	req.Header.Set("X-Webhook-Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	req.Header.Set("X-Webhook-Signature", s.signPayload(body, webhook.Secret))

@@ -9,7 +9,7 @@ database:
   port: 5432
   user: postgres
   password: postgres
-  database: enterprise_email
+  database: oonrumail
   ssl_mode: disable
 
 redis:

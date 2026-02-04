@@ -1,6 +1,6 @@
-# Enterprise Email Platform - API Integration Guide
+# OONRUMAIL Platform - API Integration Guide
 
-Complete guide for integrating the Enterprise Email Platform into your applications.
+Complete guide for integrating the OONRUMAIL Platform into your applications.
 
 ## Table of Contents
 

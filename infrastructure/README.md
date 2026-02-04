@@ -54,11 +54,11 @@ verification, TLS certificate provisioning, and per-domain monitoring.
 #### Primary Domain Setup
 
 ```
-mail.enterprise-email.com → Load Balancer IP
-smtp.enterprise-email.com → Load Balancer IP
-imap.enterprise-email.com → Load Balancer IP
-webmail.enterprise-email.com → Ingress Controller
-api.enterprise-email.com → Ingress Controller
+mail.oonrumail.com → Load Balancer IP
+smtp.oonrumail.com → Load Balancer IP
+imap.oonrumail.com → Load Balancer IP
+webmail.oonrumail.com → Ingress Controller
+api.oonrumail.com → Ingress Controller
 ```
 
 #### Customer Domain Configuration
@@ -67,8 +67,8 @@ api.enterprise-email.com → Ingress Controller
 
 ```
 ; Customer DNS
-example.com.          MX  10 mail.enterprise-email.com.
-webmail.example.com.  CNAME webmail.enterprise-email.com.
+example.com.          MX  10 mail.oonrumail.com.
+webmail.example.com.  CNAME webmail.oonrumail.com.
 ```
 
 **Option B: Custom Vanity Domain**
@@ -76,8 +76,8 @@ webmail.example.com.  CNAME webmail.enterprise-email.com.
 ```
 ; Customer DNS
 example.com.          MX  10 mail.example.com.
-mail.example.com.     CNAME mail.enterprise-email.com.
-webmail.example.com.  CNAME webmail.enterprise-email.com.
+mail.example.com.     CNAME mail.oonrumail.com.
+webmail.example.com.  CNAME webmail.oonrumail.com.
 ```
 
 #### DNS Verification Records
@@ -87,9 +87,9 @@ webmail.example.com.  CNAME webmail.enterprise-email.com.
 _mail-verification.example.com. TXT "mail-verification=<token>"
 
 ; Email authentication
-example.com.                    TXT "v=spf1 include:spf.enterprise-email.com ~all"
+example.com.                    TXT "v=spf1 include:spf.oonrumail.com ~all"
 default._domainkey.example.com. TXT "v=DKIM1; k=rsa; p=<public-key>"
-_dmarc.example.com.             TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@enterprise-email.com"
+_dmarc.example.com.             TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@oonrumail.com"
 ```
 
 ### 2. TLS Certificate Management
@@ -109,8 +109,8 @@ _dmarc.example.com.             TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@en
 
 ```yaml
 dnsNames:
-  - "*.enterprise-email.com"
-  - enterprise-email.com
+  - "*.oonrumail.com"
+  - oonrumail.com
 ```
 
 **Customer Domains (Per-Domain)**
@@ -319,7 +319,7 @@ terraform init
 # Plan
 terraform plan \
   -var="aws_region=us-east-1" \
-  -var="admin_email=admin@enterprise-email.com"
+  -var="admin_email=admin@oonrumail.com"
 
 # Apply
 terraform apply
@@ -383,7 +383,7 @@ POST /api/domains
     {
       "type": "MX",
       "name": "example.com",
-      "value": "10 mail.enterprise-email.com"
+      "value": "10 mail.oonrumail.com"
     },
     ...
   ]
@@ -492,7 +492,7 @@ Domain is ready to send/receive email
 # Test domain verification
 go run services/domain-manager/cmd/verify-domain/main.go \
   --domain example.com \
-  --primary-domain enterprise-email.com
+  --primary-domain oonrumail.com
 ```
 
 ### Certificate Testing
@@ -509,7 +509,7 @@ kubectl describe certificate example-com-tls -n email-system
 # Test SMTP delivery
 swaks --to user@example.com \
       --from sender@test.com \
-      --server mail.enterprise-email.com \
+      --server mail.oonrumail.com \
       --tls
 
 # Check logs
@@ -562,10 +562,10 @@ psql -c "SELECT * FROM domains WHERE name = 'example.com';"
 
 For issues or questions:
 
-- Email: support@enterprise-email.com
+- Email: support@oonrumail.com
 - Slack: #email-infrastructure
-- Docs: https://docs.enterprise-email.com
+- Docs: https://docs.oonrumail.com
 
 ## License
 
-Proprietary - Enterprise Email System
+Proprietary - OONRUMAIL System

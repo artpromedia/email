@@ -2,12 +2,12 @@ services:
   # PostgreSQL 16 - Primary Database
   postgres:
     image: postgres:16-alpine
-    container_name: enterprise-email-postgres
+    container_name: oonrumail-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: ${POSTGRES_DB:-enterprise_email}
+      POSTGRES_DB: ${POSTGRES_DB:-oonrumail}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -16,7 +16,7 @@ services:
       - ./docker/init-scripts/postgres:/docker-entrypoint-initdb.d:ro
       - ./docker/backups/postgres:/backups
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-enterprise_email}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +27,7 @@ services:
   # Redis 7 - Caching and Queue
   redis:
     image: redis:7-alpine
-    container_name: enterprise-email-redis
+    container_name: oonrumail-redis
     restart: unless-stopped
     command: >
       redis-server
@@ -51,7 +51,7 @@ services:
   # MinIO - S3-Compatible Object Storage
   minio:
     image: minio/minio:latest
-    container_name: enterprise-email-minio
+    container_name: oonrumail-minio
     restart: unless-stopped
     command: server /data --console-address ":9001" --certs-dir /root/.minio/certs
     environment:
@@ -76,7 +76,7 @@ services:
   # MinIO Client - Create default buckets
   minio-init:
     image: minio/mc:latest
-    container_name: enterprise-email-minio-init
+    container_name: oonrumail-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -100,10 +100,10 @@ services:
   # OpenSearch - Full-text Search Engine
   opensearch:
     image: opensearchproject/opensearch:2.12.0
-    container_name: enterprise-email-opensearch
+    container_name: oonrumail-opensearch
     restart: unless-stopped
     environment:
-      - cluster.name=enterprise-email-cluster
+      - cluster.name=oonrumail-cluster
       - node.name=opensearch-node1
       - discovery.type=single-node
       - bootstrap.memory_lock=true
@@ -138,7 +138,7 @@ services:
   # OpenSearch Dashboards
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.12.0
-    container_name: enterprise-email-opensearch-dashboards
+    container_name: oonrumail-opensearch-dashboards
     restart: unless-stopped
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
@@ -160,7 +160,7 @@ services:
   # Mailpit - Email Testing (Multi-Domain)
   mailpit:
     image: axllent/mailpit:latest
-    container_name: enterprise-email-mailpit
+    container_name: oonrumail-mailpit
     restart: unless-stopped
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: "true"
@@ -188,7 +188,7 @@ services:
   # CoreDNS - Local DNS Testing for Multi-Domain
   coredns:
     image: coredns/coredns:1.11.1
-    container_name: enterprise-email-coredns
+    container_name: oonrumail-coredns
     restart: unless-stopped
     command: -conf /config/Corefile
     ports:
@@ -208,7 +208,7 @@ services:
   # Adminer - Database Management UI
   adminer:
     image: adminer:latest
-    container_name: enterprise-email-adminer
+    container_name: oonrumail-adminer
     restart: unless-stopped
     environment:
       ADMINER_DEFAULT_SERVER: postgres
@@ -224,7 +224,7 @@ services:
   # Redis Commander - Redis Management UI
   redis-commander:
     image: rediscommander/redis-commander:latest
-    container_name: enterprise-email-redis-commander
+    container_name: oonrumail-redis-commander
     restart: unless-stopped
     environment:
       - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
@@ -239,7 +239,7 @@ services:
   # Monitoring and Observability
   prometheus:
     image: prom/prometheus:latest
-    container_name: enterprise-email-prometheus
+    container_name: oonrumail-prometheus
     restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -259,7 +259,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    container_name: enterprise-email-grafana
+    container_name: oonrumail-grafana
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
@@ -280,10 +280,10 @@ services:
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
-    container_name: enterprise-email-postgres-exporter
+    container_name: oonrumail-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
     ports:
       - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
     depends_on:
@@ -294,7 +294,7 @@ services:
 
   redis-exporter:
     image: oliver006/redis_exporter:latest
-    container_name: enterprise-email-redis-exporter
+    container_name: oonrumail-redis-exporter
     restart: unless-stopped
     environment:
       REDIS_ADDR: redis:6379
@@ -310,10 +310,10 @@ services:
   # PgBouncer - Connection Pooling
   pgbouncer:
     image: edoburu/pgbouncer:latest
-    container_name: enterprise-email-pgbouncer
+    container_name: oonrumail-pgbouncer
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_email}"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oonrumail}"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 25
@@ -339,12 +339,12 @@ services:
     build:
       context: ./services/auth
       dockerfile: Dockerfile
-    container_name: enterprise-email-auth
+    container_name: oonrumail-auth
     restart: unless-stopped
     environment:
       PORT: "8080"
       ENVIRONMENT: ${ENVIRONMENT:-production}
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
@@ -376,12 +376,12 @@ services:
     build:
       context: ./services/storage
       dockerfile: Dockerfile
-    container_name: enterprise-email-storage
+    container_name: oonrumail-storage
     restart: unless-stopped
     environment:
       PORT: "8081"
       ENVIRONMENT: ${ENVIRONMENT:-production}
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       S3_ENDPOINT: "http://minio:9000"
       S3_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -417,14 +417,14 @@ services:
     build:
       context: ./services/domain-manager
       dockerfile: Dockerfile
-    container_name: enterprise-email-domain-manager
+    container_name: oonrumail-domain-manager
     restart: unless-stopped
     environment:
       PORT: "8083"
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DB_HOST: pgbouncer
       DB_PORT: "5432"
-      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_NAME: ${POSTGRES_DB:-oonrumail}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_SSL_MODE: require
@@ -455,14 +455,14 @@ services:
     build:
       context: ./services/smtp-server
       dockerfile: Dockerfile
-    container_name: enterprise-email-smtp
+    container_name: oonrumail-smtp
     restart: unless-stopped
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       SMTP_HOSTNAME: ${SMTP_HOSTNAME:-mail.localhost}
       DB_HOST: pgbouncer
       DB_PORT: "5432"
-      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_NAME: ${POSTGRES_DB:-oonrumail}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_ADDR: "redis:6379"
@@ -500,7 +500,7 @@ services:
     build:
       context: ./services/imap-server
       dockerfile: Dockerfile
-    container_name: enterprise-email-imap
+    container_name: oonrumail-imap
     restart: unless-stopped
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
@@ -509,7 +509,7 @@ services:
       IMAP_TLS_PORT: "993"
       DB_HOST: pgbouncer
       DB_PORT: "5432"
-      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_NAME: ${POSTGRES_DB:-oonrumail}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
@@ -551,14 +551,14 @@ services:
     build:
       context: ./services/ai-assistant
       dockerfile: Dockerfile
-    container_name: enterprise-email-ai-assistant
+    container_name: oonrumail-ai-assistant
     restart: unless-stopped
     environment:
       PORT: "8090"
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DB_HOST: pgbouncer
       DB_PORT: "5432"
-      DB_NAME: ${POSTGRES_DB:-enterprise_email}
+      DB_NAME: ${POSTGRES_DB:-oonrumail}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
@@ -591,12 +591,12 @@ services:
     build:
       context: ./services/transactional-api
       dockerfile: Dockerfile
-    container_name: enterprise-email-transactional-api
+    container_name: oonrumail-transactional-api
     restart: unless-stopped
     environment:
       PORT: "8085"
       ENVIRONMENT: ${ENVIRONMENT:-production}
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       SMTP_HOST: smtp-server
       SMTP_PORT: "25"
@@ -636,10 +636,10 @@ services:
     build:
       context: ./services/calendar
       dockerfile: Dockerfile
-    container_name: enterprise-email-calendar
+    container_name: oonrumail-calendar
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
       SMTP_HOST: smtp-server
       SMTP_PORT: "25"
@@ -668,10 +668,10 @@ services:
     build:
       context: ./services/contacts
       dockerfile: Dockerfile
-    container_name: enterprise-email-contacts
+    container_name: oonrumail-contacts
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       DOMAIN: ${CONTACTS_DOMAIN:-contacts.localhost}
     ports:
@@ -697,12 +697,12 @@ services:
     build:
       context: ./services/chat
       dockerfile: Dockerfile
-    container_name: enterprise-email-chat
+    container_name: oonrumail-chat
     restart: unless-stopped
     environment:
       CHAT_PORT: "8086"
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       REDIS_ADDR: "redis:6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
@@ -740,13 +740,13 @@ services:
     build:
       context: ./services/sms-gateway
       dockerfile: Dockerfile
-    container_name: enterprise-email-sms-gateway
+    container_name: oonrumail-sms-gateway
     restart: unless-stopped
     environment:
       SMS_GATEWAY_PORT: "8087"
       SMS_METRICS_PORT: "9095"
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-enterprise_email}?sslmode=require"
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-oonrumail}?sslmode=require"
       REDIS_ADDR: "redis:6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}

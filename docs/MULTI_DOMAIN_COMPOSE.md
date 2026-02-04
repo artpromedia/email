@@ -2,7 +2,7 @@
 
 ## Overview
 
-The enterprise email platform includes a comprehensive multi-domain email compose system that allows
+The OONRUMAIL platform includes a comprehensive multi-domain email compose system that allows
 users to send emails from multiple email addresses across different domains, with full support for
 shared mailboxes, signatures, branding, and cross-domain recipient awareness.
 

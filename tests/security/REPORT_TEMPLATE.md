@@ -1,6 +1,6 @@
 # Security Penetration Test Report
 
-**Project:** Enterprise Email Platform **Test Date:** [DATE] **Tester:** [NAME] **Report Version:**
+**Project:** OONRUMAIL Platform **Test Date:** [DATE] **Tester:** [NAME] **Report Version:**
 1.0
 
 ---
@@ -252,4 +252,4 @@ The following items were excluded from testing:
 
 ---
 
-_Report generated using Enterprise Email Platform Security Testing Suite_
+_Report generated using OONRUMAIL Platform Security Testing Suite_

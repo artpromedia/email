@@ -1,6 +1,6 @@
 # API Key Management Guide
 
-Complete guide for creating, managing, and securing API keys for the Enterprise Email Platform.
+Complete guide for creating, managing, and securing API keys for the OONRUMAIL Platform.
 
 ## Table of Contents
 

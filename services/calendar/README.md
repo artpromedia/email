@@ -1,6 +1,6 @@
 # Calendar Service
 
-CalDAV-compatible calendar service for the Enterprise Email platform, providing ZOHO/Google Calendar
+CalDAV-compatible calendar service for the OONRUMAIL platform, providing ZOHO/Google Calendar
 parity.
 
 ## Features

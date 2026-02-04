@@ -250,7 +250,7 @@ func (c *Connection) authenticate(tag, username, password, method string) error 
 func (c *Connection) handleID(tag, args string) error {
 	// Parse client ID (optional)
 	// We just acknowledge and return our server ID
-	c.sendUntagged(`ID ("name" "Enterprise Email IMAP" "version" "1.0")`)
+	c.sendUntagged(`ID ("name" "OONRUMAIL IMAP" "version" "1.0")`)
 	c.sendTagged(tag, "OK ID completed")
 	return nil
 }

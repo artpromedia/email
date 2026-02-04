@@ -1,6 +1,6 @@
 # Multi-Domain SMTP Server
 
-A production-ready SMTP server supporting **unlimited domains per organization** with advanced features for enterprise email platforms.
+A production-ready SMTP server supporting **unlimited domains per organization** with advanced features for OONRUMAIL platforms.
 
 ## Features
 

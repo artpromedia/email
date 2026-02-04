@@ -15,9 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/storage/config"
-	"github.com/enterprise-email/storage/models"
-	"github.com/enterprise-email/storage/storage"
+	"github.com/oonrumail/storage/config"
+	"github.com/oonrumail/storage/models"
+	"github.com/oonrumail/storage/storage"
 )
 
 // Service implements the ExportService interface

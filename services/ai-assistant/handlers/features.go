@@ -8,15 +8,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/ai-assistant/analysis"
-	"github.com/enterprise-email/ai-assistant/autoreply"
-	"github.com/enterprise-email/ai-assistant/draft"
-	"github.com/enterprise-email/ai-assistant/embedding"
-	"github.com/enterprise-email/ai-assistant/priority"
-	"github.com/enterprise-email/ai-assistant/provider"
-	"github.com/enterprise-email/ai-assistant/ratelimit"
-	"github.com/enterprise-email/ai-assistant/smartreply"
-	"github.com/enterprise-email/ai-assistant/summarization"
+	"github.com/oonrumail/ai-assistant/analysis"
+	"github.com/oonrumail/ai-assistant/autoreply"
+	"github.com/oonrumail/ai-assistant/draft"
+	"github.com/oonrumail/ai-assistant/embedding"
+	"github.com/oonrumail/ai-assistant/priority"
+	"github.com/oonrumail/ai-assistant/provider"
+	"github.com/oonrumail/ai-assistant/ratelimit"
+	"github.com/oonrumail/ai-assistant/smartreply"
+	"github.com/oonrumail/ai-assistant/summarization"
 )
 
 // Handler handles all HTTP requests

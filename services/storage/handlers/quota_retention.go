@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/enterprise-email/storage/models"
+	"github.com/oonrumail/storage/models"
 )
 
 // Quota handlers

@@ -3,7 +3,7 @@ server:
   logLevel: "${LOG_LEVEL:-info}"
 
 database:
-  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/enterprise_email?sslmode=require}"
+  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/oonrumail?sslmode=require}"
   maxConns: 25
   minConns: 5
   maxConnLifetime: 1h

@@ -1,6 +1,6 @@
 # Security Penetration Testing Guide
 
-This guide covers security testing procedures for the Enterprise Email Platform.
+This guide covers security testing procedures for the OONRUMAIL Platform.
 
 ## Overview
 

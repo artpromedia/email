@@ -8,10 +8,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/ai-assistant/analysis"
-	"github.com/enterprise-email/ai-assistant/embedding"
-	"github.com/enterprise-email/ai-assistant/provider"
-	"github.com/enterprise-email/ai-assistant/ratelimit"
+	"github.com/oonrumail/ai-assistant/analysis"
+	"github.com/oonrumail/ai-assistant/embedding"
+	"github.com/oonrumail/ai-assistant/provider"
+	"github.com/oonrumail/ai-assistant/ratelimit"
 )
 
 // Handler handles all HTTP requests

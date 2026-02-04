@@ -155,7 +155,7 @@ SMS_METRICS_PORT=9095
 LOG_LEVEL=info
 
 # Database
-DATABASE_URL=postgres://user:pass@localhost:5432/enterprise_email
+DATABASE_URL=postgres://user:pass@localhost:5432/oonrumail
 
 # Redis
 REDIS_ADDR=localhost:6379

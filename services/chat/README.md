@@ -1,6 +1,6 @@
 # Chat Service
 
-Internal team communication service with Slack-like features for the Enterprise Email Platform.
+Internal team communication service with Slack-like features for the OONRUMAIL Platform.
 
 ## Features
 

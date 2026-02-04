@@ -20,7 +20,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "enterprise-email-terraform-state"
+    bucket         = "oonrumail-terraform-state"
     key            = "production/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
@@ -33,7 +33,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "enterprise-email"
+      Project     = "oonrumail"
       Environment = var.environment
       ManagedBy   = "terraform"
     }
@@ -72,7 +72,7 @@ variable "kubeconfig_path" {
 variable "primary_domain" {
   description = "Primary mail domain"
   type        = string
-  default     = "enterprise-email.com"
+  default     = "oonrumail.com"
 }
 
 variable "admin_email" {
@@ -98,7 +98,7 @@ module "vpc" {
 module "eks" {
   source = "./modules/eks"
 
-  cluster_name    = "enterprise-email-${var.environment}"
+  cluster_name    = "oonrumail-${var.environment}"
   cluster_version = "1.28"
   vpc_id          = module.vpc.vpc_id
   subnet_ids      = module.vpc.private_subnets
@@ -107,7 +107,7 @@ module "eks" {
 module "rds" {
   source = "./modules/rds"
 
-  identifier          = "enterprise-email-${var.environment}"
+  identifier          = "oonrumail-${var.environment}"
   engine_version      = "15.4"
   instance_class      = "db.r6g.xlarge"
   allocated_storage   = 100

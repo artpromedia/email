@@ -13,9 +13,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/enterprise-email/imap-server/config"
-	"github.com/enterprise-email/imap-server/imap"
-	"github.com/enterprise-email/imap-server/repository"
+	"github.com/oonrumail/imap-server/config"
+	"github.com/oonrumail/imap-server/imap"
+	"github.com/oonrumail/imap-server/repository"
 )
 
 func main() {

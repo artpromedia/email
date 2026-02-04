@@ -1,4 +1,4 @@
-module github.com/enterprise-email/storage
+module github.com/oonrumail/storage
 
 go 1.21
 

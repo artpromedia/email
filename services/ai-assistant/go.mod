@@ -1,4 +1,4 @@
-module github.com/enterprise-email/ai-assistant
+module github.com/oonrumail/ai-assistant
 
 go 1.21
 

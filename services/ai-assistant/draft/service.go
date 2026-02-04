@@ -10,7 +10,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 
-	"github.com/enterprise-email/ai-assistant/provider"
+	"github.com/oonrumail/ai-assistant/provider"
 )
 
 // ToneAdjustment represents tone modification options

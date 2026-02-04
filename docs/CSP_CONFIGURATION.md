@@ -1,6 +1,6 @@
 # Content Security Policy (CSP) Configuration
 
-This document describes how to configure Content Security Policy for the Enterprise Email Platform.
+This document describes how to configure Content Security Policy for the OONRUMAIL Platform.
 
 ## Overview
 
