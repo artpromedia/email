@@ -4,7 +4,7 @@
  */
 
 // Admin domain types
-export * from "./admin-domain";
+export * from "./admin-domain.js";
 
 // Email types
 export {
@@ -22,7 +22,7 @@ export {
   type SendEmailResponse,
   type EmailListParams,
   type EmailTemplate,
-} from "./email";
+} from "./email.js";
 
 // User types
 export {
@@ -43,7 +43,7 @@ export {
   type AuthenticateResponse,
   type UserSession,
   type UserListParams,
-} from "./user";
+} from "./user.js";
 
 // Domain & Organization types
 export {
@@ -61,7 +61,7 @@ export {
   type DomainVerificationStatus,
   type OrganizationListParams,
   type DomainListParams,
-} from "./domain";
+} from "./domain.js";
 
 // Re-export domain types from config
 export {
@@ -72,7 +72,7 @@ export {
   type DnsRecord,
   type SpfConfig,
   type DmarcConfig,
-} from "./domain";
+} from "./domain.js";
 
 // API types
 export {
@@ -97,7 +97,7 @@ export {
   type ServiceHealth,
   type WebhookEvent,
   type RateLimitInfo,
-} from "./api";
+} from "./api.js";
 
 // AI Settings types
-export * from "./ai-settings";
+export * from "./ai-settings.js";

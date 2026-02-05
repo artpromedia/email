@@ -561,4 +561,4 @@ export {
   type RateLimiterOptions,
   type RateLimitConfig,
   type RateLimitTier,
-} from "./rate-limiter";
+} from "./rate-limiter.js";
