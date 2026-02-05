@@ -184,7 +184,8 @@ function logViolation(violation: NormalizedViolation): void {
     // Track high-severity violations (script-src, object-src violations are high severity)
     const highSeverityDirectives = ["script-src", "object-src", "base-uri", "form-action"];
     const isHighSeverity = highSeverityDirectives.some(
-      (dir) => violation.effectiveDirective.includes(dir) || violation.violatedDirective.includes(dir)
+      (dir) =>
+        violation.effectiveDirective.includes(dir) || violation.violatedDirective.includes(dir)
     );
     if (isHighSeverity) {
       console.error("[HIGH SEVERITY CSP]", logEntry);
