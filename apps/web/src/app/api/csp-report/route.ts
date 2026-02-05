@@ -172,7 +172,7 @@ function logViolation(violation: NormalizedViolation): void {
     // - SECURITY_MONITORING_URL: For aggregation (Elasticsearch/OpenSearch)
     // - SENTRY_DSN: For real-time alerting
 
-    const monitoringUrl = process.env.SECURITY_MONITORING_URL;
+    const monitoringUrl = process.env["SECURITY_MONITORING_URL"];
     if (monitoringUrl) {
       fetch(monitoringUrl, {
         method: "POST",
