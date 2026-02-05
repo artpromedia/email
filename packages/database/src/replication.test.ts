@@ -4,8 +4,8 @@
  */
 
 // Set test environment variables before any imports
-process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test_db";
-process.env.DATABASE_MAX_CONNECTIONS = "10";
+process.env["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_db";
+process.env["DATABASE_MAX_CONNECTIONS"] = "10";
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
@@ -21,10 +21,10 @@ vi.mock("postgres", () => {
     default: vi.fn(() => {
       const mockSql = Object.assign(
         async (strings: TemplateStringsArray, ..._values: unknown[]) => {
-          if (strings[0].includes("SELECT 1")) {
+          if (strings[0]!.includes("SELECT 1")) {
             return [{ result: 1 }];
           }
-          if (strings[0].includes("SELECT version()")) {
+          if (strings[0]!.includes("SELECT version()")) {
             return [{ version: "PostgreSQL 16.0" }];
           }
           return [];
@@ -102,9 +102,9 @@ describe("ReplicationConfig", () => {
     const config = getReplicationConfig();
 
     expect(config.replicas).toHaveLength(2);
-    expect(config.replicas[0].name).toBe("replica_1");
-    expect(config.replicas[1].name).toBe("replica_2");
-    expect(config.replicas[0].maxConnections).toBe(10);
+    expect(config.replicas[0]!.name).toBe("replica_1");
+    expect(config.replicas[1]!.name).toBe("replica_2");
+    expect(config.replicas[0]!.maxConnections).toBe(10);
   });
 
   it("should use default values when not specified", () => {
@@ -295,7 +295,7 @@ describe("Replica Load Balancing", () => {
     for (let i = 0; i < totalWeight; i++) {
       let currentWeight = 0;
       for (let j = 0; j < weights.length; j++) {
-        currentWeight += weights[j];
+        currentWeight += weights[j]!;
         if (i % totalWeight < currentWeight) {
           selections.push(j);
           break;

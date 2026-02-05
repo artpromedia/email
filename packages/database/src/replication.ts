@@ -198,7 +198,7 @@ class ReplicaPool {
     }
 
     // Fallback to first healthy replica
-    return healthyReplicas[0].db;
+    return healthyReplicas[0]!.db;
   }
 
   /**

@@ -99,7 +99,7 @@ describe('Domain Schema Types', () => {
           actionParams: { tag: 'filtered' },
         };
 
-        expect(rule.criteria[0].operator).toBe(operator);
+        expect(rule.criteria[0]!.operator).toBe(operator);
       });
     });
 
@@ -151,7 +151,7 @@ describe('Domain Schema Types', () => {
           actionParams: {},
         };
 
-        expect(rule.criteria[0].field).toBe(field);
+        expect(rule.criteria[0]!.field).toBe(field);
       });
     });
   });
