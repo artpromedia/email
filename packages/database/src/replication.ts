@@ -165,7 +165,9 @@ class ReplicaPool {
         if (replica.consecutiveFailures >= 3 && replica.config.healthy) {
           replica.config.healthy = false;
           this.onHealthChange?.(replica.config.name, false);
-          console.error(`Replica ${replica.config.name} marked unhealthy after ${replica.consecutiveFailures} failures`);
+          console.error(
+            `Replica ${replica.config.name} marked unhealthy after ${replica.consecutiveFailures} failures`
+          );
         }
       }
     }
@@ -175,7 +177,7 @@ class ReplicaPool {
    * Get a healthy replica using weighted round-robin
    */
   getReadReplica(): ReturnType<typeof drizzle> | null {
-    const healthyReplicas = this.replicas.filter(r => r.config.healthy);
+    const healthyReplicas = this.replicas.filter((r) => r.config.healthy);
 
     if (healthyReplicas.length === 0) {
       return null;
@@ -205,16 +207,14 @@ class ReplicaPool {
    * Get all healthy replicas
    */
   getHealthyReplicas(): ReturnType<typeof drizzle>[] {
-    return this.replicas
-      .filter(r => r.config.healthy)
-      .map(r => r.db);
+    return this.replicas.filter((r) => r.config.healthy).map((r) => r.db);
   }
 
   /**
    * Get replica status
    */
   getStatus(): { name: string; healthy: boolean; lastCheck: Date; failures: number }[] {
-    return this.replicas.map(r => ({
+    return this.replicas.map((r) => ({
       name: r.config.name,
       healthy: r.config.healthy,
       lastCheck: r.lastHealthCheck,
@@ -371,10 +371,11 @@ export class ReplicationClient {
     }
 
     // Get replica status
-    result.replicas = this.replicaPool?.getStatus().map(r => ({
-      name: r.name,
-      healthy: r.healthy,
-    })) ?? [];
+    result.replicas =
+      this.replicaPool?.getStatus().map((r) => ({
+        name: r.name,
+        healthy: r.healthy,
+      })) ?? [];
 
     return result;
   }
