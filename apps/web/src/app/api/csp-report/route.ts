@@ -181,8 +181,12 @@ function logViolation(violation: NormalizedViolation): void {
       }).catch((err: unknown) => console.error("Failed to send CSP violation to monitoring:", err));
     }
 
-    // Track high-severity violations
-    if (logEntry.severity === "high") {
+    // Track high-severity violations (script-src, object-src violations are high severity)
+    const highSeverityDirectives = ["script-src", "object-src", "base-uri", "form-action"];
+    const isHighSeverity = highSeverityDirectives.some(
+      (dir) => violation.effectiveDirective.includes(dir) || violation.violatedDirective.includes(dir)
+    );
+    if (isHighSeverity) {
       console.error("[HIGH SEVERITY CSP]", logEntry);
       // NOTE: Trigger alerts for high-severity violations via your monitoring service
     }
