@@ -1,8 +1,7 @@
 # OONRUMAIL - Hetzner Dedicated Server Deployment Guide
 
-**Last Updated:** February 4, 2026
-**Target Budget:** ~$30-50/month
-**Server Type:** Hetzner Server Auction (Dedicated)
+**Last Updated:** February 4, 2026 **Target Budget:** ~$30-50/month **Server Type:** Hetzner Server
+Auction (Dedicated)
 
 ---
 
@@ -10,16 +9,17 @@
 
 This guide is optimized for the following Hetzner Auction server:
 
-| Component | Specification |
-|-----------|---------------|
-| **CPU** | Intel Core i7-6700 (4 cores, 8 threads, 3.4-4.0 GHz) |
-| **RAM** | 64 GB DDR4 (4x 16GB) |
-| **Storage** | 2x 4TB HDD Enterprise (RAID 1 = 4TB usable) |
-| **Network** | 1 Gbit Intel I219-LM |
-| **Location** | FSN1 (Falkenstein, Germany) |
-| **Setup Fee** | $0 |
+| Component     | Specification                                        |
+| ------------- | ---------------------------------------------------- |
+| **CPU**       | Intel Core i7-6700 (4 cores, 8 threads, 3.4-4.0 GHz) |
+| **RAM**       | 64 GB DDR4 (4x 16GB)                                 |
+| **Storage**   | 2x 4TB HDD Enterprise (RAID 1 = 4TB usable)          |
+| **Network**   | 1 Gbit Intel I219-LM                                 |
+| **Location**  | FSN1 (Falkenstein, Germany)                          |
+| **Setup Fee** | $0                                                   |
 
 **Why This Server is Perfect for OONRUMAIL:**
+
 - ✅ 64GB RAM = Entire database cached in memory
 - ✅ 4TB storage = Years of email storage
 - ✅ Dedicated hardware = No noisy neighbors
@@ -142,6 +142,7 @@ installimage
 ```
 
 In the interactive menu:
+
 1. Select **Ubuntu** → **Ubuntu 24.04 LTS minimal**
 2. Configure the installer (editor opens automatically)
 
@@ -179,6 +180,7 @@ BOOTLOADER grub
 ```
 
 **Partition Explanation:**
+
 - `/boot` (1GB): Boot files
 - `swap` (8GB): Swap space (plenty with 64GB RAM)
 - `/` (100GB): Root system
@@ -307,6 +309,7 @@ ip addr show
 5. Save
 
 **Verify PTR record (may take a few minutes):**
+
 ```bash
 dig -x YOUR_MAIL_IP
 # Should return: mail.yourdomain.com
@@ -480,16 +483,16 @@ systemctl enable fail2ban
 
 Add these records in Cloudflare DNS:
 
-| Type  | Name    | Content          | Proxy       | TTL  |
-| ----- | ------- | ---------------- | ----------- | ---- |
-| A     | @       | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
-| A     | www     | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
-| A     | mail    | YOUR_MAIL_IP     | ❌ DNS only | Auto |
-| A     | smtp    | YOUR_MAIL_IP     | ❌ DNS only | Auto |
-| A     | imap    | YOUR_MAIL_IP     | ❌ DNS only | Auto |
-| A     | admin   | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
-| A     | api     | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
-| CNAME | webmail | @                | ✅ Proxied  | Auto |
+| Type  | Name    | Content      | Proxy       | TTL  |
+| ----- | ------- | ------------ | ----------- | ---- |
+| A     | @       | YOUR_MAIN_IP | ✅ Proxied  | Auto |
+| A     | www     | YOUR_MAIN_IP | ✅ Proxied  | Auto |
+| A     | mail    | YOUR_MAIL_IP | ❌ DNS only | Auto |
+| A     | smtp    | YOUR_MAIL_IP | ❌ DNS only | Auto |
+| A     | imap    | YOUR_MAIL_IP | ❌ DNS only | Auto |
+| A     | admin   | YOUR_MAIN_IP | ✅ Proxied  | Auto |
+| A     | api     | YOUR_MAIN_IP | ✅ Proxied  | Auto |
+| CNAME | webmail | @            | ✅ Proxied  | Auto |
 
 **Important:** Mail-related records (mail, smtp, imap) MUST be "DNS only" (grey cloud), not proxied!
 
@@ -1341,21 +1344,21 @@ docker system prune -a
 
 ### Hetzner Dedicated Server (Auction)
 
-| Resource                                   | Monthly Cost |
-| ------------------------------------------ | ------------ |
-| Dedicated Server (i7-6700, 64GB, 2x4TB)    | ~€30-45      |
-| Additional IP (for mail)                   | €4           |
-| Traffic (included)                         | €0           |
-| **Total**                                  | **~€34-49 (~$38-55)** |
+| Resource                                | Monthly Cost          |
+| --------------------------------------- | --------------------- |
+| Dedicated Server (i7-6700, 64GB, 2x4TB) | ~€30-45               |
+| Additional IP (for mail)                | €4                    |
+| Traffic (included)                      | €0                    |
+| **Total**                               | **~€34-49 (~$38-55)** |
 
 ### What You Get vs Cloud
 
-| Resource      | Your Server | Cloud (CPX41) |
-| ------------- | ----------- | ------------- |
-| RAM           | **64 GB**   | 16 GB         |
-| Storage       | **4 TB**    | 240 GB        |
-| CPU           | 4c/8t dedicated | 8 vCPU shared |
-| Monthly Cost  | **~$38-55** | ~$42          |
+| Resource     | Your Server     | Cloud (CPX41) |
+| ------------ | --------------- | ------------- |
+| RAM          | **64 GB**       | 16 GB         |
+| Storage      | **4 TB**        | 240 GB        |
+| CPU          | 4c/8t dedicated | 8 vCPU shared |
+| Monthly Cost | **~$38-55**     | ~$42          |
 
 **You're well under your $150 budget with a much more powerful server!**
 
