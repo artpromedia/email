@@ -1,21 +1,44 @@
-# OONRUMAIL - Hetzner Deployment Guide
+# OONRUMAIL - Hetzner Dedicated Server Deployment Guide
 
 **Last Updated:** February 4, 2026
-**Target Budget:** ~$80-100/month
+**Target Budget:** ~$30-50/month
+**Server Type:** Hetzner Server Auction (Dedicated)
+
+---
+
+## Server Specifications
+
+This guide is optimized for the following Hetzner Auction server:
+
+| Component | Specification |
+|-----------|---------------|
+| **CPU** | Intel Core i7-6700 (4 cores, 8 threads, 3.4-4.0 GHz) |
+| **RAM** | 64 GB DDR4 (4x 16GB) |
+| **Storage** | 2x 4TB HDD Enterprise (RAID 1 = 4TB usable) |
+| **Network** | 1 Gbit Intel I219-LM |
+| **Location** | FSN1 (Falkenstein, Germany) |
+| **Setup Fee** | $0 |
+
+**Why This Server is Perfect for OONRUMAIL:**
+- ✅ 64GB RAM = Entire database cached in memory
+- ✅ 4TB storage = Years of email storage
+- ✅ Dedicated hardware = No noisy neighbors
+- ✅ FSN1 location = Clean IP reputation for email
+- ✅ Enterprise HDDs = 24/7 reliability
 
 ---
 
 ## Table of Contents
 
 1. [Prerequisites](#1-prerequisites)
-2. [Hetzner Account Setup](#2-hetzner-account-setup)
-3. [Server Provisioning](#3-server-provisioning)
+2. [Hetzner Account & Server Purchase](#2-hetzner-account--server-purchase)
+3. [Server Installation & RAID Setup](#3-server-installation--raid-setup)
 4. [Initial Server Setup](#4-initial-server-setup)
 5. [Install Docker & Dependencies](#5-install-docker--dependencies)
 6. [Configure Firewall](#6-configure-firewall)
 7. [Setup DNS with Cloudflare](#7-setup-dns-with-cloudflare)
 8. [SSL Certificates](#8-ssl-certificates)
-9. [PostgreSQL Setup](#9-postgresql-setup)
+9. [PostgreSQL Setup (Optimized for 64GB RAM)](#9-postgresql-setup-optimized-for-64gb-ram)
 10. [Deploy OONRUMAIL](#10-deploy-oonrumail)
 11. [Configure Email DNS Records](#11-configure-email-dns-records)
 12. [Verify Deployment](#12-verify-deployment)
@@ -33,6 +56,7 @@
 - [ ] Cloudflare account (free tier is fine)
 - [ ] SSH key pair generated on your local machine
 - [ ] Basic knowledge of Linux command line
+- [ ] Patience during server provisioning (can take 15-60 minutes)
 
 ### Generate SSH Key (if you don't have one)
 
@@ -46,98 +70,160 @@ Get-Content ~/.ssh/id_ed25519.pub
 
 ---
 
-## 2. Hetzner Account Setup
+## 2. Hetzner Account & Server Purchase
 
 ### 2.1 Create Account
 
-1. Go to [hetzner.com/cloud](https://www.hetzner.com/cloud)
-2. Click "Register" and create an account
+1. Go to [hetzner.com](https://www.hetzner.com)
+2. Click "Login" → "Register"
 3. Verify your email
-4. Add payment method (credit card or PayPal)
-5. You may need to verify identity (takes 1-24 hours)
+4. Add payment method (credit card, PayPal, or bank transfer)
+5. Identity verification may be required (takes 1-24 hours)
 
-### 2.2 Create a Project
+### 2.2 Purchase Server from Auction
 
-1. Log into [Hetzner Cloud Console](https://console.hetzner.cloud)
-2. Click "New Project"
-3. Name it: `oonrumail-production`
-4. Click "Add Project"
+1. Go to [Hetzner Server Auction](https://www.hetzner.com/sb)
+2. Find your server (i7-6700, 64GB RAM, 2x4TB HDD)
+3. Click "Order"
+4. Configure:
+   ```
+   Operating System:    Rescue System (we'll install Ubuntu manually)
+   Primary IP:          Include IPv4 ✓
+   Additional IP:       Order 1 additional IPv4 (for mail - €4/mo)
+   ```
+5. Complete purchase
 
-### 2.3 Add Your SSH Key
+### 2.3 Access Robot Panel
 
-1. In your project, go to **Security** → **SSH Keys**
-2. Click "Add SSH Key"
+1. Go to [Hetzner Robot](https://robot.hetzner.com)
+2. Click on your new server
+3. Note down:
+   - **Main IP address**
+   - **Additional IP address** (this will be your mail IP)
+   - **Root password** (sent via email)
+
+### 2.4 Add SSH Key in Robot
+
+1. In Robot, go to **Key Management** → **SSH Keys**
+2. Click "New Key"
 3. Paste your public key from `~/.ssh/id_ed25519.pub`
 4. Name it: `my-deployment-key`
 
 ---
 
-## 3. Server Provisioning
+## 3. Server Installation & RAID Setup
 
-### 3.1 Recommended Server Setup
+### 3.1 Boot into Rescue System
 
-| Server | Type | Specs | Purpose | Cost |
-|--------|------|-------|---------|------|
-| **Main App** | CPX41 | 8 vCPU, 16GB RAM, 240GB SSD | All services | €28/mo |
-| **Floating IP** | IPv4 | Static IP | Mail server identity | €4/mo |
-
-**Total: ~€32/month (~$35 USD)**
-
-### 3.2 Create Main Server
-
-1. In Hetzner Console, click **Servers** → **Add Server**
-
-2. Configure:
+1. In Robot, click on your server
+2. Go to **Rescue** tab
+3. Select:
    ```
-   Location:        Nuremberg (nbg1) or Falkenstein (fsn1)
-   Image:           Ubuntu 24.04
-   Type:            CPX41 (8 vCPU, 16GB RAM, 240GB SSD)
-   Networking:      Public IPv4 ✓, Public IPv6 ✓
-   SSH Keys:        Select your key
-   Volumes:         None (we'll add later if needed)
-   Firewalls:       Skip (we'll configure later)
-   Backups:         Enable (€5.60/mo) - RECOMMENDED
-   Name:            oonrumail-main
+   Operating System:  Linux
+   Architecture:      64 bit
+   SSH Key:           Select your key
    ```
+4. Click "Activate Rescue System"
+5. Go to **Reset** tab → Click "Send CTRL+ALT+DEL" or "Execute Reset"
+6. Wait 2-3 minutes
 
-3. Click **Create & Buy Now**
+### 3.2 Connect to Rescue System
 
-4. Note the **IP address** once created
+```bash
+ssh root@YOUR_SERVER_IP
+# Use the password shown in Robot, or SSH key if configured
+```
 
-### 3.3 Create Floating IP (Critical for Email!)
+### 3.3 Run Hetzner Installimage (with RAID 1)
 
-1. Go to **Networking** → **Floating IPs**
-2. Click **Add Floating IP**
-3. Configure:
-   ```
-   Location:     Same as your server (nbg1 or fsn1)
-   Protocol:     IPv4
-   Description:  oonrumail-mail-ip
-   ```
-4. Click **Add Floating IP**
-5. **Assign to server**: Click the floating IP → **Assign** → Select `oonrumail-main`
-6. **Note this IP** - This will be your mail server's identity
+```bash
+# Start the installation wizard
+installimage
+```
 
-### 3.4 Configure Reverse DNS (PTR Record)
+In the interactive menu:
+1. Select **Ubuntu** → **Ubuntu 24.04 LTS minimal**
+2. Configure the installer (editor opens automatically)
 
-**Critical for email deliverability!**
+### 3.4 Configure installimage
 
-1. Click on your **Floating IP**
-2. Click **Edit Reverse DNS**
-3. Set: `mail.yourdomain.com` (replace with your actual domain)
-4. Save
+Edit the configuration file that opens:
+
+```bash
+## ===== DRIVES & RAID =====
+# Configure Software RAID 1 (mirror) for redundancy
+SWRAID 1
+SWRAIDLEVEL 1
+
+## ===== DRIVES =====
+DRIVE1 /dev/sda
+DRIVE2 /dev/sdb
+
+## ===== HOSTNAME =====
+HOSTNAME mail.yourdomain.com
+
+## ===== PARTITIONS =====
+# Optimized for email server with 64GB RAM
+
+PART /boot ext4 1G
+PART lvm vg0 all
+
+LV vg0 swap swap 8G
+LV vg0 root / ext4 100G
+LV vg0 var /var ext4 50G
+LV vg0 opt /opt ext4 100G
+LV vg0 home /home ext4 all
+
+## ===== BOOTLOADER =====
+BOOTLOADER grub
+```
+
+**Partition Explanation:**
+- `/boot` (1GB): Boot files
+- `swap` (8GB): Swap space (plenty with 64GB RAM)
+- `/` (100GB): Root system
+- `/var` (50GB): Logs, temp files
+- `/opt` (100GB): Docker containers, OONRUMAIL
+- `/home` (remaining ~3.7TB): Email storage, backups
+
+### 3.5 Start Installation
+
+1. Save and exit the editor (Ctrl+X, Y, Enter in nano)
+2. Confirm installation by typing `yes`
+3. Wait 10-15 minutes for installation to complete
+4. Server will reboot automatically
+
+### 3.6 Connect to Fresh System
+
+```bash
+ssh root@YOUR_SERVER_IP
+# Now using your SSH key (no password needed)
+```
+
+### 3.7 Verify RAID Status
+
+```bash
+# Check RAID status
+cat /proc/mdstat
+
+# Should show something like:
+# md0 : active raid1 sdb1[1] sda1[0]
+# md1 : active raid1 sdb2[1] sda2[0]
+
+# Detailed status
+mdadm --detail /dev/md0
+mdadm --detail /dev/md1
+
+# Check disk health
+smartctl -a /dev/sda
+smartctl -a /dev/sdb
+```
 
 ---
 
 ## 4. Initial Server Setup
 
-### 4.1 Connect to Server
-
-```bash
-ssh root@YOUR_SERVER_IP
-```
-
-### 4.2 Update System
+### 4.1 Update System
 
 ```bash
 # Update packages
@@ -156,10 +242,13 @@ apt install -y \
   ufw \
   certbot \
   net-tools \
-  dnsutils
+  dnsutils \
+  smartmontools \
+  mdadm \
+  lvm2
 ```
 
-### 4.3 Create Deploy User
+### 4.2 Create Deploy User
 
 ```bash
 # Create user
@@ -177,37 +266,97 @@ chmod 600 /home/deploy/.ssh/authorized_keys
 # ssh deploy@YOUR_SERVER_IP
 ```
 
-### 4.4 Configure Floating IP on Server
+### 4.3 Configure Additional IP (Mail IP)
+
+The additional IP you ordered will be your dedicated mail server IP.
 
 ```bash
-# Check your floating IP
-ip addr show
+# Find your network interface name
+ip link show
+# Usually: enp0s31f6 or eth0
 
-# Create netplan config for floating IP
-cat > /etc/netplan/60-floating-ip.yaml << 'EOF'
+# Get your additional IP from Robot panel
+# Let's call it MAIL_IP
+
+# Create netplan config for additional IP
+cat > /etc/netplan/60-additional-ip.yaml << 'EOF'
 network:
   version: 2
   ethernets:
-    eth0:
+    enp0s31f6:  # Change to your interface name
       addresses:
-        - YOUR_FLOATING_IP/32
+        - YOUR_MAIL_IP/32
 EOF
 
-# Replace YOUR_FLOATING_IP with actual IP
-nano /etc/netplan/60-floating-ip.yaml
+# Edit and replace YOUR_MAIL_IP
+nano /etc/netplan/60-additional-ip.yaml
 
 # Apply
 netplan apply
 
-# Verify
-ip addr show eth0
+# Verify both IPs are active
+ip addr show
+```
+
+### 4.4 Configure Reverse DNS (PTR Record) - Critical!
+
+1. Go to [Hetzner Robot](https://robot.hetzner.com)
+2. Click on your **Additional IP** (the mail IP)
+3. Click **Edit**
+4. Set Reverse DNS to: `mail.yourdomain.com`
+5. Save
+
+**Verify PTR record (may take a few minutes):**
+```bash
+dig -x YOUR_MAIL_IP
+# Should return: mail.yourdomain.com
 ```
 
 ### 4.5 Set Hostname
 
 ```bash
 hostnamectl set-hostname mail.yourdomain.com
-echo "YOUR_FLOATING_IP mail.yourdomain.com mail" >> /etc/hosts
+
+# Update /etc/hosts
+cat >> /etc/hosts << EOF
+YOUR_MAIL_IP mail.yourdomain.com mail
+YOUR_MAIN_IP server.yourdomain.com server
+EOF
+```
+
+### 4.6 Configure Kernel for Mail Server
+
+```bash
+# Optimize for mail server workload
+cat >> /etc/sysctl.conf << 'EOF'
+
+# OONRUMAIL Optimizations
+# Network
+net.core.somaxconn = 65535
+net.core.netdev_max_backlog = 65535
+net.ipv4.tcp_max_syn_backlog = 65535
+net.ipv4.ip_local_port_range = 1024 65535
+
+# Memory (for 64GB RAM)
+vm.swappiness = 10
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+
+# File handles
+fs.file-max = 2097152
+fs.inotify.max_user_watches = 524288
+EOF
+
+# Apply
+sysctl -p
+
+# Increase file limits
+cat >> /etc/security/limits.conf << 'EOF'
+* soft nofile 1048576
+* hard nofile 1048576
+root soft nofile 1048576
+root hard nofile 1048576
+EOF
 ```
 
 ---
@@ -331,16 +480,16 @@ systemctl enable fail2ban
 
 Add these records in Cloudflare DNS:
 
-| Type | Name | Content | Proxy | TTL |
-|------|------|---------|-------|-----|
-| A | @ | YOUR_SERVER_IP | ✅ Proxied | Auto |
-| A | www | YOUR_SERVER_IP | ✅ Proxied | Auto |
-| A | mail | YOUR_FLOATING_IP | ❌ DNS only | Auto |
-| A | smtp | YOUR_FLOATING_IP | ❌ DNS only | Auto |
-| A | imap | YOUR_FLOATING_IP | ❌ DNS only | Auto |
-| A | admin | YOUR_SERVER_IP | ✅ Proxied | Auto |
-| A | api | YOUR_SERVER_IP | ✅ Proxied | Auto |
-| CNAME | webmail | @ | ✅ Proxied | Auto |
+| Type  | Name    | Content          | Proxy       | TTL  |
+| ----- | ------- | ---------------- | ----------- | ---- |
+| A     | @       | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
+| A     | www     | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
+| A     | mail    | YOUR_MAIL_IP     | ❌ DNS only | Auto |
+| A     | smtp    | YOUR_MAIL_IP     | ❌ DNS only | Auto |
+| A     | imap    | YOUR_MAIL_IP     | ❌ DNS only | Auto |
+| A     | admin   | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
+| A     | api     | YOUR_MAIN_IP     | ✅ Proxied  | Auto |
+| CNAME | webmail | @                | ✅ Proxied  | Auto |
 
 **Important:** Mail-related records (mail, smtp, imap) MUST be "DNS only" (grey cloud), not proxied!
 
@@ -412,16 +561,20 @@ systemctl status certbot.timer
 
 ---
 
-## 9. PostgreSQL Setup
+## 9. PostgreSQL Setup (Optimized for 64GB RAM)
 
-### 9.1 Create Data Directory
+### 9.1 Create Data Directories
 
 ```bash
+# Create directories with optimal placement
 mkdir -p /opt/oonrumail/data/postgres
 mkdir -p /opt/oonrumail/data/redis
 mkdir -p /opt/oonrumail/data/minio
+mkdir -p /opt/oonrumail/config/postgres
 mkdir -p /opt/oonrumail/backups
+mkdir -p /home/deploy/email-storage  # Large storage on /home (3.7TB)
 chown -R deploy:deploy /opt/oonrumail
+chown -R deploy:deploy /home/deploy/email-storage
 ```
 
 ### 9.2 Create Docker Network
@@ -430,30 +583,107 @@ chown -R deploy:deploy /opt/oonrumail
 docker network create oonrumail-network
 ```
 
-### 9.3 Start PostgreSQL
+### 9.3 Create PostgreSQL Configuration (Optimized for 64GB RAM + HDD)
 
 ```bash
-# Create postgres container
+cat > /opt/oonrumail/config/postgres/postgresql.conf << 'EOF'
+# ===========================================
+# OONRUMAIL PostgreSQL Configuration
+# Optimized for: 64GB RAM + HDD Storage
+# ===========================================
+
+# Memory Settings (25% of RAM for shared_buffers)
+shared_buffers = 16GB
+effective_cache_size = 48GB
+work_mem = 256MB
+maintenance_work_mem = 2GB
+wal_buffers = 64MB
+
+# HDD Optimization (keep these high for spinning disks)
+random_page_cost = 4.0
+seq_page_cost = 1.0
+effective_io_concurrency = 2
+
+# Checkpoint Settings
+checkpoint_completion_target = 0.9
+checkpoint_timeout = 15min
+max_wal_size = 4GB
+min_wal_size = 1GB
+
+# Connection Settings
+max_connections = 200
+superuser_reserved_connections = 3
+
+# Query Planner
+default_statistics_target = 100
+constraint_exclusion = partition
+
+# WAL Settings
+wal_level = replica
+wal_compression = on
+archive_mode = off
+
+# Logging
+log_destination = 'stderr'
+logging_collector = on
+log_directory = 'pg_log'
+log_filename = 'postgresql-%Y-%m-%d.log'
+log_rotation_age = 1d
+log_rotation_size = 100MB
+log_min_duration_statement = 1000
+log_checkpoints = on
+log_connections = on
+log_disconnections = on
+log_lock_waits = on
+log_temp_files = 0
+
+# Autovacuum (aggressive for email workload)
+autovacuum = on
+autovacuum_max_workers = 4
+autovacuum_naptime = 30s
+autovacuum_vacuum_threshold = 50
+autovacuum_analyze_threshold = 50
+autovacuum_vacuum_scale_factor = 0.05
+autovacuum_analyze_scale_factor = 0.02
+autovacuum_vacuum_cost_delay = 10ms
+autovacuum_vacuum_cost_limit = 1000
+
+# Performance
+huge_pages = try
+EOF
+```
+
+### 9.4 Start PostgreSQL with Custom Config
+
+```bash
+# Create postgres container with optimized settings
 docker run -d \
   --name oonrumail-postgres \
   --network oonrumail-network \
   --restart unless-stopped \
+  --shm-size=16g \
   -e POSTGRES_USER=oonrumail \
   -e POSTGRES_PASSWORD=YOUR_SECURE_PASSWORD \
   -e POSTGRES_DB=oonrumail \
   -v /opt/oonrumail/data/postgres:/var/lib/postgresql/data \
+  -v /opt/oonrumail/config/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro \
   -p 127.0.0.1:5432:5432 \
-  postgres:16-alpine
+  postgres:16-alpine \
+  postgres -c config_file=/etc/postgresql/postgresql.conf
 
 # Wait for startup
-sleep 10
+sleep 15
 
 # Verify
 docker logs oonrumail-postgres
 docker exec oonrumail-postgres pg_isready
+
+# Check memory settings are applied
+docker exec oonrumail-postgres psql -U oonrumail -d oonrumail -c "SHOW shared_buffers;"
+docker exec oonrumail-postgres psql -U oonrumail -d oonrumail -c "SHOW effective_cache_size;"
 ```
 
-### 9.4 Start Redis
+### 9.5 Start Redis (Optimized for 64GB RAM)
 
 ```bash
 docker run -d \
@@ -463,10 +693,46 @@ docker run -d \
   -v /opt/oonrumail/data/redis:/data \
   -p 127.0.0.1:6379:6379 \
   redis:7-alpine \
-  redis-server --appendonly yes --requirepass YOUR_REDIS_PASSWORD
+  redis-server \
+    --appendonly yes \
+    --requirepass YOUR_REDIS_PASSWORD \
+    --maxmemory 8gb \
+    --maxmemory-policy allkeys-lru \
+    --save 900 1 \
+    --save 300 10 \
+    --save 60 10000
 
 # Verify
 docker logs oonrumail-redis
+
+# Check memory settings
+docker exec oonrumail-redis redis-cli -a YOUR_REDIS_PASSWORD INFO memory | grep used_memory_human
+```
+
+### 9.6 Start MinIO (Object Storage)
+
+```bash
+docker run -d \
+  --name oonrumail-minio \
+  --network oonrumail-network \
+  --restart unless-stopped \
+  -e MINIO_ROOT_USER=oonrumail_admin \
+  -e MINIO_ROOT_PASSWORD=YOUR_MINIO_SECRET \
+  -v /home/deploy/email-storage/minio:/data \
+  -p 127.0.0.1:9000:9000 \
+  -p 127.0.0.1:9001:9001 \
+  minio/minio:latest \
+  server /data --console-address ":9001"
+
+# Wait and verify
+sleep 5
+docker logs oonrumail-minio
+
+# Create default buckets
+docker exec oonrumail-minio mc alias set local http://localhost:9000 oonrumail_admin YOUR_MINIO_SECRET
+docker exec oonrumail-minio mc mb local/attachments --ignore-existing
+docker exec oonrumail-minio mc mb local/backups --ignore-existing
+docker exec oonrumail-minio mc mb local/exports --ignore-existing
 ```
 
 ---
@@ -804,12 +1070,12 @@ docker compose -f docker-compose.prod.yml logs -f
 
 ### 11.1 Add Email DNS Records in Cloudflare
 
-| Type | Name | Content | TTL |
-|------|------|---------|-----|
-| MX | @ | mail.yourdomain.com | Auto |
-| TXT | @ | `v=spf1 ip4:YOUR_FLOATING_IP mx ~all` | Auto |
-| TXT | mail._domainkey | `v=DKIM1; k=rsa; p=YOUR_PUBLIC_KEY` | Auto |
-| TXT | _dmarc | `v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com` | Auto |
+| Type | Name             | Content                                                   | TTL  |
+| ---- | ---------------- | --------------------------------------------------------- | ---- |
+| MX   | @                | mail.yourdomain.com                                       | Auto |
+| TXT  | @                | `v=spf1 ip4:YOUR_FLOATING_IP mx ~all`                     | Auto |
+| TXT  | mail.\_domainkey | `v=DKIM1; k=rsa; p=YOUR_PUBLIC_KEY`                       | Auto |
+| TXT  | \_dmarc          | `v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com` | Auto |
 
 ### 11.2 Verify DNS Records
 
@@ -1012,7 +1278,7 @@ docker logs oonrumail-smtp --tail 100
 nc -zv mail.yourdomain.com 25
 
 # Check PTR record
-dig -x YOUR_FLOATING_IP
+dig -x YOUR_MAIL_IP
 ```
 
 #### SSL Certificate Issues
@@ -1073,31 +1339,90 @@ docker system prune -a
 
 ## Cost Summary
 
-| Resource | Monthly Cost |
-|----------|-------------|
-| CPX41 Server (8 vCPU, 16GB) | €28 (~$31) |
-| Floating IP | €4 (~$4) |
-| Backups (20% of server) | €5.60 (~$6) |
-| **Total** | **~€37.60 (~$42)** |
+### Hetzner Dedicated Server (Auction)
 
-**You're well under your $150 budget with room to scale!**
+| Resource                                   | Monthly Cost |
+| ------------------------------------------ | ------------ |
+| Dedicated Server (i7-6700, 64GB, 2x4TB)    | ~€30-45      |
+| Additional IP (for mail)                   | €4           |
+| Traffic (included)                         | €0           |
+| **Total**                                  | **~€34-49 (~$38-55)** |
+
+### What You Get vs Cloud
+
+| Resource      | Your Server | Cloud (CPX41) |
+| ------------- | ----------- | ------------- |
+| RAM           | **64 GB**   | 16 GB         |
+| Storage       | **4 TB**    | 240 GB        |
+| CPU           | 4c/8t dedicated | 8 vCPU shared |
+| Monthly Cost  | **~$38-55** | ~$42          |
+
+**You're well under your $150 budget with a much more powerful server!**
+
+---
+
+## RAID Monitoring & Maintenance
+
+### Check RAID Status (Weekly)
+
+```bash
+# Add to crontab for weekly RAID check
+cat > /opt/oonrumail/scripts/check-raid.sh << 'EOF'
+#!/bin/bash
+RAID_STATUS=$(cat /proc/mdstat)
+if echo "$RAID_STATUS" | grep -q "_"; then
+    echo "RAID DEGRADED! Check immediately!"
+    echo "$RAID_STATUS"
+    # Add notification here (email, webhook, etc.)
+else
+    echo "RAID OK: $(date)"
+fi
+EOF
+
+chmod +x /opt/oonrumail/scripts/check-raid.sh
+
+# Add to crontab (weekly check)
+(crontab -l 2>/dev/null; echo "0 6 * * 0 /opt/oonrumail/scripts/check-raid.sh >> /var/log/raid-check.log 2>&1") | crontab -
+```
+
+### If a Drive Fails
+
+```bash
+# 1. Identify failed drive
+cat /proc/mdstat
+mdadm --detail /dev/md0
+
+# 2. Contact Hetzner support via Robot panel
+# They will schedule drive replacement
+
+# 3. After replacement, add new drive to RAID
+# (Hetzner support can help with this)
+mdadm --manage /dev/md0 --add /dev/sdX1
+mdadm --manage /dev/md1 --add /dev/sdX2
+
+# 4. Monitor rebuild
+watch cat /proc/mdstat
+```
 
 ---
 
 ## Next Steps
 
 1. [ ] Complete initial deployment
-2. [ ] Send test emails and verify deliverability
-3. [ ] Configure your first domain
-4. [ ] Create admin user
-5. [ ] Setup monitoring alerts
-6. [ ] Warm up IP (start with low volume)
-7. [ ] Document any custom configurations
+2. [ ] Verify RAID is healthy
+3. [ ] Send test emails and verify deliverability
+4. [ ] Configure your first domain
+5. [ ] Create admin user
+6. [ ] Setup monitoring alerts
+7. [ ] Warm up IP (start with low volume)
+8. [ ] Schedule monthly RAID/SMART checks
+9. [ ] Document any custom configurations
 
 ---
 
 ## Support
 
+- **Hetzner Robot**: [robot.hetzner.com](https://robot.hetzner.com)
 - **Hetzner Status**: [status.hetzner.com](https://status.hetzner.com)
 - **Cloudflare Status**: [cloudflarestatus.com](https://www.cloudflarestatus.com)
 - **Mail Testing**: [mail-tester.com](https://www.mail-tester.com)
@@ -1105,4 +1430,4 @@ docker system prune -a
 
 ---
 
-*Document created for OONRUMAIL deployment on Hetzner Cloud*
+_Document created for OONRUMAIL deployment on Hetzner Dedicated Server_
