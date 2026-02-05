@@ -459,7 +459,7 @@ function MessageList() {
             <MessageItem
               key={message.id}
               message={message}
-              showAvatar={index === 0 || messages[index - 1].user_id !== message.user_id}
+              showAvatar={index === 0 || messages[index - 1]?.user_id !== message.user_id}
             />
           ))
         )}
