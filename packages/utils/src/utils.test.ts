@@ -52,7 +52,7 @@ import {
   sleep,
   retry,
   pLimit,
-} from "./index.js";
+} from "./index";
 
 describe("ID Generation", () => {
   describe("generateId", () => {

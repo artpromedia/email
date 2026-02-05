@@ -4,14 +4,7 @@
  */
 
 // Environment configuration
-export {
-  envSchema,
-  validateEnv,
-  createEnvConfig,
-  getEnv,
-  resetEnv,
-  type EnvConfig,
-} from "./env.js";
+export { envSchema, validateEnv, createEnvConfig, getEnv, resetEnv, type EnvConfig } from "./env";
 
 // CSP (Content Security Policy) configuration
 export {
@@ -24,7 +17,7 @@ export {
   type CSPConfig,
   type CSPEnvConfig,
   type CSPValidationResult,
-} from "./csp.js";
+} from "./csp";
 
 // Domain configuration
 export {
@@ -46,7 +39,7 @@ export {
   type DnsRecord,
   type SpfConfig,
   type DmarcConfig,
-} from "./domains.js";
+} from "./domains";
 
 /**
  * Application constants
