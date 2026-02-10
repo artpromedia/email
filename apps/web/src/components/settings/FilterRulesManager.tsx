@@ -620,7 +620,10 @@ export function FilterRulesManager({
       if (newIndex < 0 || newIndex >= rules.length) return;
 
       const newRules = [...rules];
-      [newRules[index], newRules[newIndex]] = [newRules[newIndex], newRules[index]];
+      const currentRule = newRules[index];
+      const targetRule = newRules[newIndex];
+      if (!currentRule || !targetRule) return;
+      [newRules[index], newRules[newIndex]] = [targetRule, currentRule];
 
       // Update priorities
       onRulesChange(newRules.map((r, i) => ({ ...r, priority: i })));

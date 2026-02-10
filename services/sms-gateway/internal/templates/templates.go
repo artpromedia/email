@@ -10,7 +10,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"sms-gateway/internal/otp"
 	"sms-gateway/internal/repository"
 )
 
@@ -65,7 +64,7 @@ func New(repo *repository.Repository, logger *zap.Logger) *Engine {
 }
 
 // RenderOTP renders an OTP message
-func (e *Engine) RenderOTP(ctx context.Context, templateID string, purpose otp.Purpose, code string, vars map[string]string) (string, error) {
+func (e *Engine) RenderOTP(ctx context.Context, templateID string, purpose string, code string, vars map[string]string) (string, error) {
 	var templateContent string
 
 	// Try to get custom template from database
@@ -79,7 +78,7 @@ func (e *Engine) RenderOTP(ctx context.Context, templateID string, purpose otp.P
 	// Fall back to default template
 	if templateContent == "" {
 		var ok bool
-		templateContent, ok = defaultOTPTemplates[string(purpose)]
+		templateContent, ok = defaultOTPTemplates[purpose]
 		if !ok {
 			templateContent = defaultOTPTemplates["default"]
 		}
@@ -206,12 +205,12 @@ func (e *Engine) UpdateTemplate(ctx context.Context, t *Template) error {
 }
 
 // GetTemplate retrieves a template by ID
-func (e *Engine) GetTemplate(ctx context.Context, id string) (*Template, error) {
+func (e *Engine) GetTemplate(ctx context.Context, id string) (*repository.Template, error) {
 	return e.repo.GetTemplate(ctx, id)
 }
 
 // ListTemplates lists all templates for an organization
-func (e *Engine) ListTemplates(ctx context.Context, organizationID string, templateType string) ([]*Template, error) {
+func (e *Engine) ListTemplates(ctx context.Context, organizationID string, templateType string) ([]*repository.Template, error) {
 	return e.repo.ListTemplates(ctx, organizationID, templateType)
 }
 

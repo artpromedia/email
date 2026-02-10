@@ -60,13 +60,37 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		userID, err := uuid.Parse(claims["user_id"].(string))
+		// Helper to safely get string claim (supports both "sub"/"user_id" and "org_id"/"organization_id")
+		getStringClaim := func(keys ...string) string {
+			for _, key := range keys {
+				if val, ok := claims[key]; ok {
+					if str, ok := val.(string); ok {
+						return str
+					}
+				}
+			}
+			return ""
+		}
+
+		// Parse user ID (auth service uses "sub", some use "user_id")
+		userIDStr := getStringClaim("sub", "user_id")
+		if userIDStr == "" {
+			s.respondError(w, http.StatusUnauthorized, "missing user id claim")
+			return
+		}
+		userID, err := uuid.Parse(userIDStr)
 		if err != nil {
 			s.respondError(w, http.StatusUnauthorized, "invalid user id")
 			return
 		}
 
-		orgID, err := uuid.Parse(claims["organization_id"].(string))
+		// Parse organization ID (auth service uses "org_id", some use "organization_id")
+		orgIDStr := getStringClaim("org_id", "organization_id")
+		if orgIDStr == "" {
+			s.respondError(w, http.StatusUnauthorized, "missing organization id claim")
+			return
+		}
+		orgID, err := uuid.Parse(orgIDStr)
 		if err != nil {
 			s.respondError(w, http.StatusUnauthorized, "invalid organization id")
 			return
@@ -75,8 +99,8 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 		user := &UserClaims{
 			UserID:         userID,
 			OrganizationID: orgID,
-			Email:          claims["email"].(string),
-			Role:           claims["role"].(string),
+			Email:          getStringClaim("email"),
+			Role:           getStringClaim("role"),
 		}
 
 		// Add user to context

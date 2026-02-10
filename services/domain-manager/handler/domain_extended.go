@@ -7,6 +7,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+
+	"domain-manager/domain"
 )
 
 // DKIM Request types
@@ -24,7 +27,7 @@ func (h *DomainHandler) GenerateDKIMKey(w http.ResponseWriter, r *http.Request) 
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -42,14 +45,14 @@ func (h *DomainHandler) GenerateDKIMKey(w http.ResponseWriter, r *http.Request) 
 	// Generate DKIM key pair
 	key, err := h.dkimService.GenerateKeyPair(domainID, req.Selector)
 	if err != nil {
-		h.logger.Error("Failed to generate DKIM key", err)
+		h.logger.Error("Failed to generate DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to generate DKIM key", "")
 		return
 	}
 
 	// Save key to database
 	if err := h.dkimRepo.Create(r.Context(), key); err != nil {
-		h.logger.Error("Failed to save DKIM key", err)
+		h.logger.Error("Failed to save DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to save DKIM key", "")
 		return
 	}
@@ -65,7 +68,7 @@ func (h *DomainHandler) ListDKIMKeys(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -76,7 +79,7 @@ func (h *DomainHandler) ListDKIMKeys(w http.ResponseWriter, r *http.Request) {
 
 	keys, err := h.dkimRepo.ListByDomain(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to list DKIM keys", err)
+		h.logger.Error("Failed to list DKIM keys", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to list DKIM keys", "")
 		return
 	}
@@ -97,7 +100,7 @@ func (h *DomainHandler) ActivateDKIMKey(w http.ResponseWriter, r *http.Request) 
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -108,7 +111,7 @@ func (h *DomainHandler) ActivateDKIMKey(w http.ResponseWriter, r *http.Request) 
 
 	key, err := h.dkimRepo.GetByID(r.Context(), keyID)
 	if err != nil {
-		h.logger.Error("Failed to get DKIM key", err)
+		h.logger.Error("Failed to get DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get DKIM key", "")
 		return
 	}
@@ -119,14 +122,14 @@ func (h *DomainHandler) ActivateDKIMKey(w http.ResponseWriter, r *http.Request) 
 
 	// Deactivate all other keys for this domain
 	if err := h.dkimRepo.DeactivateAllForDomain(r.Context(), domainID); err != nil {
-		h.logger.Error("Failed to deactivate existing keys", err)
+		h.logger.Error("Failed to deactivate existing keys", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to activate DKIM key", "")
 		return
 	}
 
 	// Activate this key
 	if err := h.dkimRepo.Activate(r.Context(), keyID); err != nil {
-		h.logger.Error("Failed to activate DKIM key", err)
+		h.logger.Error("Failed to activate DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to activate DKIM key", "")
 		return
 	}
@@ -144,7 +147,6 @@ func (h *DomainHandler) ActivateDKIMKey(w http.ResponseWriter, r *http.Request) 
 		"message":    "DKIM key activated. Please update your DNS records.",
 		"key":        publicKey,
 		"dns_record": publicKey.DNSRecord,
-		"dns_name":   publicKey.DNSName,
 	})
 }
 
@@ -155,7 +157,7 @@ func (h *DomainHandler) RotateDKIMKey(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -166,7 +168,7 @@ func (h *DomainHandler) RotateDKIMKey(w http.ResponseWriter, r *http.Request) {
 
 	currentKey, err := h.dkimRepo.GetByID(r.Context(), keyID)
 	if err != nil {
-		h.logger.Error("Failed to get DKIM key", err)
+		h.logger.Error("Failed to get DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get DKIM key", "")
 		return
 	}
@@ -189,7 +191,7 @@ func (h *DomainHandler) RotateDKIMKey(w http.ResponseWriter, r *http.Request) {
 
 	newKey, err := h.dkimService.GenerateKeyPair(domainID, newSelector)
 	if err != nil {
-		h.logger.Error("Failed to generate new DKIM key", err)
+		h.logger.Error("Failed to generate new DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to rotate DKIM key", "")
 		return
 	}
@@ -202,19 +204,19 @@ func (h *DomainHandler) RotateDKIMKey(w http.ResponseWriter, r *http.Request) {
 
 	// Save new key
 	if err := h.dkimRepo.Create(r.Context(), newKey); err != nil {
-		h.logger.Error("Failed to save new DKIM key", err)
+		h.logger.Error("Failed to save new DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to rotate DKIM key", "")
 		return
 	}
 
 	// Mark old key as rotated
 	if err := h.dkimRepo.MarkRotated(r.Context(), keyID); err != nil {
-		h.logger.Error("Failed to mark old key as rotated", err)
+		h.logger.Error("Failed to mark old key as rotated", zap.Error(err))
 	}
 
 	// Activate new key
 	if err := h.dkimRepo.Activate(r.Context(), newKey.ID); err != nil {
-		h.logger.Error("Failed to activate new DKIM key", err)
+		h.logger.Error("Failed to activate new DKIM key", zap.Error(err))
 	}
 
 	newPublicKey := h.dkimService.ToPublic(newKey, d.DomainName)
@@ -225,7 +227,6 @@ func (h *DomainHandler) RotateDKIMKey(w http.ResponseWriter, r *http.Request) {
 		"new_key":        newPublicKey,
 		"old_key":        oldPublicKey,
 		"new_dns_record": newPublicKey.DNSRecord,
-		"new_dns_name":   newPublicKey.DNSName,
 	})
 }
 
@@ -236,7 +237,7 @@ func (h *DomainHandler) DeleteDKIMKey(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -247,7 +248,7 @@ func (h *DomainHandler) DeleteDKIMKey(w http.ResponseWriter, r *http.Request) {
 
 	key, err := h.dkimRepo.GetByID(r.Context(), keyID)
 	if err != nil {
-		h.logger.Error("Failed to get DKIM key", err)
+		h.logger.Error("Failed to get DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get DKIM key", "")
 		return
 	}
@@ -262,7 +263,7 @@ func (h *DomainHandler) DeleteDKIMKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.dkimRepo.Delete(r.Context(), keyID); err != nil {
-		h.logger.Error("Failed to delete DKIM key", err)
+		h.logger.Error("Failed to delete DKIM key", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to delete DKIM key", "")
 		return
 	}
@@ -273,12 +274,12 @@ func (h *DomainHandler) DeleteDKIMKey(w http.ResponseWriter, r *http.Request) {
 // Branding handlers
 
 type UpdateBrandingRequest struct {
-	LogoURL            string `json:"logo_url"`
-	FaviconURL         string `json:"favicon_url"`
-	PrimaryColor       string `json:"primary_color"`
-	LoginBackgroundURL string `json:"login_background_url"`
-	EmailHeaderHTML    string `json:"email_header_html"`
-	EmailFooterHTML    string `json:"email_footer_html"`
+	LogoURL            *string `json:"logo_url"`
+	FaviconURL         *string `json:"favicon_url"`
+	PrimaryColor       string  `json:"primary_color"`
+	LoginBackgroundURL *string `json:"login_background_url"`
+	EmailHeaderHTML    *string `json:"email_header_html"`
+	EmailFooterHTML    *string `json:"email_footer_html"`
 }
 
 // UpdateBranding updates domain branding
@@ -287,7 +288,7 @@ func (h *DomainHandler) UpdateBranding(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -320,7 +321,7 @@ func (h *DomainHandler) UpdateBranding(w http.ResponseWriter, r *http.Request) {
 	branding.UpdatedAt = time.Now()
 
 	if err := h.brandingRepo.Upsert(r.Context(), branding); err != nil {
-		h.logger.Error("Failed to update branding", err)
+		h.logger.Error("Failed to update branding", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to update branding", "")
 		return
 	}
@@ -334,7 +335,7 @@ func (h *DomainHandler) GetBranding(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -345,7 +346,7 @@ func (h *DomainHandler) GetBranding(w http.ResponseWriter, r *http.Request) {
 
 	branding, err := h.brandingRepo.GetByDomainID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get branding", err)
+		h.logger.Error("Failed to get branding", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get branding", "")
 		return
 	}
@@ -367,7 +368,7 @@ type UpdatePoliciesRequest struct {
 	RequireTLSOutbound       bool                     `json:"require_tls_outbound"`
 	AllowedRecipientDomains  []string                 `json:"allowed_recipient_domains"`
 	BlockedRecipientDomains  []string                 `json:"blocked_recipient_domains"`
-	AutoBCCAddress           string                   `json:"auto_bcc_address"`
+	AutoBCCAddress           *string                  `json:"auto_bcc_address"`
 	DefaultSignatureEnforced bool                     `json:"default_signature_enforced"`
 	AttachmentPolicy         *domain.AttachmentPolicy `json:"attachment_policy"`
 }
@@ -378,7 +379,7 @@ func (h *DomainHandler) UpdatePolicies(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -410,13 +411,11 @@ func (h *DomainHandler) UpdatePolicies(w http.ResponseWriter, r *http.Request) {
 	policies.BlockedRecipientDomains = req.BlockedRecipientDomains
 	policies.AutoBCCAddress = req.AutoBCCAddress
 	policies.DefaultSignatureEnforced = req.DefaultSignatureEnforced
-	if req.AttachmentPolicy != nil {
-		policies.AttachmentPolicy = *req.AttachmentPolicy
-	}
+	policies.AttachmentPolicy = req.AttachmentPolicy
 	policies.UpdatedAt = time.Now()
 
 	if err := h.policiesRepo.Upsert(r.Context(), policies); err != nil {
-		h.logger.Error("Failed to update policies", err)
+		h.logger.Error("Failed to update policies", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to update policies", "")
 		return
 	}
@@ -430,7 +429,7 @@ func (h *DomainHandler) GetPolicies(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -441,7 +440,7 @@ func (h *DomainHandler) GetPolicies(w http.ResponseWriter, r *http.Request) {
 
 	policies, err := h.policiesRepo.GetByDomainID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get policies", err)
+		h.logger.Error("Failed to get policies", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get policies", "")
 		return
 	}
@@ -461,10 +460,10 @@ func (h *DomainHandler) GetPolicies(w http.ResponseWriter, r *http.Request) {
 // Catch-all handlers
 
 type UpdateCatchAllRequest struct {
-	Enabled   bool   `json:"enabled"`
-	Action    string `json:"action" validate:"omitempty,oneof=deliver forward reject"`
-	DeliverTo string `json:"deliver_to"`
-	ForwardTo string `json:"forward_to"`
+	Enabled   bool    `json:"enabled"`
+	Action    string  `json:"action" validate:"omitempty,oneof=deliver forward reject"`
+	DeliverTo *string `json:"deliver_to"`
+	ForwardTo *string `json:"forward_to"`
 }
 
 // UpdateCatchAll updates catch-all configuration
@@ -473,7 +472,7 @@ func (h *DomainHandler) UpdateCatchAll(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -511,7 +510,7 @@ func (h *DomainHandler) UpdateCatchAll(w http.ResponseWriter, r *http.Request) {
 	config.UpdatedAt = time.Now()
 
 	if err := h.catchAllRepo.Upsert(r.Context(), config); err != nil {
-		h.logger.Error("Failed to update catch-all config", err)
+		h.logger.Error("Failed to update catch-all config", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to update catch-all configuration", "")
 		return
 	}
@@ -525,7 +524,7 @@ func (h *DomainHandler) GetCatchAll(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -536,7 +535,7 @@ func (h *DomainHandler) GetCatchAll(w http.ResponseWriter, r *http.Request) {
 
 	config, err := h.catchAllRepo.GetByDomainID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get catch-all config", err)
+		h.logger.Error("Failed to get catch-all config", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get catch-all configuration", "")
 		return
 	}
@@ -557,7 +556,7 @@ func (h *DomainHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	d, err := h.domainRepo.GetByID(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain", err)
+		h.logger.Error("Failed to get domain", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain", "")
 		return
 	}
@@ -568,7 +567,7 @@ func (h *DomainHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.statsRepo.GetDomainStats(r.Context(), domainID)
 	if err != nil {
-		h.logger.Error("Failed to get domain stats", err)
+		h.logger.Error("Failed to get domain stats", zap.Error(err))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get domain statistics", "")
 		return
 	}

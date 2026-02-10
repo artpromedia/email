@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   transpilePackages: ["@email/ui", "@email/config", "@email/types", "@email/utils"],
   // Enable webpack to resolve .js imports to .ts files (for ESM compatibility)
   webpack: (config) => {

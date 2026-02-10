@@ -86,7 +86,9 @@ export function PullToRefresh({
       if (disabled || state === "refreshing") return;
       if (!isAtTop()) return;
 
-      startY.current = e.touches[0].clientY;
+      const touch = e.touches[0];
+      if (!touch) return;
+      startY.current = touch.clientY;
       isPulling.current = true;
     },
     [disabled, state, isAtTop]
@@ -103,7 +105,9 @@ export function PullToRefresh({
         return;
       }
 
-      currentY.current = e.touches[0].clientY;
+      const touch = e.touches[0];
+      if (!touch) return;
+      currentY.current = touch.clientY;
       const deltaY = currentY.current - startY.current;
 
       // Only handle downward pulls
@@ -330,7 +334,9 @@ export function usePullToRefresh({
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       if (disabled || state === "refreshing" || !isAtTop()) return;
-      startY.current = e.touches[0].clientY;
+      const touch = e.touches[0];
+      if (!touch) return;
+      startY.current = touch.clientY;
       isPulling.current = true;
     },
     [disabled, state, isAtTop]
@@ -343,7 +349,9 @@ export function usePullToRefresh({
         return;
       }
 
-      const deltaY = e.touches[0].clientY - startY.current;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const deltaY = touch.clientY - startY.current;
       if (deltaY <= 0) return;
 
       e.preventDefault();

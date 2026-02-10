@@ -8,24 +8,29 @@ import (
 
 // Template represents an email template
 type Template struct {
-	ID           uuid.UUID          `json:"id"`
-	DomainID     uuid.UUID          `json:"domain_id"`
-	Name         string             `json:"name"`
-	Description  string             `json:"description,omitempty"`
-	Subject      string             `json:"subject"`
-	HTMLContent  string             `json:"html_content,omitempty"`
-	TextContent  string             `json:"text_content,omitempty"`
-	Variables    []TemplateVariable `json:"variables,omitempty"`
-	Version      int                `json:"version"`
-	Active       bool               `json:"active"`
-	Category     string             `json:"category,omitempty"`
-	Tags         []string           `json:"tags,omitempty"`
-	Metadata     map[string]any     `json:"metadata,omitempty"`
-	ThumbnailURL string             `json:"thumbnail_url,omitempty"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	CreatedBy    uuid.UUID          `json:"created_by"`
-	UpdatedBy    uuid.UUID          `json:"updated_by"`
+	ID             uuid.UUID          `json:"id"`
+	DomainID       uuid.UUID          `json:"domain_id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	Name           string             `json:"name"`
+	Description    string             `json:"description,omitempty"`
+	Subject        string             `json:"subject"`
+	HTMLContent    string             `json:"html_content,omitempty"`
+	TextContent    string             `json:"text_content,omitempty"`
+	HTMLBody       string             `json:"html_body,omitempty"`
+	TextBody       string             `json:"text_body,omitempty"`
+	Variables      []TemplateVariable `json:"variables,omitempty"`
+	Version        int                `json:"version"`
+	ActiveVersion  int                `json:"active_version"`
+	Active         bool               `json:"active"`
+	IsActive       bool               `json:"is_active"`
+	Category       string             `json:"category,omitempty"`
+	Tags           []string           `json:"tags,omitempty"`
+	Metadata       map[string]any     `json:"metadata,omitempty"`
+	ThumbnailURL   string             `json:"thumbnail_url,omitempty"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	UpdatedBy      uuid.UUID          `json:"updated_by"`
 }
 
 // TemplateVariable represents a variable used in a template
@@ -45,6 +50,8 @@ type CreateTemplateRequest struct {
 	Subject     string             `json:"subject" validate:"required,max=998"`
 	HTMLContent string             `json:"html_content,omitempty" validate:"max=10485760"` // 10MB
 	TextContent string             `json:"text_content,omitempty" validate:"max=1048576"`  // 1MB
+	HTMLBody    string             `json:"html_body,omitempty" validate:"max=10485760"`    // 10MB
+	TextBody    string             `json:"text_body,omitempty" validate:"max=1048576"`     // 1MB
 	Variables   []TemplateVariable `json:"variables,omitempty"`
 	Category    string             `json:"category,omitempty" validate:"max=100"`
 	Tags        []string           `json:"tags,omitempty" validate:"max=10,dive,max=50"`
@@ -59,11 +66,14 @@ type UpdateTemplateRequest struct {
 	Subject     *string            `json:"subject,omitempty" validate:"omitempty,max=998"`
 	HTMLContent *string            `json:"html_content,omitempty" validate:"omitempty,max=10485760"`
 	TextContent *string            `json:"text_content,omitempty" validate:"omitempty,max=1048576"`
+	HTMLBody    *string            `json:"html_body,omitempty" validate:"omitempty,max=10485760"`
+	TextBody    *string            `json:"text_body,omitempty" validate:"omitempty,max=1048576"`
 	Variables   []TemplateVariable `json:"variables,omitempty"`
 	Category    *string            `json:"category,omitempty" validate:"omitempty,max=100"`
 	Tags        []string           `json:"tags,omitempty" validate:"max=10,dive,max=50"`
 	Metadata    map[string]any     `json:"metadata,omitempty"`
 	Active      *bool              `json:"active,omitempty"`
+	IsActive    *bool              `json:"is_active,omitempty"`
 }
 
 // TemplateQuery represents query parameters for listing templates
@@ -101,15 +111,18 @@ type RenderTemplateResponse struct {
 
 // TemplateVersion represents a historical version of a template
 type TemplateVersion struct {
-	ID          uuid.UUID `json:"id"`
-	TemplateID  uuid.UUID `json:"template_id"`
-	Version     int       `json:"version"`
-	Subject     string    `json:"subject"`
-	HTMLContent string    `json:"html_content,omitempty"`
-	TextContent string    `json:"text_content,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	CreatedBy   uuid.UUID `json:"created_by"`
-	ChangeNote  string    `json:"change_note,omitempty"`
+	ID          uuid.UUID          `json:"id"`
+	TemplateID  uuid.UUID          `json:"template_id"`
+	Version     int                `json:"version"`
+	Subject     string             `json:"subject"`
+	HTMLContent string             `json:"html_content,omitempty"`
+	TextContent string             `json:"text_content,omitempty"`
+	HTMLBody    string             `json:"html_body,omitempty"`
+	TextBody    string             `json:"text_body,omitempty"`
+	Variables   []TemplateVariable `json:"variables,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	ChangeNote  string             `json:"change_note,omitempty"`
 }
 
 // DefaultTemplates provides built-in template types

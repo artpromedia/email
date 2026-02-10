@@ -3,9 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/models"
+	"transactional-api/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

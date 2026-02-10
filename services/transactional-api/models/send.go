@@ -7,6 +7,43 @@ import (
 )
 
 // SendRequest represents a transactional email send request
+// EmailAddress represents an email address with optional display name
+type EmailAddress struct {
+	Email string `json:"email" validate:"required,email"`
+	Name  string `json:"name,omitempty"`
+}
+
+// SendEmailRequest represents a full email send request (used by batch/handler layer)
+type SendEmailRequest struct {
+	From         EmailAddress      `json:"from" validate:"required"`
+	To           []EmailAddress    `json:"to" validate:"required,min=1,max=1000"`
+	CC           []EmailAddress    `json:"cc,omitempty"`
+	BCC          []EmailAddress    `json:"bcc,omitempty"`
+	ReplyTo      *EmailAddress     `json:"reply_to,omitempty"`
+	Subject      string            `json:"subject" validate:"required,max=998"`
+	TextBody     string            `json:"text_body,omitempty"`
+	HTMLBody     string            `json:"html_body,omitempty"`
+	TemplateID   *uuid.UUID        `json:"template_id,omitempty"`
+	TemplateData map[string]any    `json:"template_data,omitempty"`
+	Attachments  []Attachment      `json:"attachments,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Tags         []string          `json:"tags,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+	TrackOpens   *bool             `json:"track_opens,omitempty"`
+	TrackClicks  *bool             `json:"track_clicks,omitempty"`
+	IPPool       string            `json:"ip_pool,omitempty"`
+	SendAt       *time.Time        `json:"send_at,omitempty"`
+}
+
+// SendEmailResponse represents the response from sending an email
+type SendEmailResponse struct {
+	MessageID   uuid.UUID  `json:"message_id"`
+	Status      string     `json:"status"`
+	QueuedAt    time.Time  `json:"queued_at"`
+	ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
+}
+
+// SendRequest represents a transactional email send request (simplified)
 type SendRequest struct {
 	From          string            `json:"from" validate:"required,email"`
 	To            []string          `json:"to" validate:"required,min=1,max=1000,dive,email"`
@@ -138,4 +175,18 @@ type BatchSendResponse struct {
 	BatchID     string         `json:"batch_id"`
 	TotalQueued int            `json:"total_queued"`
 	Results     []SendResponse `json:"results"`
+}
+
+// BatchSendEmailResponse is an extended batch response with accept/reject counts
+type BatchSendEmailResponse struct {
+	Accepted int                 `json:"accepted"`
+	Rejected int                 `json:"rejected"`
+	Messages []SendEmailResponse `json:"messages"`
+	Errors   []BatchError        `json:"errors,omitempty"`
+}
+
+// BatchError represents an error for a specific message in a batch
+type BatchError struct {
+	Index   int    `json:"index"`
+	Message string `json:"message"`
 }

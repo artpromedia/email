@@ -119,8 +119,9 @@ export function FocusTrap({
     } else {
       // Focus first focusable element
       const focusable = getFocusableElements(containerRef.current);
-      if (focusable.length > 0) {
-        focusable[0].focus();
+      const firstFocusable = focusable[0];
+      if (focusable.length > 0 && firstFocusable) {
+        firstFocusable.focus();
       }
     }
   }, [active, initialFocus]);
@@ -137,6 +138,7 @@ export function FocusTrap({
 
       const firstElement = focusable[0];
       const lastElement = focusable[focusable.length - 1];
+      if (!firstElement || !lastElement) return;
 
       if (e.shiftKey) {
         // Shift+Tab: if on first element, go to last
@@ -317,7 +319,7 @@ export function useKeyboardNavigation(): boolean {
 
 interface VisuallyHiddenProps {
   children: ReactNode;
-  as?: keyof JSX.IntrinsicElements;
+  as?: React.ElementType;
 }
 
 export function VisuallyHidden({ children, as: Component = "span" }: VisuallyHiddenProps) {

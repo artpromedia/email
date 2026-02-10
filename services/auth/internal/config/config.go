@@ -22,8 +22,10 @@ type Config struct {
 type ServerConfig struct {
 	Host            string
 	Port            int
+	Environment     string
 	ReadTimeout     time.Duration
 	WriteTimeout    time.Duration
+	IdleTimeout     time.Duration
 	ShutdownTimeout time.Duration
 	TrustedProxies  []string
 }
@@ -105,18 +107,20 @@ func Load() *Config {
 		Server: ServerConfig{
 			Host:            getEnv("SERVER_HOST", "0.0.0.0"),
 			Port:            getEnvInt("SERVER_PORT", 8080),
+			Environment:     getEnv("SERVER_ENVIRONMENT", "development"),
 			ReadTimeout:     getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
 			WriteTimeout:    getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
+			IdleTimeout:     getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
 			ShutdownTimeout: getEnvDuration("SERVER_SHUTDOWN_TIMEOUT", 10*time.Second),
 			TrustedProxies:  getEnvSlice("SERVER_TRUSTED_PROXIES", []string{}),
 		},
 		Database: DatabaseConfig{
-			Host:         getEnv("DATABASE_HOST", "localhost"),
-			Port:         getEnvInt("DATABASE_PORT", 5432),
-			User:         getEnv("DATABASE_USER", "postgres"),
-			Password:     getEnv("DATABASE_PASSWORD", ""),
-			Database:     getEnv("DATABASE_NAME", "email"),
-			SSLMode:      getEnv("DATABASE_SSL_MODE", "require"), // Default to require - prefer allows downgrade attacks
+			Host:         getEnv("POSTGRES_HOST", getEnv("DATABASE_HOST", "localhost")),
+			Port:         getEnvInt("POSTGRES_PORT", getEnvInt("DATABASE_PORT", 5432)),
+			User:         getEnv("POSTGRES_USER", getEnv("DATABASE_USER", "postgres")),
+			Password:     getEnv("POSTGRES_PASSWORD", getEnv("DATABASE_PASSWORD", "")),
+			Database:     getEnv("POSTGRES_DB", getEnv("DATABASE_NAME", "email")),
+			SSLMode:      getEnv("DATABASE_SSL_MODE", "disable"),
 			MaxOpenConns: getEnvInt("DATABASE_MAX_OPEN_CONNS", 25),
 			MaxIdleConns: getEnvInt("DATABASE_MAX_IDLE_CONNS", 5),
 			MaxLifetime:  getEnvDuration("DATABASE_MAX_LIFETIME", 5*time.Minute),

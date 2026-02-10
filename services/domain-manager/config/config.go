@@ -3,10 +3,35 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+// expandEnvWithDefaults expands environment variables with support for ${VAR:-default} syntax
+func expandEnvWithDefaults(s string) string {
+	// Pattern to match ${VAR:-default} syntax
+	re := regexp.MustCompile(`\$\{([^}:]+)(:-([^}]*))?\}`)
+	return re.ReplaceAllStringFunc(s, func(match string) string {
+		// Parse the match
+		submatch := re.FindStringSubmatch(match)
+		if len(submatch) < 2 {
+			return match
+		}
+		varName := submatch[1]
+		defaultValue := ""
+		if len(submatch) >= 4 {
+			defaultValue = submatch[3]
+		}
+
+		// Get environment variable
+		if value, exists := os.LookupEnv(varName); exists {
+			return value
+		}
+		return defaultValue
+	})
+}
 
 // Config holds all configuration for the domain manager service
 type Config struct {
@@ -23,10 +48,13 @@ type Config struct {
 // ServerConfig holds HTTP server settings
 type ServerConfig struct {
 	Addr            string        `yaml:"addr"`
+	Port            int           `yaml:"port"`
 	ReadTimeout     time.Duration `yaml:"read_timeout"`
 	WriteTimeout    time.Duration `yaml:"write_timeout"`
+	IdleTimeout     time.Duration `yaml:"idle_timeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 	LogLevel        string        `yaml:"log_level"`
+	AllowedOrigins  []string      `yaml:"allowed_origins"`
 }
 
 // DatabaseConfig holds database connection settings
@@ -63,6 +91,7 @@ type DNSConfig struct {
 	MXHost              string        `yaml:"mx_host"`
 	MXPriority          int           `yaml:"mx_priority"`
 	SPFInclude          string        `yaml:"spf_include"`
+	SPFRecord           string        `yaml:"spf_record"`
 	DMARCReportEmail    string        `yaml:"dmarc_report_email"`
 	DefaultDKIMSelector string        `yaml:"default_dkim_selector"`
 	LookupTimeout       time.Duration `yaml:"lookup_timeout"`
@@ -104,11 +133,11 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("read config file: %w", err)
 	}
 
-	// Expand environment variables
-	data = []byte(os.ExpandEnv(string(data)))
+	// Expand environment variables with default support
+	expanded := expandEnvWithDefaults(string(data))
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
@@ -174,8 +203,8 @@ func applyDefaults(cfg *Config) {
 	if cfg.DNS.MXPriority == 0 {
 		cfg.DNS.MXPriority = 10
 	}
-	if cfg.DNS.SPFInclude == "" {
-		cfg.DNS.SPFInclude = "spf.enterprise-email.com"
+	if cfg.DNS.SPFInclude == "" && cfg.DNS.SPFRecord == "" {
+		cfg.DNS.SPFRecord = "v=spf1 mx a -all"
 	}
 	if cfg.DNS.DMARCReportEmail == "" {
 		cfg.DNS.DMARCReportEmail = "dmarc@enterprise-email.com"

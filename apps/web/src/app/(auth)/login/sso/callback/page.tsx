@@ -10,7 +10,7 @@
  * - Handles errors gracefully
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
@@ -29,7 +29,27 @@ function extractDomainFromState(stateParam: string): string | null {
   }
 }
 
-export default function SSOCallbackPage() {
+// Loading fallback component
+function SSOCallbackLoadingFallback() {
+  return (
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+          <KeyRound className="h-6 w-6 text-primary-foreground" />
+        </div>
+        <div>
+          <CardTitle className="text-2xl">Processing SSO...</CardTitle>
+          <CardDescription className="mt-2">Please wait</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SSOCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -290,5 +310,14 @@ export default function SSOCallbackPage() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Export wrapped in Suspense for Next.js static generation
+export default function SSOCallbackPage() {
+  return (
+    <Suspense fallback={<SSOCallbackLoadingFallback />}>
+      <SSOCallbackContent />
+    </Suspense>
   );
 }

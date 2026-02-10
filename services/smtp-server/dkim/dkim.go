@@ -22,7 +22,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 )
 
 // Signer handles DKIM signing for outbound messages
@@ -943,7 +943,7 @@ func (km *KeyManager) GenerateDNSRecord(key *domain.DKIMKey, domainName string) 
 
 	// Build record value
 	// Remove PEM headers and join lines
-	publicKey := strings.ReplaceAll(key.PublicKey, "-----BEGIN PUBLIC KEY-----", "")
+	publicKey := strings.ReplaceAll(key.PublicKeyPEM, "-----BEGIN PUBLIC KEY-----", "")
 	publicKey = strings.ReplaceAll(publicKey, "-----END PUBLIC KEY-----", "")
 	publicKey = strings.ReplaceAll(publicKey, "\n", "")
 	publicKey = strings.ReplaceAll(publicKey, "\r", "")

@@ -79,24 +79,8 @@ type VerifyResponse struct {
 	ErrorMessage string `json:"error_message,omitempty"`
 }
 
-// OTPRecord represents a stored OTP
-type OTPRecord struct {
-	ID             string    `db:"id"`
-	PhoneNumber    string    `db:"phone_number"`
-	Code           string    `db:"code"` // Stored as SHA-256 hash, never plaintext
-	Purpose        Purpose   `db:"purpose"`
-	UserID         string    `db:"user_id"`
-	OrganizationID string    `db:"organization_id"`
-	MessageID      string    `db:"message_id"`
-	Attempts       int       `db:"attempts"`
-	MaxAttempts    int       `db:"max_attempts"`
-	Verified       bool      `db:"verified"`
-	ExpiresAt      time.Time `db:"expires_at"`
-	VerifiedAt     *time.Time `db:"verified_at"`
-	CreatedAt      time.Time `db:"created_at"`
-	IPAddress      string    `db:"ip_address"`
-	UserAgent      string    `db:"user_agent"`
-}
+// OTPRecord is an alias for repository.OTPRecord
+type OTPRecord = repository.OTPRecord
 
 // hashOTPCode creates a SHA-256 hash of the OTP code for secure storage
 func hashOTPCode(code string) string {
@@ -153,7 +137,7 @@ func (s *Service) Send(ctx context.Context, req *SendRequest) (*SendResponse, er
 	record := &OTPRecord{
 		PhoneNumber:    req.PhoneNumber,
 		Code:           hashOTPCode(codeToHash), // Hash the code before storage
-		Purpose:        req.Purpose,
+		Purpose:        string(req.Purpose),
 		UserID:         req.UserID,
 		OrganizationID: req.OrganizationID,
 		MaxAttempts:    s.config.MaxAttempts,
@@ -163,7 +147,7 @@ func (s *Service) Send(ctx context.Context, req *SendRequest) (*SendResponse, er
 	}
 
 	// Render message template
-	message, err := s.templates.RenderOTP(ctx, req.TemplateID, req.Purpose, code, req.Variables)
+	message, err := s.templates.RenderOTP(ctx, req.TemplateID, string(req.Purpose), code, req.Variables)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render template: %w", err)
 	}

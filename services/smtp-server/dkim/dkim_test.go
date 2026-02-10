@@ -14,7 +14,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 )
 
 // mockDNSResolver is a mock DNS resolver for testing DKIM verification

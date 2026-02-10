@@ -3,20 +3,19 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/models"
-	"github.com/artpromedia/email/services/transactional-api/repository"
+	"transactional-api/models"
+	"transactional-api/repository"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
 
-type contextKey string
-
 const (
-	APIKeyContextKey contextKey = "api_key"
+	APIKeyContextKey   contextKey = "api_key_model"
 	DomainIDContextKey contextKey = "domain_id"
 )
 
@@ -68,7 +67,7 @@ func (m *APIKeyMiddleware) Authenticate(next http.Handler) http.Handler {
 			key = cachedKey
 		} else {
 			// Lookup in database
-			key, err = m.repo.GetByHash(r.Context(), keyHash)
+			result, err := m.repo.GetByHash(r.Context(), keyHash)
 			if err != nil {
 				if err == repository.ErrAPIKeyNotFound {
 					m.errorResponse(w, http.StatusUnauthorized, "invalid_api_key", "Invalid API key")
@@ -77,6 +76,21 @@ func (m *APIKeyMiddleware) Authenticate(next http.Handler) http.Handler {
 				m.logger.Error().Err(err).Msg("Failed to lookup API key")
 				m.errorResponse(w, http.StatusInternalServerError, "internal_error", "Internal server error")
 				return
+			}
+
+			// Convert repository result to model
+			key = &models.APIKey{
+				ID:         result.ID,
+				KeyHash:    result.KeyHash,
+				KeyPrefix:  result.KeyPrefix,
+				Name:       result.Name,
+				RateLimit:  result.RateLimit,
+				LastUsedAt: result.LastUsedAt,
+				ExpiresAt:  result.ExpiresAt,
+				CreatedAt:  result.CreatedAt,
+			}
+			if result.IsActive {
+				key.RevokedAt = nil
 			}
 
 			// Cache the key
@@ -256,10 +270,7 @@ func (m *APIKeyMiddleware) errorResponse(w http.ResponseWriter, status int, code
 }
 
 func itoa(i int) string {
-	if i < 10 {
-		return string(rune('0' + i))
-	}
-	return strings.TrimLeft(strings.Replace(string(rune(i)), "", "", -1), "")
+	return fmt.Sprintf("%d", i)
 }
 
 // InvalidateCache removes a cached API key

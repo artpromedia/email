@@ -121,14 +121,14 @@ func (c *Connection) authenticatePlain(tag string, parts []string) error {
 	}
 
 	// PLAIN format: authzid\0authcid\0password
-	parts := strings.Split(string(decoded), "\x00")
-	if len(parts) != 3 {
+	authParts := strings.Split(string(decoded), "\x00")
+	if len(authParts) != 3 {
 		c.sendTagged(tag, "BAD Invalid PLAIN authentication data")
 		return nil
 	}
 
-	username := parts[1]
-	password := parts[2]
+	username := authParts[1]
+	password := authParts[2]
 
 	return c.authenticate(tag, username, password, "PLAIN")
 }

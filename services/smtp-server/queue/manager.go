@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,9 +15,9 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"smtp-server/config"
-	"smtp-server/domain"
-	"smtp-server/repository"
+	"github.com/oonrumail/smtp-server/config"
+	"github.com/oonrumail/smtp-server/domain"
+	"github.com/oonrumail/smtp-server/repository"
 )
 
 // Prometheus metrics for quota monitoring
@@ -582,7 +581,7 @@ func (m *Manager) queueSystemEmail(ctx context.Context, to, subject, body string
 	}
 
 	// Store body and create message
-	bodyPath := filepath.Join(m.config.Storage.QueueDir, msg.ID+".eml")
+	bodyPath := filepath.Join(m.config.Queue.StoragePath, msg.ID+".eml")
 	if err := os.WriteFile(bodyPath, []byte(body), 0600); err != nil {
 		return fmt.Errorf("write message body: %w", err)
 	}

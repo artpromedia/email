@@ -28,22 +28,8 @@ const draftStore = new Map<string, Map<string, Record<string, unknown>>>();
 function fetchUserDrafts(userId: string, limit: number, offset: number) {
   const userDrafts = draftStore.get(userId);
   if (!userDrafts) {
-    // Return mock data for demonstration
-    return [
-      {
-        id: "draft-1",
-        from: "user@example.com",
-        to: ["recipient@example.com"],
-        cc: [],
-        bcc: [],
-        subject: "Draft email",
-        body: "This is a draft email...",
-        bodyType: "html",
-        attachments: [],
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
+    // No drafts found - return empty array
+    return [];
   }
   const allDrafts = Array.from(userDrafts.values());
   return allDrafts.slice(offset, offset + limit);

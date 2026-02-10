@@ -15,6 +15,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Run go mod tidy to fix any missing dependencies
+RUN go mod tidy
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s -X main.version=$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')" \

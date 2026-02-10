@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/artpromedia/email/services/transactional-api/models"
+	"transactional-api/models"
 )
 
 func TestTrackingService_AddTrackingPixel(t *testing.T) {

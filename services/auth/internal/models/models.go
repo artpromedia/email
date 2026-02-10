@@ -57,6 +57,18 @@ type PasswordPolicy struct {
 	ExpirationDays      int  `json:"expirationDays"`
 }
 
+// DefaultPasswordPolicy returns a sensible default password policy.
+func DefaultPasswordPolicy() PasswordPolicy {
+	return PasswordPolicy{
+		MinLength:           12,
+		RequireUppercase:    true,
+		RequireLowercase:    true,
+		RequireNumbers:      true,
+		RequireSpecialChars: true,
+		ExpirationDays:      90,
+	}
+}
+
 // Branding holds organization branding settings.
 type Branding struct {
 	PrimaryColor string  `json:"primaryColor"`

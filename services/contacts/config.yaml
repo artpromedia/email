@@ -10,14 +10,14 @@ server:
 
 database:
   # NOTE: Production deployments MUST use DATABASE_URL env var with sslmode=require
-  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/oonrumail?sslmode=require}"
+  url: "${DATABASE_URL:-postgres://oonrumail:oonrumail@postgres:5432/oonrumail?sslmode=disable}"
   max_conns: 25
   min_conns: 5
   max_conn_lifetime: "1h"
 
 auth:
-  service_url: "http://localhost:8080"
-  jwt_secret: "${JWT_SECRET}"
+  service_url: "${AUTH_SERVICE_URL:-http://auth:8082}"
+  jwt_secret: "${JWT_SECRET:-default_secret}"
 
 storage:
   photo_path: "/data/photos"

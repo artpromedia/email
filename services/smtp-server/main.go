@@ -17,11 +17,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"smtp-server/config"
-	"smtp-server/domain"
-	"smtp-server/queue"
-	"smtp-server/repository"
-	"smtp-server/smtp"
+	"github.com/oonrumail/smtp-server/config"
+	"github.com/oonrumail/smtp-server/domain"
+	"github.com/oonrumail/smtp-server/queue"
+	"github.com/oonrumail/smtp-server/repository"
+	"github.com/oonrumail/smtp-server/smtp"
 )
 
 func main() {
@@ -30,14 +30,14 @@ func main() {
 	flag.Parse()
 
 	// Load configuration
-	cfg, err := config.LoadConfig(*configPath)
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Initialize logger
-	logger := initLogger(cfg.Server.LogLevel)
+	logger := initLogger(cfg.Logging.Level)
 	defer logger.Sync()
 
 	logger.Info("Starting SMTP server",
@@ -59,9 +59,15 @@ func main() {
 	redisClient := initRedis(cfg.Redis)
 	defer redisClient.Close()
 
+	// Set DKIM encryption key for decrypting private keys from database
+	if cfg.DKIM.EncryptionKey != "" {
+		repository.SetDKIMEncryptionKey(cfg.DKIM.EncryptionKey)
+	}
+
 	// Initialize repositories
 	domainRepo := repository.NewDomainRepository(dbPool, logger.Named("domain-repo"))
 	messageRepo := repository.NewMessageRepository(dbPool, logger.Named("message-repo"))
+	authRepo := repository.NewAuthRepository(dbPool, logger.Named("auth-repo"))
 
 	// Initialize domain cache
 	domainCache := domain.NewCache(domainRepo, logger.Named("cache"), 5*time.Minute)
@@ -77,15 +83,16 @@ func main() {
 	}
 
 	// Initialize SMTP server
-	smtpServer := smtp.NewServer(cfg, domainCache, queueManager, logger.Named("smtp"))
+	smtpServer := smtp.NewServer(cfg, domainCache, queueManager, redisClient, authRepo, logger.Named("smtp"))
 	if err := smtpServer.Start(ctx); err != nil {
 		logger.Fatal("Failed to start SMTP server", zap.Error(err))
 	}
 
 	// Initialize metrics server
 	metricsServer := initMetricsServer(cfg.Metrics, smtpServer)
+	metricsAddr := fmt.Sprintf("%s:%d", cfg.Metrics.Host, cfg.Metrics.Port)
 	go func() {
-		logger.Info("Starting metrics server", zap.String("addr", cfg.Metrics.Addr))
+		logger.Info("Starting metrics server", zap.String("addr", metricsAddr))
 		if err := metricsServer.ListenAndServe(); err != http.ErrServerClosed {
 			logger.Error("Metrics server error", zap.Error(err))
 		}
@@ -169,10 +176,10 @@ func initDatabase(ctx context.Context, cfg config.DatabaseConfig) (*pgxpool.Pool
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	poolConfig.MaxConns = int32(cfg.MaxConns)
-	poolConfig.MinConns = int32(cfg.MinConns)
-	poolConfig.MaxConnLifetime = cfg.MaxConnLifetime
-	poolConfig.MaxConnIdleTime = cfg.MaxConnIdleTime
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MinConns = int32(cfg.MaxIdleConns)
+	poolConfig.MaxConnLifetime = cfg.ConnMaxLifetime
+	poolConfig.MaxConnIdleTime = cfg.ConnMaxIdleTime
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
@@ -189,7 +196,7 @@ func initDatabase(ctx context.Context, cfg config.DatabaseConfig) (*pgxpool.Pool
 
 func initRedis(cfg config.RedisConfig) *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr,
+		Addr:     cfg.Addr(),
 		Password: cfg.Password,
 		DB:       cfg.DB,
 	})
@@ -206,8 +213,9 @@ func initMetricsServer(cfg config.MetricsConfig, smtpServer *smtp.Server) *http.
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/ready", readyHandler)
 
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	return &http.Server{
-		Addr:         cfg.Addr,
+		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,

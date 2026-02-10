@@ -740,7 +740,7 @@ func eventToICal(event *models.Event) string {
 	if event.Location != "" {
 		ical.WriteString(fmt.Sprintf("LOCATION:%s\r\n", foldLine(event.Location)))
 	}
-	ical.WriteString(fmt.Sprintf("STATUS:%s\r\n", strings.ToUpper(event.Status)))
+	ical.WriteString(fmt.Sprintf("STATUS:%s\r\n", strings.ToUpper(string(event.Status))))
 	ical.WriteString(fmt.Sprintf("SEQUENCE:%d\r\n", event.Sequence))
 	ical.WriteString(fmt.Sprintf("CREATED:%s\r\n", createdStr))
 	ical.WriteString(fmt.Sprintf("LAST-MODIFIED:%s\r\n", modifiedStr))
@@ -751,7 +751,7 @@ func eventToICal(event *models.Event) string {
 
 	// Add attendees
 	for _, att := range event.Attendees {
-		partstat := strings.ToUpper(strings.ReplaceAll(att.Status, "-", ""))
+		partstat := strings.ToUpper(strings.ReplaceAll(string(att.Status), "-", ""))
 		if partstat == "NEEDSACTION" {
 			partstat = "NEEDS-ACTION"
 		}
@@ -785,12 +785,12 @@ func parseICal(ical string) (*models.Event, error) {
 		} else if strings.HasPrefix(line, "RRULE:") {
 			event.RecurrenceRule = strings.TrimPrefix(line, "RRULE:")
 		} else if strings.HasPrefix(line, "STATUS:") {
-			event.Status = strings.ToLower(strings.TrimPrefix(line, "STATUS:"))
+			event.Status = models.EventStatus(strings.ToLower(strings.TrimPrefix(line, "STATUS:")))
 		}
 	}
 
 	if event.Status == "" {
-		event.Status = "confirmed"
+		event.Status = models.EventStatusConfirmed
 	}
 	if event.Visibility == "" {
 		event.Visibility = "private"

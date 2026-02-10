@@ -7,10 +7,12 @@ RUN apk add --no-cache git ca-certificates
 
 # Copy go mod files
 COPY go.mod go.sum* ./
-RUN go mod download
 
 # Copy source code
 COPY . .
+
+# Fix dependencies and download
+RUN go mod tidy && go mod download
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /ai-assistant .

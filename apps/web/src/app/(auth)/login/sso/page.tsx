@@ -9,7 +9,7 @@
  * - Loading state with domain branding
  */
 
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, Loader2, AlertCircle, Building2, ArrowLeft } from "lucide-react";
@@ -49,7 +49,28 @@ function getLoadingMessage(isPending: boolean, isLoadingDomain: boolean): string
   return "Preparing SSO login...";
 }
 
-export default function SSOLoginPage() {
+// Loading fallback component
+function SSOLoadingFallback() {
+  return (
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+          <KeyRound className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <CardTitle className="text-2xl">Loading SSO...</CardTitle>
+          <CardDescription className="mt-2">Please wait</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </CardContent>
+    </Card>
+  );
+}
+
+// Inner component that uses useSearchParams
+function SSOLoginContent() {
   const searchParams = useSearchParams();
   const domain = searchParams.get("domain");
   const error = searchParams.get("error");
@@ -283,5 +304,14 @@ export default function SSOLoginPage() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Export wrapped in Suspense for Next.js static generation
+export default function SSOLoginPage() {
+  return (
+    <Suspense fallback={<SSOLoadingFallback />}>
+      <SSOLoginContent />
+    </Suspense>
   );
 }

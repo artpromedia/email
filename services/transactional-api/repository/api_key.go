@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
+
+// ErrAPIKeyNotFound is returned when an API key is not found
+var ErrAPIKeyNotFound = errors.New("API key not found")
+
+// HashAPIKey hashes an API key using SHA-256
+func HashAPIKey(key string) string {
+	hash := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(hash[:])
+}
 
 type APIKeyResult struct {
 	ID             uuid.UUID
@@ -98,7 +108,7 @@ func (r *APIKeyRepository) GetByHash(ctx context.Context, keyHash string) (*APIK
 		&result.Scopes, &result.RateLimit, &result.IsActive, &result.LastUsedAt, &result.ExpiresAt, &result.CreatedAt,
 	)
 	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("API key not found")
+		return nil, ErrAPIKeyNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query API key: %w", err)

@@ -1,11 +1,11 @@
 # SMTP Server Configuration
 server:
-  hostname: "mail.example.com"
+  hostname: "mail.oonrumail.com"
   smtp_addr: ":25"
   submission_addr: ":587"
   read_timeout: 60s
   write_timeout: 60s
-  max_message_size: 26214400  # 25MB
+  max_message_size: 26214400 # 25MB
   max_recipients: 100
   log_level: "info"
 
@@ -36,6 +36,7 @@ queue:
 dkim:
   default_selector: "default"
   key_rotation_days: 90
+  encryption_key: "${DKIM_ENCRYPTION_KEY}"
 
 tls:
   enabled: true
@@ -46,6 +47,12 @@ limits:
   connections_per_ip: 50
   messages_per_minute: 100
   max_idle_time: 5m
+  # Allow internal Docker network to relay without authentication
+  trusted_networks:
+    - "172.28.0.0/16" # Docker email-network
+    - "127.0.0.0/8" # Localhost
+    - "10.0.0.0/8" # Private network
+    - "172.16.0.0/12" # Private network
 
 metrics:
   enabled: true

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
 
 	"gopkg.in/yaml.v3"
 )
@@ -36,11 +37,15 @@ type RedisConfig struct {
 }
 
 type SMTPConfig struct {
-	Host       string `yaml:"host"`
-	Port       int    `yaml:"port"`
-	TLS        bool   `yaml:"tls"`
-	PoolSize   int    `yaml:"poolSize"`
-	RetryCount int    `yaml:"retryCount"`
+	Host               string `yaml:"host"`
+	Port               int    `yaml:"port"`
+	TLS                bool   `yaml:"tls"`
+	InsecureSkipVerify bool   `yaml:"insecureSkipVerify"`
+	Username           string `yaml:"username"`
+	Password           string `yaml:"password"`
+	FromDomain         string `yaml:"fromDomain"`
+	PoolSize           int    `yaml:"poolSize"`
+	RetryCount         int    `yaml:"retryCount"`
 }
 
 type RateLimitConfig struct {
@@ -67,14 +72,36 @@ type WebhookConfig struct {
 	WorkerPoolSize int    `yaml:"workerPoolSize"`
 }
 
+// expandEnvWithDefaults expands environment variables with default value support
+// Supports both ${VAR} and ${VAR:-default} syntax
+func expandEnvWithDefaults(s string) string {
+	// Regex to match ${VAR:-default} pattern
+	re := regexp.MustCompile(`\$\{([^}:]+):-([^}]*)\}`)
+	result := re.ReplaceAllStringFunc(s, func(match string) string {
+		// Extract variable name and default value
+		parts := re.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		envVar := parts[1]
+		defaultVal := parts[2]
+		if val := os.Getenv(envVar); val != "" {
+			return val
+		}
+		return defaultVal
+	})
+	// Also expand simple ${VAR} patterns
+	return os.ExpandEnv(result)
+}
+
 func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config file: %w", err)
 	}
 
-	// Expand environment variables
-	data = []byte(os.ExpandEnv(string(data)))
+	// Expand environment variables with defaults support
+	data = []byte(expandEnvWithDefaults(string(data)))
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {

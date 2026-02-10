@@ -119,6 +119,7 @@ function useKeyboardVisible() {
       viewport.addEventListener("resize", handleResize);
       return () => viewport.removeEventListener("resize", handleResize);
     }
+    return undefined;
   }, []);
 
   return isKeyboardVisible;

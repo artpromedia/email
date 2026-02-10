@@ -4,10 +4,11 @@ WORKDIR /app
 
 RUN apk add --no-cache git ca-certificates
 
-COPY go.mod go.sum* ./
-RUN go mod download
-
+# Copy all source code first for go mod tidy
 COPY . .
+
+# Fix dependencies and download
+RUN go mod tidy && go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o calendar-service .
 

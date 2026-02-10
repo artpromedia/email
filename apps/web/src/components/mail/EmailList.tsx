@@ -251,7 +251,7 @@ export function EmailList({
   hasMore,
   className,
 }: Readonly<EmailListProps>) {
-  const parentRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLUListElement>(null);
 
   const {
     selectedEmails,

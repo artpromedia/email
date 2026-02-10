@@ -53,23 +53,25 @@ func main() {
 	defer dbPool.Close()
 
 	// Initialize repositories
-	calendarRepo := repository.NewCalendarRepository(dbPool, logger.Named("calendar-repo"))
-	eventRepo := repository.NewEventRepository(dbPool, logger.Named("event-repo"))
-	attendeeRepo := repository.NewAttendeeRepository(dbPool, logger.Named("attendee-repo"))
+	calendarRepo := repository.NewCalendarRepository(dbPool)
+	eventRepo := repository.NewEventRepository(dbPool)
+	attendeeRepo := repository.NewAttendeeRepository(dbPool)
+	reminderRepo := repository.NewReminderRepository(dbPool)
 
-	// Initialize services
-	calendarService := service.NewCalendarService(calendarRepo, eventRepo, attendeeRepo, logger.Named("calendar-service"))
+	// Initialize notification service
 	notificationService := service.NewNotificationService(cfg, logger.Named("notification-service"))
 
-	// Start reminder processor
-	notificationService.StartReminderProcessor(ctx, eventRepo)
+	// Initialize calendar service
+	calendarService := service.NewCalendarService(calendarRepo, eventRepo, attendeeRepo, reminderRepo, notificationService, logger.Named("calendar-service"))
 
 	// Initialize handlers
 	calendarHandler := handlers.NewCalendarHandler(calendarService, logger.Named("calendar-handler"))
-	eventHandler := handlers.NewEventHandler(calendarService, logger.Named("event-handler"))
+
+	// Initialize auth middleware
+	authMiddleware := handlers.NewAuthMiddleware(cfg.Server.PublicURL, logger.Named("auth-middleware"))
 
 	// Initialize CalDAV handler
-	caldavHandler := caldav.NewHandler(calendarService, logger.Named("caldav"))
+	caldavHandler := caldav.NewCalDAVHandler(calendarService, logger.Named("caldav"), cfg.Server.PublicURL)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -100,35 +102,35 @@ func main() {
 
 	// CalDAV endpoints (RFC 4791)
 	r.Route("/caldav", func(r chi.Router) {
-		r.Use(caldavHandler.AuthMiddleware)
-		r.HandleFunc("/*", caldavHandler.ServeHTTP)
+		r.Use(authMiddleware.Authenticate)
+		caldavHandler.RegisterRoutes(r)
 	})
 
 	// REST API for calendar management
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(handlers.AuthMiddleware)
+		r.Use(authMiddleware.Authenticate)
 
 		// Calendars
 		r.Route("/calendars", func(r chi.Router) {
-			r.Get("/", calendarHandler.List)
-			r.Post("/", calendarHandler.Create)
-			r.Get("/{calendarId}", calendarHandler.Get)
-			r.Put("/{calendarId}", calendarHandler.Update)
-			r.Delete("/{calendarId}", calendarHandler.Delete)
-			r.Post("/{calendarId}/share", calendarHandler.Share)
-			r.Delete("/{calendarId}/share/{userId}", calendarHandler.Unshare)
+			r.Get("/", calendarHandler.ListCalendars)
+			r.Post("/", calendarHandler.CreateCalendar)
+			r.Get("/{calendarId}", calendarHandler.GetCalendar)
+			r.Put("/{calendarId}", calendarHandler.UpdateCalendar)
+			r.Delete("/{calendarId}", calendarHandler.DeleteCalendar)
+			r.Post("/{calendarId}/share", calendarHandler.ShareCalendar)
+			r.Delete("/{calendarId}/share/{userId}", calendarHandler.UnshareCalendar)
 		})
 
 		// Events
 		r.Route("/events", func(r chi.Router) {
-			r.Get("/", eventHandler.List)
-			r.Post("/", eventHandler.Create)
-			r.Get("/{eventId}", eventHandler.Get)
-			r.Put("/{eventId}", eventHandler.Update)
-			r.Delete("/{eventId}", eventHandler.Delete)
-			r.Post("/{eventId}/respond", eventHandler.Respond)
-			r.Get("/search", eventHandler.Search)
-			r.Get("/freebusy", eventHandler.FreeBusy)
+			r.Get("/", calendarHandler.ListEvents)
+			r.Post("/", calendarHandler.CreateEvent)
+			r.Get("/{eventId}", calendarHandler.GetEvent)
+			r.Put("/{eventId}", calendarHandler.UpdateEvent)
+			r.Delete("/{eventId}", calendarHandler.DeleteEvent)
+			r.Post("/{eventId}/respond", calendarHandler.RespondToEvent)
+			r.Get("/search", calendarHandler.SearchEvents)
+			r.Get("/freebusy", calendarHandler.GetFreeBusy)
 		})
 	})
 

@@ -13,8 +13,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"imap-server/config"
-	"imap-server/repository"
+	"github.com/oonrumail/imap-server/config"
+	"github.com/oonrumail/imap-server/repository"
 )
 
 // Connection represents an IMAP client connection

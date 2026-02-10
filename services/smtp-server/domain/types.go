@@ -27,17 +27,19 @@ type Domain struct {
 	IsDefault      bool         `json:"is_default"`
 	MXVerified     bool         `json:"mx_verified"`
 	SPFVerified    bool         `json:"spf_verified"`
-	DKIMVerified   bool         `json:"dkim_verified"`
-	DMARCVerified  bool         `json:"dmarc_verified"`
+	DKIMVerified   bool            `json:"dkim_verified"`
+	DMARCVerified  bool            `json:"dmarc_verified"`
+	VerifiedAt     time.Time       `json:"verified_at"`
 	Policies       *DomainPolicies `json:"policies"`
-	CreatedAt      time.Time    `json:"created_at"`
+	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time    `json:"updated_at"`
 }
 
 // DomainPolicies holds domain-specific policies
 type DomainPolicies struct {
-	MaxMessageSize      int64    `json:"max_message_size"`
-	RequireTLS          bool     `json:"require_tls"`
+	MaxMessageSize       int64    `json:"max_message_size"`
+	RequireTLS           bool     `json:"require_tls"`
+	AllowExternalRelay   bool     `json:"allow_external_relay"`
 	AllowedSenderDomains []string `json:"allowed_sender_domains"`
 	AutoBCCAddresses    []string `json:"auto_bcc_addresses"`
 	CatchAllEnabled     bool     `json:"catch_all_enabled"`
@@ -97,30 +99,42 @@ type DKIMKey struct {
 	Domain       string          `json:"domain"`
 	Selector     string          `json:"selector"`
 	PrivateKey   *rsa.PrivateKey `json:"-"`
+	PublicKey    *rsa.PublicKey  `json:"-"`
 	PublicKeyPEM string          `json:"public_key_pem"`
 	Algorithm    string          `json:"algorithm"` // rsa-sha256
 	KeySize      int             `json:"key_size"`
 	IsActive     bool            `json:"is_active"`
 	ExpiresAt    *time.Time      `json:"expires_at"`
+	RotatedAt    *time.Time      `json:"rotated_at"`
 	CreatedAt    time.Time       `json:"created_at"`
 }
 
 // Mailbox represents a user mailbox
 type Mailbox struct {
-	ID             string       `json:"id"`
-	UserID         string       `json:"user_id"`
-	DomainID       string       `json:"domain_id"`
-	OrganizationID string       `json:"organization_id"`
-	Email          string       `json:"email"`
-	LocalPart      string       `json:"local_part"`
-	Domain         string       `json:"domain"`
-	DisplayName    string       `json:"display_name"`
-	Status         string       `json:"status"`
-	QuotaBytes     int64        `json:"quota_bytes"`
-	UsedBytes      int64        `json:"used_bytes"`
-	IsActive       bool         `json:"is_active"`
-	CreatedAt      time.Time    `json:"created_at"`
-	UpdatedAt      time.Time    `json:"updated_at"`
+	ID                string     `json:"id"`
+	UserID            string     `json:"user_id"`
+	DomainID          string     `json:"domain_id"`
+	OrganizationID    string     `json:"organization_id"`
+	Email             string     `json:"email"`
+	LocalPart         string     `json:"local_part"`
+	Domain            string     `json:"domain"`
+	DisplayName       string     `json:"display_name"`
+	Status            string     `json:"status"`
+	QuotaBytes        int64      `json:"quota_bytes"`
+	UsedBytes         int64      `json:"used_bytes"`
+	StorageQuotaBytes int64      `json:"storage_quota_bytes"`
+	StorageUsedBytes  int64      `json:"storage_used_bytes"`
+	AutoReplyEnabled  bool       `json:"auto_reply_enabled"`
+	AutoReplySubject  string     `json:"auto_reply_subject"`
+	AutoReplyBody     string     `json:"auto_reply_body"`
+	AutoReplyStart    *time.Time `json:"auto_reply_start"`
+	AutoReplyEnd      *time.Time `json:"auto_reply_end"`
+	ForwardEnabled    bool       `json:"forward_enabled"`
+	ForwardAddress    string     `json:"forward_address"`
+	ForwardKeepCopy   bool       `json:"forward_keep_copy"`
+	IsActive          bool       `json:"is_active"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // Alias represents an email alias
@@ -143,6 +157,9 @@ type DistributionList struct {
 	Name           string    `json:"name"`
 	Description    string    `json:"description"`
 	Members        []string  `json:"members"`
+	MembersOnly    bool      `json:"members_only"`
+	Moderated      bool      `json:"moderated"`
+	Moderators     []string  `json:"moderators"`
 	AllowExternal  bool      `json:"allow_external"`
 	IsActive       bool      `json:"is_active"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -160,6 +177,7 @@ type RoutingRule struct {
 	Actions        *RuleActions      `json:"actions"`
 	IsActive       bool              `json:"is_active"`
 	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 // RuleConditions defines when a routing rule applies
@@ -167,23 +185,34 @@ type RuleConditions struct {
 	SenderPattern     string   `json:"sender_pattern"`
 	RecipientPattern  string   `json:"recipient_pattern"`
 	SubjectPattern    string   `json:"subject_pattern"`
+	HeaderName        string   `json:"header_name"`
+	HeaderPattern     string   `json:"header_pattern"`
 	SenderDomains     []string `json:"sender_domains"`
 	RecipientDomains  []string `json:"recipient_domains"`
 	HasAttachment     *bool    `json:"has_attachment"`
 	MessageSizeMin    *int64   `json:"message_size_min"`
 	MessageSizeMax    *int64   `json:"message_size_max"`
+	SizeMin           *int64   `json:"size_min"`
+	SizeMax           *int64   `json:"size_max"`
 }
 
 // RuleActions defines what to do when a rule matches
 type RuleActions struct {
-	Action          string   `json:"action"` // forward, redirect, reject, deliver, bcc
-	ForwardTo       []string `json:"forward_to"`
-	RedirectTo      string   `json:"redirect_to"`
-	BCCTo           []string `json:"bcc_to"`
-	RejectMessage   string   `json:"reject_message"`
-	AddHeaders      map[string]string `json:"add_headers"`
-	ModifySubject   string   `json:"modify_subject"`
-	StopProcessing  bool     `json:"stop_processing"`
+	Action            string            `json:"action"` // forward, redirect, reject, deliver, bcc
+	Type              string            `json:"type"`
+	Target            string            `json:"target"`
+	ForwardTo         []string          `json:"forward_to"`
+	RedirectTo        string            `json:"redirect_to"`
+	BCCTo             []string          `json:"bcc_to"`
+	RejectMessage     string            `json:"reject_message"`
+	AddHeaders        map[string]string `json:"add_headers"`
+	AddHeaderName     string            `json:"add_header_name"`
+	AddHeaderValue    string            `json:"add_header_value"`
+	ModifySubject     string            `json:"modify_subject"`
+	RewriteFrom       string            `json:"rewrite_from"`
+	RewriteTo         string            `json:"rewrite_to"`
+	QuarantineReason  string            `json:"quarantine_reason"`
+	StopProcessing    bool              `json:"stop_processing"`
 }
 
 // UserDomainPermission represents a user's permission to send from a domain
@@ -191,11 +220,14 @@ type UserDomainPermission struct {
 	ID             string    `json:"id"`
 	UserID         string    `json:"user_id"`
 	DomainID       string    `json:"domain_id"`
-	OrganizationID string    `json:"organization_id"`
-	CanSend        bool      `json:"can_send"`
-	CanReceive     bool      `json:"can_receive"`
-	IsAdmin        bool      `json:"is_admin"`
-	CreatedAt      time.Time `json:"created_at"`
+	OrganizationID         string    `json:"organization_id"`
+	CanSend                bool      `json:"can_send"`
+	CanSendAs              bool      `json:"can_send_as"`
+	CanReceive             bool      `json:"can_receive"`
+	IsAdmin                bool      `json:"is_admin"`
+	DailySendLimit         int       `json:"daily_send_limit"`
+	AllowedSendAsAddresses []string  `json:"allowed_send_as_addresses"`
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 // RecipientLookupResult represents the result of looking up a recipient
@@ -223,15 +255,21 @@ type SenderPermissionResult struct {
 type Message struct {
 	ID               string            `json:"id"`
 	OrganizationID   string            `json:"organization_id"`
+	DomainID         string            `json:"domain_id"`
 	FromDomain       string            `json:"from_domain"`
 	From             string            `json:"from"`
+	FromAddress      string            `json:"from_address"`
 	To               []string          `json:"to"`
+	Recipients       []string          `json:"recipients"`
 	Cc               []string          `json:"cc"`
 	Bcc              []string          `json:"bcc"`
 	Subject          string            `json:"subject"`
 	Headers          map[string]string `json:"headers"`
 	RawMessage       []byte            `json:"-"`
+	RawMessagePath   string            `json:"raw_message_path"`
 	Size             int64             `json:"size"`
+	BodySize         int64             `json:"body_size"`
+	Priority         int               `json:"priority"`
 	IsInternal       bool              `json:"is_internal"`
 	IsCrossDomain    bool              `json:"is_cross_domain"`
 	RequiresTLS      bool              `json:"requires_tls"`
@@ -241,20 +279,39 @@ type Message struct {
 	DMARCResult      string            `json:"dmarc_result"`
 	SpamScore        float64           `json:"spam_score"`
 	QueuedAt         time.Time         `json:"queued_at"`
+	ScheduledAt      *time.Time        `json:"scheduled_at"`
 	Attempts         int               `json:"attempts"`
+	RetryCount       int               `json:"retry_count"`
+	MaxRetries       int               `json:"max_retries"`
 	LastAttemptAt    *time.Time        `json:"last_attempt_at"`
 	NextAttemptAt    *time.Time        `json:"next_attempt_at"`
-	Status           string            `json:"status"`
+	NextRetryAt      *time.Time        `json:"next_retry_at"`
+	Status           MessageStatus     `json:"status"`
 	ErrorMessage     string            `json:"error_message"`
+	LastError        string            `json:"last_error"`
 	DeliveredAt      *time.Time        `json:"delivered_at"`
+	FailedAt         *time.Time        `json:"failed_at"`
+	CreatedAt        time.Time         `json:"created_at"`
 }
+
+// MessageStatus represents the status of a message in the queue
+type MessageStatus string
 
 // MessageStatus constants
 const (
-	MessageStatusQueued     = "queued"
-	MessageStatusProcessing = "processing"
-	MessageStatusDelivered  = "delivered"
-	MessageStatusBounced    = "bounced"
-	MessageStatusDeferred   = "deferred"
-	MessageStatusFailed     = "failed"
+	MessageStatusQueued     MessageStatus = "queued"
+	MessageStatusProcessing MessageStatus = "processing"
+	MessageStatusDelivered  MessageStatus = "delivered"
+	MessageStatusBounced    MessageStatus = "bounced"
+	MessageStatusDeferred   MessageStatus = "deferred"
+	MessageStatusFailed     MessageStatus = "failed"
+
+	// Aliases for backward compatibility
+	StatusPending    MessageStatus = "pending"
+	StatusQueued     MessageStatus = "queued"
+	StatusProcessing MessageStatus = "processing"
+	StatusDelivered  MessageStatus = "delivered"
+	StatusBounced    MessageStatus = "bounced"
+	StatusDeferred   MessageStatus = "deferred"
+	StatusFailed     MessageStatus = "failed"
 )

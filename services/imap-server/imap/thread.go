@@ -77,7 +77,7 @@ func (c *Connection) handleThread(tag, args string, uid bool) error {
 	}
 
 	// Get messages for threading
-	messages, err := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, "1:*", uid)
+	messages, err := c.repo.GetMessagesBySequence(ctx, c.ctx.ActiveFolder.ID, "1:*", uid)
 	if err != nil {
 		c.logger.Error("Failed to get messages for THREAD", zap.Error(err))
 		c.sendTagged(tag, "NO THREAD failed")
@@ -107,12 +107,11 @@ func (c *Connection) handleThread(tag, args string, uid bool) error {
 
 // threadByOrderedSubject implements the ORDEREDSUBJECT algorithm (RFC 5256)
 // Groups messages by base subject, ordered by sent date
-func (c *Connection) threadByOrderedSubject(messages []Message) []*ThreadNode {
+func (c *Connection) threadByOrderedSubject(messages []*Message) []*ThreadNode {
 	// Group messages by normalized subject
 	subjectGroups := make(map[string][]*Message)
 
-	for i := range messages {
-		msg := &messages[i]
+	for _, msg := range messages {
 		baseSubject := normalizeSubject(msg.Subject)
 		subjectGroups[baseSubject] = append(subjectGroups[baseSubject], msg)
 	}
@@ -153,13 +152,12 @@ func (c *Connection) threadByOrderedSubject(messages []Message) []*ThreadNode {
 
 // threadByReferences implements the REFERENCES algorithm (RFC 5256)
 // Uses In-Reply-To and References headers to build thread tree
-func (c *Connection) threadByReferences(messages []Message) []*ThreadNode {
+func (c *Connection) threadByReferences(messages []*Message) []*ThreadNode {
 	// Build message ID to message map
 	messageByID := make(map[string]*Message)
 	messageByUID := make(map[uint32]*Message)
 
-	for i := range messages {
-		msg := &messages[i]
+	for _, msg := range messages {
 		if msg.MessageID != "" {
 			messageByID[msg.MessageID] = msg
 		}
@@ -172,8 +170,7 @@ func (c *Connection) threadByReferences(messages []Message) []*ThreadNode {
 	// Build parent-child relationships
 	childrenMap := make(map[uint32][]*ThreadNode)
 
-	for i := range messages {
-		msg := &messages[i]
+	for _, msg := range messages {
 		var parentUID uint32
 
 		// Check In-Reply-To first
@@ -203,8 +200,7 @@ func (c *Connection) threadByReferences(messages []Message) []*ThreadNode {
 	// Build thread trees starting from root messages (messages without parents)
 	var threads []*ThreadNode
 
-	for i := range messages {
-		msg := &messages[i]
+	for _, msg := range messages {
 		if !hasParent[msg.UID] {
 			root := buildThreadTree(msg.UID, childrenMap)
 			threads = append(threads, root)

@@ -13,8 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 
-	"imap-server/config"
-	"imap-server/repository"
+	"github.com/oonrumail/imap-server/config"
+	"github.com/oonrumail/imap-server/repository"
 )
 
 var (
@@ -628,16 +628,14 @@ func (h *NotifyHub) coalesceNotifications(notifications []IdleNotification) []Id
 			result = append(result, notifs[len(notifs)-1])
 
 		case "RECENT":
-			// For RECENT, sum up all counts
-			totalCount := 0
+			// For RECENT, sum up all counts - use SeqNum to track count
+			var totalCount uint32
 			for _, n := range notifs {
-				if count, ok := n.Data["count"].(int); ok {
-					totalCount += count
-				}
+				totalCount += n.SeqNum
 			}
 			result = append(result, IdleNotification{
-				Type: "RECENT",
-				Data: map[string]interface{}{"count": totalCount},
+				Type:   "RECENT",
+				SeqNum: totalCount,
 			})
 
 		case "EXPUNGE":

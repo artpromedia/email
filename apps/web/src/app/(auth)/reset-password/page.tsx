@@ -5,7 +5,7 @@
  * Reset Password Page - Set new password with reset token
  */
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,7 +64,27 @@ const resetPasswordSchema = z
 
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
-export default function ResetPasswordPage() {
+// Loading fallback component
+function ResetPasswordLoadingFallback() {
+  return (
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+          <KeyRound className="h-6 w-6 text-primary-foreground" />
+        </div>
+        <div>
+          <CardTitle className="text-2xl">Loading...</CardTitle>
+          <CardDescription className="mt-2">Please wait</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -316,5 +336,14 @@ export default function ResetPasswordPage() {
         </p>
       </CardFooter>
     </Card>
+  );
+}
+
+// Export wrapped in Suspense for Next.js static generation
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordLoadingFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

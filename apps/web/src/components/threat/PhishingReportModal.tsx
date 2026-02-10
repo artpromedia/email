@@ -395,7 +395,9 @@ export function PhishingReportModal({
             <Checkbox
               id="forward"
               checked={forwardToAdmin}
-              onCheckedChange={(checked) => setForwardToAdmin(checked as boolean)}
+              onCheckedChange={(checked: boolean | "indeterminate") =>
+                setForwardToAdmin(checked === true)
+              }
             />
             <Label htmlFor="forward" className="cursor-pointer text-sm">
               Forward this email to the security team for review

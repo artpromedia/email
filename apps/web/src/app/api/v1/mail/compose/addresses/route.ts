@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+const AUTH_API_URL = process.env.AUTH_API_URL || "http://auth:8080";
+
 /**
  * Extract user ID from JWT token in authorization header
  */
@@ -25,37 +27,10 @@ function extractUserIdFromToken(authHeader: string): string | null {
 }
 
 /**
- * Fetch user's email addresses from database
- * In production, this queries the database for verified sender addresses
- */
-function fetchUserAddresses(_userId: string) {
-  // Mock data - in production, query database:
-  // const addresses = await db.select().from(userAddresses).where(eq(userAddresses.userId, userId));
-  return [
-    {
-      id: "1",
-      email: "user@example.com",
-      displayName: "John Doe",
-      isDefault: true,
-      isVerified: true,
-      signature: "Best regards,\nJohn Doe",
-    },
-    {
-      id: "2",
-      email: "john.doe@company.com",
-      displayName: "John Doe - Work",
-      isDefault: false,
-      isVerified: true,
-      signature: "Regards,\nJohn Doe\nSenior Engineer",
-    },
-  ];
-}
-
-/**
  * GET /api/v1/mail/compose/addresses
  * Get available sender addresses for the authenticated user
  */
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -68,12 +43,26 @@ export function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    // Fetch user's email addresses from database
-    const addresses = fetchUserAddresses(userId);
+    // Fetch user's email addresses from auth service
+    const response = await fetch(`${AUTH_API_URL}/api/v1/users/${userId}/addresses`, {
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+    });
 
+    if (response.ok) {
+      const data = await response.json();
+      return NextResponse.json({
+        addresses: data.addresses || [],
+        defaultAddressId: data.defaultAddressId || null,
+      });
+    }
+
+    // Return empty addresses if service unavailable
     return NextResponse.json({
-      addresses,
-      defaultAddressId: addresses.find((a) => a.isDefault)?.id ?? null,
+      addresses: [],
+      defaultAddressId: null,
     });
   } catch (error) {
     console.error("Error fetching sender addresses:", error);

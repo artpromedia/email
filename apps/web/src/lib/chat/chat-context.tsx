@@ -141,8 +141,8 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || "http://localhost:8086";
-const CHAT_WS_URL = process.env.NEXT_PUBLIC_CHAT_WS_URL || "ws://localhost:8086/ws";
+const CHAT_API_URL = process.env["NEXT_PUBLIC_CHAT_API_URL"] || "http://localhost:8086";
+const CHAT_WS_URL = process.env["NEXT_PUBLIC_CHAT_WS_URL"] || "ws://localhost:8086/ws";
 
 export function ChatProvider({
   children,

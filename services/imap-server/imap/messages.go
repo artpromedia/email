@@ -31,7 +31,7 @@ func (c *Connection) handleFetch(tag, args string, uid bool) error {
 	defer cancel()
 
 	// Get messages based on sequence or UID set
-	messages, err := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, seqSet, uid)
+	messages, err := c.repo.GetMessagesBySequence(ctx, c.ctx.ActiveFolder.ID, seqSet, uid)
 	if err != nil {
 		c.logger.Error("Failed to fetch messages", zap.Error(err))
 		c.sendTagged(tag, "NO FETCH failed")
@@ -39,12 +39,13 @@ func (c *Connection) handleFetch(tag, args string, uid bool) error {
 	}
 
 	for _, msg := range messages {
-		response := c.buildFetchResponse(&msg, fetchItems, uid)
-		c.sendUntagged("%d FETCH %s", msg.SequenceNumber, response)
+		response := c.buildFetchResponse(msg, fetchItems, uid)
+		c.sendUntagged("%d FETCH %s", msg.SequenceNum, response)
 
 		// If BODY or RFC822 was fetched, mark as seen unless PEEK
 		if c.shouldMarkSeen(fetchItems) && !c.ctx.ReadOnly {
-			if err := c.repo.UpdateMessageFlags(ctx, msg.ID, []string{"\\Seen"}, "add"); err != nil {
+			modseq, _ := c.repo.IncrementModSeq(ctx, c.ctx.ActiveFolder.ID)
+			if err := c.repo.UpdateMessageFlags(ctx, msg.ID, []MessageFlag{FlagSeen}, modseq); err != nil {
 				c.logger.Warn("Failed to mark message as seen", zap.Error(err))
 			}
 		}
@@ -105,7 +106,7 @@ func (c *Connection) handleStore(tag, args string, uid bool) error {
 	defer cancel()
 
 	// Get messages
-	messages, err := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, seqSet, uid)
+	messages, err := c.repo.GetMessagesBySequence(ctx, c.ctx.ActiveFolder.ID, seqSet, uid)
 	if err != nil {
 		c.logger.Error("Failed to get messages for STORE", zap.Error(err))
 		c.sendTagged(tag, "NO STORE failed")
@@ -113,34 +114,34 @@ func (c *Connection) handleStore(tag, args string, uid bool) error {
 	}
 
 	for _, msg := range messages {
-		// Update flags
-		if err := c.repo.UpdateMessageFlags(ctx, msg.ID, flags, operation); err != nil {
+		// Apply flag operation and get new flags
+		newFlags := c.applyFlagOperation(msg.Flags, flags, operation)
+
+		// Update flags with modseq
+		modseq, _ := c.repo.IncrementModSeq(ctx, c.ctx.ActiveFolder.ID)
+		if err := c.repo.UpdateMessageFlags(ctx, msg.ID, newFlags, modseq); err != nil {
 			c.logger.Warn("Failed to update flags", zap.String("message_id", msg.ID), zap.Error(err))
 			continue
 		}
 
 		// Send FETCH response unless SILENT
 		if !silent {
-			// Get updated flags
-			newFlags := c.applyFlagOperation(msg.Flags, flags, operation)
-			flagList := strings.Join(newFlags, " ")
+			flagList := flagsToString(newFlags)
 
 			if uid {
-				c.sendUntagged("%d FETCH (UID %d FLAGS (%s))", msg.SequenceNumber, msg.UID, flagList)
+				c.sendUntagged("%d FETCH (UID %d FLAGS (%s))", msg.SequenceNum, msg.UID, flagList)
 			} else {
-				c.sendUntagged("%d FETCH (FLAGS (%s))", msg.SequenceNumber, flagList)
+				c.sendUntagged("%d FETCH (FLAGS (%s))", msg.SequenceNum, flagList)
 			}
 		}
 
 		// Notify other connections
-		c.notifyHub.Notify(c.ctx.ActiveMailbox.ID, &IdleNotification{
-			Type:      "FLAGS",
-			MailboxID: c.ctx.ActiveMailbox.ID,
-			MessageID: msg.ID,
-			UID:       msg.UID,
-			Data: map[string]interface{}{
-				"flags": c.applyFlagOperation(msg.Flags, flags, operation),
-			},
+		c.notifyHub.Notify(c.ctx.ActiveMailbox.ID, IdleNotification{
+			Type:       "FLAGS",
+			MailboxID:  c.ctx.ActiveMailbox.ID,
+			FolderPath: c.ctx.ActiveFolder.FullPath,
+			UID:        msg.UID,
+			Flags:      newFlags,
 		})
 	}
 
@@ -215,6 +216,48 @@ func (c *Connection) handleExpunge(tag string) error {
 	return nil
 }
 
+// handleUIDExpunge handles the UID EXPUNGE command (UIDPLUS extension)
+// This expunges only the messages specified in the UID set
+func (c *Connection) handleUIDExpunge(tag, args string) error {
+	if !c.requireSelected(tag) {
+		return nil
+	}
+
+	if c.ctx.ReadOnly {
+		c.sendTagged(tag, "NO Mailbox is read-only")
+		return nil
+	}
+
+	// Parse UID set
+	if args == "" {
+		c.sendTagged(tag, "BAD UID EXPUNGE requires UID set")
+		return nil
+	}
+
+	// Use a large max for UID parsing (UIDs can be very large)
+	uidSet := parseSequenceSet(args, 0xFFFFFFFF)
+	if len(uidSet) == 0 {
+		c.sendTagged(tag, "BAD Invalid UID set")
+		return nil
+	}
+
+	expunged, expungedUIDs := c.expungeMessagesWithUIDs(uidSet)
+
+	// For QRESYNC, send VANISHED response with UIDs
+	if c.ctx.QRESYNCEnabled && len(expungedUIDs) > 0 {
+		uidList := formatUIDSet(expungedUIDs)
+		c.sendUntagged("VANISHED %s", uidList)
+	} else {
+		// Send EXPUNGE responses in reverse order
+		for i := len(expunged) - 1; i >= 0; i-- {
+			c.sendUntagged("%d EXPUNGE", expunged[i])
+		}
+	}
+
+	c.sendTagged(tag, "OK UID EXPUNGE completed")
+	return nil
+}
+
 // handleAppend handles the APPEND command
 func (c *Connection) handleAppend(tag, args string) error {
 	if !c.requireAuth(tag) {
@@ -222,10 +265,16 @@ func (c *Connection) handleAppend(tag, args string) error {
 	}
 
 	// Parse APPEND arguments: mailbox [flags] [date-time] literal
-	mailboxName, flags, internalDate, literalSize, err := parseAppendArgs(args)
+	mailboxName, flagStrs, internalDate, literalSize, err := parseAppendArgs(args)
 	if err != nil {
 		c.sendTagged(tag, "BAD %s", err.Error())
 		return nil
+	}
+
+	// Convert string flags to MessageFlag
+	var flags []MessageFlag
+	for _, f := range flagStrs {
+		flags = append(flags, MessageFlag(f))
 	}
 
 	mailbox, folderPath, err := c.parseMailboxPath(mailboxName)
@@ -245,7 +294,7 @@ func (c *Connection) handleAppend(tag, args string) error {
 
 	// Check quota
 	quota, _ := c.repo.GetQuota(ctx, mailbox.ID)
-	if quota != nil && quota.StorageUsed+int64(literalSize) > quota.StorageLimit {
+	if quota != nil && quota.Usage+int64(literalSize) > quota.Limit {
 		c.sendTagged(tag, "NO [OVERQUOTA] Quota exceeded")
 		return nil
 	}
@@ -282,7 +331,11 @@ func (c *Connection) handleAppend(tag, args string) error {
 	}
 
 	// Parse headers from message data
-	message.Subject, message.From, message.To, message.MessageID, message.Date = parseMessageHeaders(string(messageData))
+	var toStr string
+	message.Subject, message.From, toStr, message.MessageID, message.Date = parseMessageHeaders(string(messageData))
+	if toStr != "" {
+		message.To = []string{toStr}
+	}
 
 	// Store message
 	if err := c.storeMessage(ctx, message, messageData); err != nil {
@@ -314,7 +367,7 @@ func (c *Connection) buildFetchResponse(msg *Message, items []string, uid bool) 
 
 		switch {
 		case upperItem == "FLAGS":
-			flags := strings.Join(msg.Flags, " ")
+			flags := flagsToString(msg.Flags)
 			parts = append(parts, fmt.Sprintf("FLAGS (%s)", flags))
 
 		case upperItem == "UID":
@@ -463,8 +516,8 @@ func parseSearchCriteria(args string) []SearchKey {
 }
 
 // applyFlagOperation applies flag changes and returns new flag list
-func (c *Connection) applyFlagOperation(current, changes []string, operation string) []string {
-	flagMap := make(map[string]bool)
+func (c *Connection) applyFlagOperation(current []MessageFlag, changes []string, operation string) []MessageFlag {
+	flagMap := make(map[MessageFlag]bool)
 
 	switch operation {
 	case "add":
@@ -472,7 +525,7 @@ func (c *Connection) applyFlagOperation(current, changes []string, operation str
 			flagMap[f] = true
 		}
 		for _, f := range changes {
-			flagMap[f] = true
+			flagMap[MessageFlag(f)] = true
 		}
 
 	case "remove":
@@ -480,20 +533,29 @@ func (c *Connection) applyFlagOperation(current, changes []string, operation str
 			flagMap[f] = true
 		}
 		for _, f := range changes {
-			delete(flagMap, f)
+			delete(flagMap, MessageFlag(f))
 		}
 
 	case "replace":
 		for _, f := range changes {
-			flagMap[f] = true
+			flagMap[MessageFlag(f)] = true
 		}
 	}
 
-	var result []string
+	var result []MessageFlag
 	for f := range flagMap {
 		result = append(result, f)
 	}
 	return result
+}
+
+// flagsToString converts MessageFlag slice to space-separated string
+func flagsToString(flags []MessageFlag) string {
+	parts := make([]string, len(flags))
+	for i, f := range flags {
+		parts[i] = string(f)
+	}
+	return strings.Join(parts, " ")
 }
 
 // shouldMarkSeen checks if FETCH items should mark message as seen
@@ -518,16 +580,53 @@ func (c *Connection) expungeMessages() ([]uint32, []uint32) {
 	ctx, cancel := c.getContext()
 	defer cancel()
 
-	messages, _ := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, "1:*", false)
+	messages, _ := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, 0, 100000)
 
 	var expunged []uint32
 	var expungedUIDs []uint32
-	for _, msg := range messages {
+	for i, msg := range messages {
+		msg.SequenceNum = uint32(i + 1) // Set 1-based sequence number
 		for _, flag := range msg.Flags {
-			if flag == "\\Deleted" {
+			if flag == FlagDeleted {
 				// Delete message
 				// Would call repo.DeleteMessage here
-				expunged = append(expunged, msg.SequenceNumber)
+				expunged = append(expunged, msg.SequenceNum)
+				expungedUIDs = append(expungedUIDs, msg.UID)
+				break
+			}
+		}
+	}
+
+	return expunged, expungedUIDs
+}
+
+// expungeMessagesWithUIDs removes only messages with \Deleted flag that match the given UID set
+// Returns both sequence numbers (for EXPUNGE) and UIDs (for VANISHED)
+func (c *Connection) expungeMessagesWithUIDs(uidSet []uint32) ([]uint32, []uint32) {
+	ctx, cancel := c.getContext()
+	defer cancel()
+
+	messages, _ := c.repo.GetMessages(ctx, c.ctx.ActiveFolder.ID, 0, 100000)
+
+	// Build UID lookup map
+	uidMap := make(map[uint32]bool)
+	for _, uid := range uidSet {
+		uidMap[uid] = true
+	}
+
+	var expunged []uint32
+	var expungedUIDs []uint32
+	for i, msg := range messages {
+		msg.SequenceNum = uint32(i + 1)
+		// Only expunge if UID is in the specified set
+		if !uidMap[msg.UID] {
+			continue
+		}
+		for _, flag := range msg.Flags {
+			if flag == FlagDeleted {
+				// Delete message
+				// Would call repo.DeleteMessage here
+				expunged = append(expunged, msg.SequenceNum)
 				expungedUIDs = append(expungedUIDs, msg.UID)
 				break
 			}
@@ -722,17 +821,6 @@ func (c *Connection) fetchHeaders(msg *Message) string {
 func (c *Connection) fetchBody(msg *Message) string {
 	// Would fetch from storage
 	return ""
-}
-
-// sendPendingUpdates sends any pending mailbox updates
-func (c *Connection) sendPendingUpdates() {
-	// Would check for updates and send EXISTS, RECENT, FLAGS changes
-}
-
-// sendContinuation sends a continuation response
-func (c *Connection) sendContinuation(msg string) {
-	fmt.Fprintf(c.writer, "+ %s\r\n", msg)
-	c.writer.Flush()
 }
 
 // decodeBase64 decodes base64 encoded string

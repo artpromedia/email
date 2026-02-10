@@ -5,12 +5,11 @@ RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code
+# Copy all source code first for go mod tidy
 COPY . .
+
+# Fix dependencies and download
+RUN go mod tidy && go mod download
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o storage-service .

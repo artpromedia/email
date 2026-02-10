@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,18 +13,15 @@ import (
 // Export handlers
 
 type CreateExportJobRequest struct {
-	DomainID    string   `json:"domain_id"`
-	Format      string   `json:"format"` // mbox, pst, eml, json
-	UserIDs     []string `json:"user_ids,omitempty"`
-	MailboxIDs  []string `json:"mailbox_ids,omitempty"`
-	StartDate   string   `json:"start_date,omitempty"`
-	EndDate     string   `json:"end_date,omitempty"`
-	Query       string   `json:"query,omitempty"`
-	Compress    bool     `json:"compress"`
-	Encrypt     bool     `json:"encrypt"`
-	PublicKey   string   `json:"public_key,omitempty"`
-	RequestedBy string   `json:"requested_by"`
-	Reason      string   `json:"reason"`
+	OrgID              string   `json:"org_id"`
+	DomainID           string   `json:"domain_id"`
+	UserID             string   `json:"user_id,omitempty"`
+	Format             string   `json:"format"` // mbox, pst, eml, json
+	IncludeAttachments bool     `json:"include_attachments"`
+	StartDate          string   `json:"start_date,omitempty"`
+	EndDate            string   `json:"end_date,omitempty"`
+	FolderTypes        []string `json:"folder_types,omitempty"`
+	RequestedBy        string   `json:"requested_by"`
 }
 
 func (h *Handler) createExportJob(w http.ResponseWriter, r *http.Request) {
@@ -34,31 +32,52 @@ func (h *Handler) createExportJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate format
-	validFormats := map[string]bool{
-		"mbox": true,
-		"pst":  true,
-		"eml":  true,
-		"json": true,
+	validFormats := map[string]models.ExportFormat{
+		"mbox": models.ExportFormatMbox,
+		"pst":  models.ExportFormatPST,
+		"eml":  models.ExportFormatEML,
+		"json": models.ExportFormatJSON,
 	}
-	if !validFormats[req.Format] {
+	format, ok := validFormats[req.Format]
+	if !ok {
 		h.errorResponse(w, http.StatusBadRequest, "Invalid export format")
 		return
 	}
 
-	job := &models.ExportJob{
-		DomainID:    req.DomainID,
-		Format:      req.Format,
-		UserIDs:     req.UserIDs,
-		MailboxIDs:  req.MailboxIDs,
-		Query:       req.Query,
-		Compress:    req.Compress,
-		Encrypt:     req.Encrypt,
-		PublicKey:   req.PublicKey,
-		RequestedBy: req.RequestedBy,
-		Reason:      req.Reason,
+	// Parse date range if provided
+	var dateRange *models.DateRange
+	if req.StartDate != "" && req.EndDate != "" {
+		startDate, err := time.Parse("2006-01-02", req.StartDate)
+		if err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "Invalid start_date format")
+			return
+		}
+		endDate, err := time.Parse("2006-01-02", req.EndDate)
+		if err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "Invalid end_date format")
+			return
+		}
+		dateRange = &models.DateRange{From: startDate, To: endDate}
 	}
 
-	if err := h.export.CreateExportJob(r.Context(), job); err != nil {
+	// Convert folder types
+	var folderTypes []models.FolderType
+	for _, ft := range req.FolderTypes {
+		folderTypes = append(folderTypes, models.FolderType(ft))
+	}
+
+	jobReq := &models.CreateExportJobRequest{
+		DomainID:           req.DomainID,
+		UserID:             req.UserID,
+		Format:             format,
+		IncludeAttachments: req.IncludeAttachments,
+		DateRange:          dateRange,
+		FolderTypes:        folderTypes,
+		RequestedBy:        req.RequestedBy,
+	}
+
+	job, err := h.export.CreateExportJob(r.Context(), req.OrgID, jobReq)
+	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to create export job")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to create export job")
 		return
@@ -98,7 +117,7 @@ func (h *Handler) downloadExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	downloadURL, err := h.export.GetDownloadURL(r.Context(), jobID)
+	downloadURL, _, err := h.export.GetDownloadURL(r.Context(), jobID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("job_id", jobID).Msg("Failed to get download URL")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to get download URL")
@@ -127,7 +146,7 @@ func (h *Handler) cancelExportJob(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listDomainExports(w http.ResponseWriter, r *http.Request) {
 	domainID := chi.URLParam(r, "domainID")
 
-	jobs, err := h.export.ListExportJobs(r.Context(), domainID)
+	jobs, err := h.export.GetExportJobsForDomain(r.Context(), domainID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("domain_id", domainID).Msg("Failed to list export jobs")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to list exports")
@@ -142,49 +161,41 @@ func (h *Handler) listDomainExports(w http.ResponseWriter, r *http.Request) {
 
 // Deletion handlers
 
-type CreateDeletionJobRequest struct {
-	DomainID         string   `json:"domain_id"`
-	Type             string   `json:"type"` // domain, user, mailbox, selective
-	UserID           string   `json:"user_id,omitempty"`
-	MailboxID        string   `json:"mailbox_id,omitempty"`
-	MessageIDs       []string `json:"message_ids,omitempty"`
-	Reason           string   `json:"reason"`
-	ComplianceType   string   `json:"compliance_type"` // gdpr, retention, legal, manual
-	RequestedBy      string   `json:"requested_by"`
-	RequiresApproval bool     `json:"requires_approval"`
-	ScheduledFor     string   `json:"scheduled_for,omitempty"`
+type CreateDeletionJobRequestHandler struct {
+	OrgID            string `json:"org_id"`
+	DomainID         string `json:"domain_id"`
+	UserID           string `json:"user_id,omitempty"`
+	Reason           string `json:"reason"`
+	ClearSearchIndex bool   `json:"clear_search_index"`
+	RequestedBy      string `json:"requested_by"`
 }
 
 func (h *Handler) createDeletionJob(w http.ResponseWriter, r *http.Request) {
-	var req CreateDeletionJobRequest
+	var req CreateDeletionJobRequestHandler
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	job := &models.DeletionJob{
+	jobReq := &models.CreateDeletionJobRequest{
 		DomainID:         req.DomainID,
-		Type:             req.Type,
 		UserID:           req.UserID,
-		MailboxID:        req.MailboxID,
-		MessageIDs:       req.MessageIDs,
 		Reason:           req.Reason,
-		ComplianceType:   req.ComplianceType,
+		ClearSearchIndex: req.ClearSearchIndex,
 		RequestedBy:      req.RequestedBy,
-		RequiresApproval: req.RequiresApproval,
 	}
 
-	if err := h.deletion.CreateDeletionJob(r.Context(), job); err != nil {
+	job, err := h.deletion.CreateDeletionJob(r.Context(), req.OrgID, jobReq)
+	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to create deletion job")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to create deletion job")
 		return
 	}
 
 	h.jsonResponse(w, http.StatusAccepted, map[string]interface{}{
-		"job_id":            job.ID,
-		"status":            job.Status,
-		"requires_approval": job.RequiresApproval,
-		"message":           "Deletion job created",
+		"job_id":  job.ID,
+		"status":  job.Status,
+		"message": "Deletion job created",
 	})
 }
 

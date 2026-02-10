@@ -152,7 +152,7 @@ func (h *DomainHandler) CreateDomain(w http.ResponseWriter, r *http.Request) {
 		OrganizationID:    req.OrganizationID,
 		DomainName:        req.DomainName,
 		DisplayName:       req.DisplayName,
-		Status:            domain.StatusPendingVerification,
+		Status:            domain.StatusPending,
 		IsPrimary:         req.IsPrimary,
 		VerificationToken: verificationToken,
 		MXVerified:        false,
@@ -376,21 +376,21 @@ func (h *DomainHandler) CheckDNS(w http.ResponseWriter, r *http.Request) {
 
 	// Update domain DNS status
 	now := time.Now()
-	d.MXVerified = result.MXPassed
-	d.SPFVerified = result.SPFPassed
-	d.DKIMVerified = result.DKIMPassed
-	d.DMARCVerified = result.DMARCPassed
+	d.MXVerified = result.MXVerified
+	d.SPFVerified = result.SPFVerified
+	d.DKIMVerified = result.DKIMVerified
+	d.DMARCVerified = result.DMARCVerified
 	d.LastDNSCheck = &now
 	d.UpdatedAt = now
 
 	// Update overall status if all critical checks pass
-	if result.VerificationPassed && result.MXPassed && result.SPFPassed {
-		if d.Status == domain.StatusPendingVerification {
+	if result.MXVerified && result.SPFVerified {
+		if d.Status == domain.StatusPending {
 			d.Status = domain.StatusVerified
 			d.VerifiedAt = &now
 		}
 	} else if d.Status == domain.StatusVerified {
-		d.Status = domain.StatusVerificationFailed
+		d.Status = domain.StatusFailed
 	}
 
 	if err := h.domainRepo.Update(r.Context(), d); err != nil {

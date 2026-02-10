@@ -305,10 +305,18 @@ func (s *Server) validateAPIKey(ctx context.Context, apiKey string) (*APIKeyInfo
 		return nil, ErrAPIKeyExpired
 	}
 
+	// Parse scopes from comma-separated string
+	var scopes []string
+	if keyRecord.Scopes != "" {
+		for _, s := range strings.Split(keyRecord.Scopes, ",") {
+			scopes = append(scopes, strings.TrimSpace(s))
+		}
+	}
+
 	return &APIKeyInfo{
 		KeyID:          keyRecord.ID,
 		OrganizationID: keyRecord.OrganizationID,
-		Scopes:         keyRecord.Scopes,
+		Scopes:         scopes,
 	}, nil
 }
 

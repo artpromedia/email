@@ -1,7 +1,16 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
-import * as Sentry from "@sentry/nextjs";
+
+// Sentry is optional - only imported at runtime if available
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Sentry: any = null;
+try {
+  // Dynamic require to avoid build errors when @sentry/nextjs is not installed
+  Sentry = require("@sentry/nextjs");
+} catch {
+  // Sentry not available
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -39,12 +48,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error to console in development
-    if (process.env.NODE_ENV === "development") {
+    if (process.env["NODE_ENV"] === "development") {
       console.error("ErrorBoundary caught an error:", error, errorInfo);
     }
 
     // Report to Sentry in production
-    if (process.env.NODE_ENV === "production") {
+    if (process.env["NODE_ENV"] === "production" && Sentry) {
       Sentry.captureException(error, {
         contexts: {
           react: {
@@ -92,7 +101,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               Something went wrong
             </h1>
             <p className="mb-6 text-gray-600 dark:text-gray-400">
-              {process.env.NODE_ENV === "development" && this.state.error
+              {process.env["NODE_ENV"] === "development" && this.state.error
                 ? this.state.error.message
                 : "An unexpected error occurred. Please try again."}
             </p>
@@ -110,7 +119,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 Go to homepage
               </button>
             </div>
-            {process.env.NODE_ENV === "development" && this.state.error && (
+            {process.env["NODE_ENV"] === "development" && this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
                   Error details

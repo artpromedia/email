@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"smtp-server/config"
-	"smtp-server/domain"
-	"smtp-server/testutil"
+	"github.com/oonrumail/smtp-server/config"
+	"github.com/oonrumail/smtp-server/domain"
+	"github.com/oonrumail/smtp-server/testutil"
 
 	"go.uber.org/zap"
 )

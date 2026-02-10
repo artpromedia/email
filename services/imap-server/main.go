@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -39,7 +41,7 @@ func main() {
 	)
 
 	// Load configuration
-	cfg, err := config.Load(*configPath)
+	cfg, err := config.LoadConfig(*configPath)
 	if err != nil {
 		logger.Fatal("Failed to load configuration", zap.Error(err))
 	}
@@ -47,15 +49,23 @@ func main() {
 	logger.Info("Configuration loaded",
 		zap.Int("plain_port", cfg.Server.Port),
 		zap.Int("tls_port", cfg.Server.TLSPort),
-		zap.String("namespace_mode", cfg.IMAP.NamespaceMode),
+		zap.String("namespace_mode", cfg.IMAP.DefaultNamespaceMode),
 	)
 
-	// Initialize repository
-	repo, err := repository.New(cfg)
+	// Initialize database connection
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		cfg.Database.Username, cfg.Database.Password,
+		cfg.Database.Host, cfg.Database.Port,
+		cfg.Database.Database, cfg.Database.SSLMode)
+
+	dbPool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		logger.Fatal("Failed to initialize repository", zap.Error(err))
+		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
-	defer repo.Close()
+	defer dbPool.Close()
+
+	// Initialize repository
+	repo := repository.NewRepository(dbPool, logger)
 
 	logger.Info("Database connection established")
 
@@ -90,10 +100,7 @@ func main() {
 	logger.Info("Shutdown signal received")
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Stop(); err != nil {
 		logger.Error("Shutdown error", zap.Error(err))
 	}
 
@@ -106,8 +113,8 @@ func startMetricsServer(cfg *config.Config, logger *zap.Logger) {
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/ready", readyHandler)
 
-	addr := cfg.Metrics.Address
-	if addr == "" {
+	addr := fmt.Sprintf(":%d", cfg.Metrics.Port)
+	if cfg.Metrics.Port == 0 {
 		addr = ":9090"
 	}
 

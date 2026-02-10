@@ -3,8 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"time"
 
 	"calendar-service/models"
 
@@ -281,7 +279,7 @@ func (r *CalendarRepository) GetSyncChanges(ctx context.Context, calendarID uuid
 }
 
 func (r *CalendarRepository) scanEvent(row pgx.Row, event *models.Event) error {
-	var recurrenceID, originalEventID sql.NullTime
+	var recurrenceID sql.NullTime
 	var recurrenceRule sql.NullString
 	var originalEventUUID *uuid.UUID
 

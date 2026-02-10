@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,25 +13,49 @@ import (
 
 // Quota handlers
 
-type GetQuotaRequest struct {
-	OrgID     string `json:"org_id"`
-	DomainID  string `json:"domain_id,omitempty"`
-	UserID    string `json:"user_id,omitempty"`
-	MailboxID string `json:"mailbox_id,omitempty"`
-}
-
 func (h *Handler) getQuota(w http.ResponseWriter, r *http.Request) {
-	orgID := r.URL.Query().Get("org_id")
-	domainID := r.URL.Query().Get("domain_id")
-	userID := r.URL.Query().Get("user_id")
-	mailboxID := r.URL.Query().Get("mailbox_id")
+	quotaID := chi.URLParam(r, "quotaID")
+	level := r.URL.Query().Get("level")
+	entityID := r.URL.Query().Get("entity_id")
 
-	if orgID == "" {
-		h.errorResponse(w, http.StatusBadRequest, "org_id is required")
+	var quota *models.Quota
+	var err error
+
+	// If quotaID is provided, use it; otherwise use level and entityID
+	if quotaID != "" {
+		// Get by level and ID
+		switch level {
+		case "organization":
+			quota, err = h.quota.GetOrganizationQuota(r.Context(), quotaID)
+		case "domain":
+			quota, err = h.quota.GetDomainQuota(r.Context(), quotaID)
+		case "user":
+			quota, err = h.quota.GetUserQuota(r.Context(), quotaID)
+		case "mailbox":
+			quota, err = h.quota.GetMailboxQuota(r.Context(), quotaID)
+		default:
+			h.errorResponse(w, http.StatusBadRequest, "Invalid quota level")
+			return
+		}
+	} else if entityID != "" {
+		switch level {
+		case "organization":
+			quota, err = h.quota.GetOrganizationQuota(r.Context(), entityID)
+		case "domain":
+			quota, err = h.quota.GetDomainQuota(r.Context(), entityID)
+		case "user":
+			quota, err = h.quota.GetUserQuota(r.Context(), entityID)
+		case "mailbox":
+			quota, err = h.quota.GetMailboxQuota(r.Context(), entityID)
+		default:
+			h.errorResponse(w, http.StatusBadRequest, "Invalid quota level")
+			return
+		}
+	} else {
+		h.errorResponse(w, http.StatusBadRequest, "quota_id or entity_id with level is required")
 		return
 	}
 
-	quota, err := h.quota.GetQuota(r.Context(), orgID, domainID, userID, mailboxID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get quota")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to get quota")
@@ -40,130 +65,122 @@ func (h *Handler) getQuota(w http.ResponseWriter, r *http.Request) {
 	h.jsonResponse(w, http.StatusOK, quota)
 }
 
-type UpdateQuotaRequest struct {
-	OrgID      string `json:"org_id"`
-	DomainID   string `json:"domain_id,omitempty"`
-	UserID     string `json:"user_id,omitempty"`
-	MailboxID  string `json:"mailbox_id,omitempty"`
-	SoftLimit  int64  `json:"soft_limit"`
-	HardLimit  int64  `json:"hard_limit"`
-	MaxObjects int64  `json:"max_objects"`
+type CreateQuotaRequestHandler struct {
+	Level        string `json:"level"`
+	EntityID     string `json:"entity_id"`
+	ParentID     string `json:"parent_id,omitempty"`
+	TotalBytes   int64  `json:"total_bytes"`
+	SoftLimitPct int    `json:"soft_limit_pct,omitempty"`
+	HardLimitPct int    `json:"hard_limit_pct,omitempty"`
 }
 
 func (h *Handler) updateQuota(w http.ResponseWriter, r *http.Request) {
-	var req UpdateQuotaRequest
+	quotaID := chi.URLParam(r, "quotaID")
+
+	var req models.UpdateQuotaRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	quota := &models.Quota{
-		OrgID:      req.OrgID,
-		DomainID:   req.DomainID,
-		UserID:     req.UserID,
-		MailboxID:  req.MailboxID,
-		SoftLimit:  req.SoftLimit,
-		HardLimit:  req.HardLimit,
-		MaxObjects: req.MaxObjects,
-	}
-
-	if err := h.quota.SetQuota(r.Context(), quota); err != nil {
+	quota, err := h.quota.UpdateQuota(r.Context(), quotaID, &req)
+	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to update quota")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to update quota")
 		return
 	}
 
-	h.jsonResponse(w, http.StatusOK, map[string]string{
-		"status": "updated",
-	})
+	h.jsonResponse(w, http.StatusOK, quota)
 }
 
 func (h *Handler) checkQuota(w http.ResponseWriter, r *http.Request) {
-	orgID := r.URL.Query().Get("org_id")
-	domainID := r.URL.Query().Get("domain_id")
-	userID := r.URL.Query().Get("user_id")
 	mailboxID := r.URL.Query().Get("mailbox_id")
+	domainID := r.URL.Query().Get("domain_id")
 	sizeStr := r.URL.Query().Get("size")
-
-	if orgID == "" {
-		h.errorResponse(w, http.StatusBadRequest, "org_id is required")
-		return
-	}
 
 	size, _ := strconv.ParseInt(sizeStr, 10, 64)
 
-	allowed, reason, err := h.quota.CheckQuota(r.Context(), orgID, domainID, userID, mailboxID, size)
+	var result *models.QuotaCheckResult
+	var err error
+
+	if mailboxID != "" {
+		result, err = h.quota.CheckQuota(r.Context(), mailboxID, size)
+	} else if domainID != "" {
+		result, err = h.quota.CheckDomainQuota(r.Context(), domainID, size)
+	} else {
+		h.errorResponse(w, http.StatusBadRequest, "mailbox_id or domain_id is required")
+		return
+	}
+
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to check quota")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to check quota")
 		return
 	}
 
-	h.jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"allowed": allowed,
-		"reason":  reason,
-	})
+	h.jsonResponse(w, http.StatusOK, result)
 }
 
 func (h *Handler) getQuotaUsage(w http.ResponseWriter, r *http.Request) {
-	orgID := r.URL.Query().Get("org_id")
-	domainID := r.URL.Query().Get("domain_id")
-	userID := r.URL.Query().Get("user_id")
 	mailboxID := r.URL.Query().Get("mailbox_id")
+	domainID := r.URL.Query().Get("domain_id")
 
-	if orgID == "" {
-		h.errorResponse(w, http.StatusBadRequest, "org_id is required")
+	var info *models.QuotaInfo
+	var err error
+
+	if mailboxID != "" {
+		info, err = h.quota.GetQuotaInfo(r.Context(), mailboxID)
+	} else if domainID != "" {
+		info, err = h.quota.GetDomainQuotaInfo(r.Context(), domainID)
+	} else {
+		h.errorResponse(w, http.StatusBadRequest, "mailbox_id or domain_id is required")
 		return
 	}
 
-	usage, err := h.quota.GetUsage(r.Context(), orgID, domainID, userID, mailboxID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to get quota usage")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to get usage")
 		return
 	}
 
-	h.jsonResponse(w, http.StatusOK, usage)
+	h.jsonResponse(w, http.StatusOK, info)
 }
 
 // Retention handlers
 
-type CreateRetentionPolicyRequest struct {
-	DomainID        string `json:"domain_id"`
-	Name            string `json:"name"`
-	RetentionDays   int    `json:"retention_days"`
-	DeletedDays     int    `json:"deleted_days"`
-	ArchiveAfter    int    `json:"archive_after_days"`
-	ArchiveTier     string `json:"archive_tier"`
-	ComplianceMode  bool   `json:"compliance_mode"`
-	MinRetention    int    `json:"min_retention_days"`
-	Immutable       bool   `json:"immutable"`
-	AutoApply       bool   `json:"auto_apply"`
-	ApplyToExisting bool   `json:"apply_to_existing"`
+type CreateRetentionPolicyRequestHandler struct {
+	DomainID       string   `json:"domain_id"`
+	FolderType     string   `json:"folder_type"`
+	FolderID       string   `json:"folder_id,omitempty"`
+	RetentionDays  int      `json:"retention_days"`
+	Action         string   `json:"action"` // delete, archive
+	Enabled        bool     `json:"enabled"`
+	Priority       int      `json:"priority,omitempty"`
+	ExcludeStarred bool     `json:"exclude_starred,omitempty"`
+	ExcludeLabels  []string `json:"exclude_labels,omitempty"`
 }
 
 func (h *Handler) createRetentionPolicy(w http.ResponseWriter, r *http.Request) {
-	var req CreateRetentionPolicyRequest
+	var req CreateRetentionPolicyRequestHandler
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	policy := &models.RetentionPolicy{
-		DomainID:           req.DomainID,
-		Name:               req.Name,
-		RetentionDays:      req.RetentionDays,
-		DeletedItemDays:    req.DeletedDays,
-		ArchiveAfterDays:   req.ArchiveAfter,
-		ArchiveTier:        req.ArchiveTier,
-		ComplianceMode:     req.ComplianceMode,
-		MinRetentionDays:   req.MinRetention,
-		Immutable:          req.Immutable,
-		AutoApply:          req.AutoApply,
-		ApplyToExisting:    req.ApplyToExisting,
+	policyReq := &models.CreateRetentionPolicyRequest{
+		DomainID:       req.DomainID,
+		FolderType:     models.FolderType(req.FolderType),
+		FolderID:       req.FolderID,
+		RetentionDays:  req.RetentionDays,
+		Action:         models.RetentionAction(req.Action),
+		Enabled:        req.Enabled,
+		Priority:       req.Priority,
+		ExcludeStarred: req.ExcludeStarred,
+		ExcludeLabels:  req.ExcludeLabels,
 	}
 
-	if err := h.retention.CreatePolicy(r.Context(), policy); err != nil {
+	policy, err := h.retention.CreatePolicy(r.Context(), policyReq)
+	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to create retention policy")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to create policy")
 		return
@@ -188,22 +205,20 @@ func (h *Handler) getRetentionPolicy(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateRetentionPolicy(w http.ResponseWriter, r *http.Request) {
 	policyID := chi.URLParam(r, "policyID")
 
-	var policy models.RetentionPolicy
-	if err := json.NewDecoder(r.Body).Decode(&policy); err != nil {
+	var req models.UpdateRetentionPolicyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	policy.ID = policyID
 
-	if err := h.retention.UpdatePolicy(r.Context(), &policy); err != nil {
+	policy, err := h.retention.UpdatePolicy(r.Context(), policyID, &req)
+	if err != nil {
 		h.logger.Error().Err(err).Str("policy_id", policyID).Msg("Failed to update policy")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to update policy")
 		return
 	}
 
-	h.jsonResponse(w, http.StatusOK, map[string]string{
-		"status": "updated",
-	})
+	h.jsonResponse(w, http.StatusOK, policy)
 }
 
 func (h *Handler) deleteRetentionPolicy(w http.ResponseWriter, r *http.Request) {
@@ -223,13 +238,15 @@ func (h *Handler) deleteRetentionPolicy(w http.ResponseWriter, r *http.Request) 
 // Legal hold handlers
 
 type CreateLegalHoldRequest struct {
-	DomainID    string   `json:"domain_id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	CaseID      string   `json:"case_id"`
-	Custodians  []string `json:"custodians"`
-	Query       string   `json:"query"`
-	CreatedBy   string   `json:"created_by"`
+	OrgID       string     `json:"org_id"`
+	DomainID    string     `json:"domain_id,omitempty"`
+	UserID      string     `json:"user_id,omitempty"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	StartDate   string     `json:"start_date"`
+	EndDate     string     `json:"end_date,omitempty"`
+	Keywords    []string   `json:"keywords,omitempty"`
+	CreatedBy   string     `json:"created_by"`
 }
 
 func (h *Handler) createLegalHold(w http.ResponseWriter, r *http.Request) {
@@ -239,13 +256,32 @@ func (h *Handler) createLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "Invalid start_date format")
+		return
+	}
+
+	var endDate *time.Time
+	if req.EndDate != "" {
+		parsed, err := time.Parse("2006-01-02", req.EndDate)
+		if err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "Invalid end_date format")
+			return
+		}
+		endDate = &parsed
+	}
+
 	hold := &models.LegalHold{
+		OrgID:       req.OrgID,
 		DomainID:    req.DomainID,
+		UserID:      req.UserID,
 		Name:        req.Name,
 		Description: req.Description,
-		CaseID:      req.CaseID,
-		Custodians:  req.Custodians,
-		Query:       req.Query,
+		StartDate:   startDate,
+		EndDate:     endDate,
+		Keywords:    req.Keywords,
+		Active:      true,
 		CreatedBy:   req.CreatedBy,
 	}
 
@@ -260,9 +296,8 @@ func (h *Handler) createLegalHold(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 	holdID := chi.URLParam(r, "holdID")
-	releasedBy := r.URL.Query().Get("released_by")
 
-	if err := h.retention.ReleaseLegalHold(r.Context(), holdID, releasedBy); err != nil {
+	if err := h.retention.ReleaseLegalHold(r.Context(), holdID); err != nil {
 		h.logger.Error().Err(err).Str("hold_id", holdID).Msg("Failed to release legal hold")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to release legal hold")
 		return
@@ -274,11 +309,11 @@ func (h *Handler) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getDomainLegalHolds(w http.ResponseWriter, r *http.Request) {
-	domainID := chi.URLParam(r, "domainID")
+	orgID := chi.URLParam(r, "orgID")
 
-	holds, err := h.retention.GetActiveLegalHolds(r.Context(), domainID)
+	holds, err := h.retention.GetLegalHolds(r.Context(), orgID)
 	if err != nil {
-		h.logger.Error().Err(err).Str("domain_id", domainID).Msg("Failed to get legal holds")
+		h.logger.Error().Err(err).Str("org_id", orgID).Msg("Failed to get legal holds")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to get legal holds")
 		return
 	}

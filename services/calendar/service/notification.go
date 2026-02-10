@@ -329,13 +329,13 @@ func escapeICalText(s string) string {
 	return s
 }
 
-func statusToICalStatus(status string) string {
+func statusToICalStatus(status models.EventStatus) string {
 	switch status {
-	case "confirmed":
+	case models.EventStatusConfirmed:
 		return "CONFIRMED"
-	case "tentative":
+	case models.EventStatusTentative:
 		return "TENTATIVE"
-	case "cancelled":
+	case models.EventStatusCancelled:
 		return "CANCELLED"
 	default:
 		return "CONFIRMED"

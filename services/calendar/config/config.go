@@ -8,15 +8,18 @@ import (
 )
 
 type Config struct {
-	Server       ServerConfig       `yaml:"server"`
-	Database     DatabaseConfig     `yaml:"database"`
-	Notification NotificationConfig `yaml:"notification"`
+	Server        ServerConfig       `yaml:"server"`
+	Database      DatabaseConfig     `yaml:"database"`
+	Notification  NotificationConfig `yaml:"notification"`
+	SMTP          SMTPConfig         `yaml:"smtp"`
+	Notifications NotificationsConfig `yaml:"notifications"`
 }
 
 type ServerConfig struct {
 	Addr           string   `yaml:"addr"`
 	LogLevel       string   `yaml:"logLevel"`
 	AllowedOrigins []string `yaml:"allowedOrigins"`
+	PublicURL      string   `yaml:"publicURL"`
 }
 
 type DatabaseConfig struct {
@@ -31,6 +34,18 @@ type NotificationConfig struct {
 	SMTPPort       int    `yaml:"smtpPort"`
 	FromEmail      string `yaml:"fromEmail"`
 	ReminderLookAhead int `yaml:"reminderLookAhead"` // Minutes to look ahead for reminders
+}
+
+type SMTPConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
+type NotificationsConfig struct {
+	FromEmail string `yaml:"fromEmail"`
+	FromName  string `yaml:"fromName"`
 }
 
 func LoadConfig(path string) (*Config, error) {

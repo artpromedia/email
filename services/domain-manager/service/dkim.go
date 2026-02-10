@@ -38,7 +38,7 @@ func NewDKIMService(cfg *config.DKIMConfig, dns *config.DNSConfig, logger *zap.L
 // GenerateKeyPair generates a new DKIM RSA key pair
 func (s *DKIMService) GenerateKeyPair(domainID string, selector string) (*domain.DKIMKey, error) {
 	// Use configured key size
-	keySize := s.config.KeySize
+	keySize := s.config.DefaultKeySize
 	if keySize == 0 {
 		keySize = 2048
 	}
@@ -76,15 +76,20 @@ func (s *DKIMService) GenerateKeyPair(domainID string, selector string) (*domain
 		selector = s.dns.DefaultDKIMSelector
 	}
 
+	algorithm := s.config.DefaultAlgorithm
+	if algorithm == "" {
+		algorithm = "rsa-sha256"
+	}
+
 	now := time.Now()
 	key := &domain.DKIMKey{
 		ID:                  uuid.New().String(),
 		DomainID:            domainID,
 		Selector:            selector,
-		Algorithm:           s.config.Algorithm,
+		Algorithm:           algorithm,
 		KeySize:             keySize,
 		PublicKey:           string(publicKeyPEM),
-		PrivateKeyEncrypted: encryptedPrivateKey,
+		PrivateKeyEncrypted: []byte(encryptedPrivateKey),
 		IsActive:            false,
 		CreatedAt:           now,
 	}
@@ -190,18 +195,14 @@ func (s *DKIMService) GetDNSRecordName(selector, domainName string) string {
 func (s *DKIMService) ToPublic(key *domain.DKIMKey, domainName string) *domain.DKIMKeyPublic {
 	return &domain.DKIMKeyPublic{
 		ID:          key.ID,
-		DomainID:    key.DomainID,
 		Selector:    key.Selector,
 		Algorithm:   key.Algorithm,
 		KeySize:     key.KeySize,
 		PublicKey:   key.PublicKey,
 		DNSRecord:   s.GetDNSRecord(key, domainName),
-		DNSName:     s.GetDNSRecordName(key.Selector, domainName),
 		IsActive:    key.IsActive,
 		CreatedAt:   key.CreatedAt,
 		ActivatedAt: key.ActivatedAt,
-		ExpiresAt:   key.ExpiresAt,
-		RotatedAt:   key.RotatedAt,
 	}
 }
 

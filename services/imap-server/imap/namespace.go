@@ -3,6 +3,8 @@ package imap
 import (
 	"fmt"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // handleNamespace handles the NAMESPACE command
@@ -195,7 +197,7 @@ func (c *Connection) listFolders(reference, pattern string, options listReturnOp
 	for _, mb := range c.ctx.Mailboxes {
 		folders, err := c.repo.GetMailboxFolders(ctx, mb.ID)
 		if err != nil {
-			c.logger.Warn("Failed to get folders", err)
+			c.logger.Warn("Failed to get folders", zap.Error(err))
 			continue
 		}
 

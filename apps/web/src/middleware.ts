@@ -37,7 +37,8 @@ interface CSPEnvConfig {
 }
 
 function getCSPConfig(): CSPEnvConfig {
-  const isDevelopment = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+  const isDevelopment =
+    process.env["NODE_ENV"] === "development" || process.env["NODE_ENV"] === "test";
 
   const parseDomainsEnv = (envVar: string | undefined): string[] => {
     if (!envVar) return [];
@@ -49,9 +50,9 @@ function getCSPConfig(): CSPEnvConfig {
 
   // Build connect domains from API_URL and explicit CSP_CONNECT_DOMAINS
   const connectDomains: string[] = [];
-  if (process.env.API_URL) {
+  if (process.env["API_URL"]) {
     try {
-      const apiUrl = new URL(process.env.API_URL);
+      const apiUrl = new URL(process.env["API_URL"]);
       connectDomains.push(apiUrl.origin);
       // Add WebSocket equivalent
       const wsProtocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
@@ -60,24 +61,24 @@ function getCSPConfig(): CSPEnvConfig {
       // Invalid URL, skip
     }
   }
-  if (process.env.WEB_APP_URL) {
+  if (process.env["WEB_APP_URL"]) {
     try {
-      const webUrl = new URL(process.env.WEB_APP_URL);
+      const webUrl = new URL(process.env["WEB_APP_URL"]);
       connectDomains.push(webUrl.origin);
     } catch {
       // Invalid URL, skip
     }
   }
-  connectDomains.push(...parseDomainsEnv(process.env.CSP_CONNECT_DOMAINS));
+  connectDomains.push(...parseDomainsEnv(process.env["CSP_CONNECT_DOMAINS"]));
 
   return {
     connectDomains,
-    scriptDomains: parseDomainsEnv(process.env.CSP_SCRIPT_DOMAINS),
-    styleDomains: parseDomainsEnv(process.env.CSP_STYLE_DOMAINS),
-    fontDomains: parseDomainsEnv(process.env.CSP_FONT_DOMAINS),
-    imgDomains: parseDomainsEnv(process.env.CSP_IMG_DOMAINS),
-    reportUri: process.env.CSP_REPORT_URI || "/api/csp-report",
-    reportOnly: process.env.CSP_REPORT_ONLY === "true",
+    scriptDomains: parseDomainsEnv(process.env["CSP_SCRIPT_DOMAINS"]),
+    styleDomains: parseDomainsEnv(process.env["CSP_STYLE_DOMAINS"]),
+    fontDomains: parseDomainsEnv(process.env["CSP_FONT_DOMAINS"]),
+    imgDomains: parseDomainsEnv(process.env["CSP_IMG_DOMAINS"]),
+    reportUri: process.env["CSP_REPORT_URI"] || "/api/csp-report",
+    reportOnly: process.env["CSP_REPORT_ONLY"] === "true",
     isDevelopment,
   };
 }
@@ -208,8 +209,8 @@ class EdgeRedisRateLimiter {
   private readonly fallbackToAllow: boolean;
 
   constructor() {
-    this.baseUrl = process.env.UPSTASH_REDIS_REST_URL || "";
-    this.token = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+    this.baseUrl = process.env["UPSTASH_REDIS_REST_URL"] || "";
+    this.token = process.env["UPSTASH_REDIS_REST_TOKEN"] || "";
     this.prefix = "ratelimit";
     this.fallbackToAllow = true;
   }
@@ -281,7 +282,10 @@ class EdgeRedisRateLimiter {
     }
   }
 
-  async checkMultiple(identifier: string, configs: RateLimitConfig[]): Promise<RateLimitResult> {
+  async checkMultiple(
+    identifier: string,
+    configs: readonly RateLimitConfig[]
+  ): Promise<RateLimitResult> {
     if (configs.length === 0) {
       return {
         allowed: true,
@@ -302,7 +306,11 @@ class EdgeRedisRateLimiter {
     }
 
     // All passed - return the one with lowest remaining (results guaranteed non-empty)
-    return results.reduce((min, r) => (r.remaining < min.remaining ? r : min), results[0]);
+    const firstResult = results[0];
+    if (!firstResult) {
+      return this.fallbackResult(configs[0]?.limit ?? 100, Date.now() + 60000);
+    }
+    return results.reduce((min, r) => (r.remaining < min.remaining ? r : min), firstResult);
   }
 
   private fallbackResult(limit: number, resetAt: number): RateLimitResult {
@@ -346,7 +354,7 @@ class EdgeInMemoryRateLimiter {
     };
   }
 
-  checkMultiple(identifier: string, configs: RateLimitConfig[]): RateLimitResult {
+  checkMultiple(identifier: string, configs: readonly RateLimitConfig[]): RateLimitResult {
     if (configs.length === 0) {
       return {
         allowed: true,
@@ -362,7 +370,20 @@ class EdgeInMemoryRateLimiter {
     if (denied) return denied;
 
     // results guaranteed non-empty
-    return results.reduce((min, r) => (r.remaining < min.remaining ? r : min), results[0]);
+    const firstResult = results[0];
+    if (!firstResult) {
+      return this.fallbackResult(configs[0]?.limit ?? 100, Date.now() + 60000);
+    }
+    return results.reduce((min, r) => (r.remaining < min.remaining ? r : min), firstResult);
+  }
+
+  private fallbackResult(limit: number, resetAt: number): RateLimitResult {
+    return {
+      allowed: true,
+      remaining: limit,
+      resetAt: Math.floor(resetAt / 1000),
+      retryAfter: undefined,
+    };
   }
 
   private cleanup(): void {
@@ -379,7 +400,7 @@ class EdgeInMemoryRateLimiter {
 }
 
 // Create rate limiter - uses Redis in production, in-memory for development
-const rateLimiter = process.env.UPSTASH_REDIS_REST_URL
+const rateLimiter = process.env["UPSTASH_REDIS_REST_URL"]
   ? new EdgeRedisRateLimiter()
   : new EdgeInMemoryRateLimiter();
 

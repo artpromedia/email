@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,25 +23,39 @@ import (
 
 // Common errors
 var (
-	ErrInvalidCredentials  = errors.New("invalid email or password")
-	ErrAccountLocked       = errors.New("account is temporarily locked due to too many failed login attempts")
-	ErrAccountDisabled     = errors.New("account has been disabled")
-	ErrAccountPending      = errors.New("account is pending approval")
-	ErrDomainNotFound      = errors.New("domain not found or not verified")
-	ErrDomainNotVerified   = errors.New("domain is not verified")
-	ErrEmailExists         = errors.New("email address already exists")
-	ErrEmailNotFound       = errors.New("email address not found")
-	ErrCannotRemovePrimary = errors.New("cannot remove primary email address")
-	ErrEmailNotVerified    = errors.New("email address is not verified")
-	ErrInvalidToken        = errors.New("invalid or expired token")
-	ErrMFARequired         = errors.New("MFA verification required")
-	ErrMFAInvalidCode      = errors.New("invalid MFA code")
-	ErrSSOEnforced         = errors.New("password login is disabled for this domain, please use SSO")
-	ErrPermissionDenied    = errors.New("permission denied")
-	ErrSessionExpired      = errors.New("session has expired")
-	ErrInvalidPassword     = errors.New("password does not meet requirements")
-	ErrInvalidDomain       = errors.New("domain does not belong to your organization")
-	ErrTokenReuse          = errors.New("refresh token has already been used - possible token theft detected")
+	ErrInvalidCredentials       = errors.New("invalid email or password")
+	ErrAccountLocked            = errors.New("account is temporarily locked due to too many failed login attempts")
+	ErrAccountDisabled          = errors.New("account has been disabled")
+	ErrAccountPending           = errors.New("account is pending approval")
+	ErrDomainNotFound           = errors.New("domain not found or not verified")
+	ErrDomainNotVerified        = errors.New("domain is not verified")
+	ErrEmailExists              = errors.New("email address already exists")
+	ErrEmailAlreadyExists       = errors.New("email address already exists")
+	ErrEmailNotFound            = errors.New("email address not found")
+	ErrCannotRemovePrimary      = errors.New("cannot remove primary email address")
+	ErrCannotDeletePrimaryEmail = errors.New("cannot delete primary email address")
+	ErrEmailNotVerified         = errors.New("email address is not verified")
+	ErrInvalidToken             = errors.New("invalid or expired token")
+	ErrMFARequired              = errors.New("MFA verification required")
+	ErrMFAInvalidCode           = errors.New("invalid MFA code")
+	ErrMFANotEnabled            = errors.New("MFA is not enabled")
+	ErrSSOEnforced              = errors.New("password login is disabled for this domain, please use SSO")
+	ErrSSORequired              = errors.New("this domain requires SSO login")
+	ErrSSONotConfigured         = errors.New("SSO is not configured for this domain")
+	ErrSSODisabled              = errors.New("SSO is disabled for this domain")
+	ErrInvalidSSOConfig         = errors.New("invalid SSO configuration")
+	ErrSSOProviderError         = errors.New("error communicating with SSO provider")
+	ErrSSOUserNotAllowed        = errors.New("user is not allowed to access this organization")
+	ErrSSOStateInvalid          = errors.New("invalid or expired SSO state")
+	ErrSSOStateExpired          = errors.New("SSO state has expired")
+	ErrPermissionDenied         = errors.New("permission denied")
+	ErrSessionExpired           = errors.New("session has expired")
+	ErrSessionNotFound          = errors.New("session not found")
+	ErrInvalidPassword          = errors.New("password does not meet requirements")
+	ErrPasswordTooWeak          = errors.New("password does not meet security requirements")
+	ErrInvalidDomain            = errors.New("domain does not belong to your organization")
+	ErrDomainAccessDenied       = errors.New("you don't have access to this domain")
+	ErrTokenReuse               = errors.New("refresh token has already been used - possible token theft detected")
 )
 
 // AuthService provides authentication operations.
@@ -900,6 +915,426 @@ func (s *AuthService) RevokeSession(ctx context.Context, userID, sessionID uuid.
 	}
 
 	return nil
+}
+
+// VerifyMFAParams holds parameters for MFA verification during login.
+type VerifyMFAParams struct {
+	MFAToken  string
+	Code      string
+	IPAddress string
+	UserAgent string
+}
+
+// VerifyMFA completes MFA verification during login and returns tokens.
+func (s *AuthService) VerifyMFA(ctx context.Context, req *models.MFAVerifyRequest, ipAddress, userAgent string) (*token.TokenPair, error) {
+	// Decode MFA pending token to get user ID
+	decoded, err := base64.URLEncoding.DecodeString(req.MFAToken)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	parts := strings.SplitN(string(decoded), ":", 2)
+	if len(parts) != 2 {
+		return nil, ErrInvalidToken
+	}
+
+	userID, err := uuid.Parse(parts[0])
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	// Check token timestamp (5 minute expiry)
+	var timestamp int64
+	fmt.Sscanf(parts[1], "%d", &timestamp)
+	if time.Now().Unix()-timestamp > 300 {
+		return nil, ErrInvalidToken
+	}
+
+	// Get user
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Verify MFA code
+	if !s.verifyMFACode(user, req.Code) {
+		s.recordLoginAttempt(ctx, &user.ID, user.Email, ipAddress, userAgent, false, "invalid_mfa_code", "mfa")
+		return nil, ErrMFAInvalidCode
+	}
+
+	// Get user's primary domain from email
+	var domainID uuid.UUID
+	emailParts := strings.Split(user.Email, "@")
+	if len(emailParts) == 2 {
+		domain, err := s.repo.GetDomainByName(ctx, emailParts[1])
+		if err == nil {
+			domainID = domain.ID
+		}
+	}
+
+	// Generate tokens
+	tokenPair, err := s.generateTokensForUser(ctx, user, domainID, ipAddress, userAgent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+
+	// Record successful login
+	s.recordLoginAttempt(ctx, &user.ID, user.Email, ipAddress, userAgent, true, "", "mfa")
+
+	return tokenPair, nil
+}
+
+// ResendVerificationEmail resends a verification email for a user's email address.
+func (s *AuthService) ResendVerificationEmail(ctx context.Context, userID, emailID uuid.UUID) error {
+	// Get user for display name
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Get the email address
+	emails, err := s.repo.GetUserEmailAddresses(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get email addresses: %w", err)
+	}
+
+	var targetEmail *models.UserEmailAddress
+	for _, e := range emails {
+		if e.ID == emailID {
+			targetEmail = &e
+			break
+		}
+	}
+
+	if targetEmail == nil {
+		return ErrEmailNotFound
+	}
+
+	if targetEmail.IsVerified {
+		return fmt.Errorf("email is already verified")
+	}
+
+	// Generate new verification token
+	verificationToken := generateSecureToken()
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+	// Update the email with new verification token
+	err = s.repo.UpdateEmailVerificationToken(ctx, emailID, verificationToken, expiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to update verification token: %w", err)
+	}
+
+	// Send verification email
+	if s.emailService != nil {
+		go func() {
+			s.emailService.SendVerificationEmail(targetEmail.EmailAddress, user.DisplayName, verificationToken)
+		}()
+	}
+
+	return nil
+}
+
+// UpdateProfile updates a user's profile information.
+func (s *AuthService) UpdateProfile(ctx context.Context, userID uuid.UUID, req *models.UpdateProfileRequest) (*models.UserResponse, error) {
+	// Get existing user
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Update fields if provided
+	if req.DisplayName != "" {
+		user.DisplayName = req.DisplayName
+	}
+	if req.AvatarURL != nil {
+		user.AvatarURL = sql.NullString{String: *req.AvatarURL, Valid: *req.AvatarURL != ""}
+	}
+	if req.Timezone != "" {
+		user.Timezone = req.Timezone
+	}
+	if req.Locale != "" {
+		user.Locale = req.Locale
+	}
+
+	// Update user in database
+	err = s.repo.UpdateUser(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	// Return updated user
+	return s.GetUserWithContext(ctx, userID)
+}
+
+// ChangePassword changes a user's password after verifying their current password.
+func (s *AuthService) ChangePassword(ctx context.Context, userID uuid.UUID, req *models.ChangePasswordRequest) error {
+	// Get user
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Verify current password
+	if !user.PasswordHash.Valid {
+		return fmt.Errorf("no password set for this account")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(req.CurrentPassword)); err != nil {
+		return ErrInvalidCredentials
+	}
+
+	// Validate new password
+	passwordPolicy := models.DefaultPasswordPolicy()
+	if err := s.validatePassword(req.NewPassword, passwordPolicy); err != nil {
+		return err
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password
+	user.PasswordHash = sql.NullString{String: string(hashedPassword), Valid: true}
+	user.PasswordChangedAt = sql.NullTime{Time: time.Now(), Valid: true}
+
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}
+
+// ForgotPassword initiates the password reset process.
+func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
+	// Look up user by email
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		// Don't reveal if user exists
+		return nil
+	}
+
+	// Generate password reset token
+	resetToken := generateSecureToken()
+	expiresAt := time.Now().Add(1 * time.Hour)
+
+	// Store reset token
+	err = s.repo.CreatePasswordResetToken(ctx, user.ID, resetToken, expiresAt)
+	if err != nil {
+		return nil // Don't reveal errors
+	}
+
+	// Build reset URL
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", s.config.SSO.BaseURL, resetToken)
+
+	// Send password reset email
+	if s.emailService != nil {
+		go func() {
+			s.emailService.SendPasswordResetEmail(email, user.DisplayName, resetToken, resetURL)
+		}()
+	}
+
+	return nil
+}
+
+// ResetPassword completes the password reset process.
+func (s *AuthService) ResetPassword(ctx context.Context, req *models.ResetPasswordRequest) error {
+	// Validate reset token and get user ID
+	userID, err := s.repo.ValidatePasswordResetToken(ctx, req.Token)
+	if err != nil {
+		return ErrInvalidToken
+	}
+
+	// Get user
+	user, err := s.repo.GetUserByID(ctx, *userID)
+	if err != nil {
+		return ErrInvalidToken
+	}
+
+	// Validate new password
+	passwordPolicy := models.DefaultPasswordPolicy()
+	if err := s.validatePassword(req.NewPassword, passwordPolicy); err != nil {
+		return err
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password
+	user.PasswordHash = sql.NullString{String: string(hashedPassword), Valid: true}
+	user.PasswordChangedAt = sql.NullTime{Time: time.Now(), Valid: true}
+
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	// Invalidate the reset token
+	_ = s.repo.InvalidatePasswordResetToken(ctx, req.Token)
+
+	return nil
+}
+
+// MFASetupResponse holds the response for MFA setup.
+type MFASetupResponse struct {
+	Secret    string `json:"secret"`
+	QRCode    string `json:"qr_code"`
+	Enabled   bool   `json:"enabled"`
+}
+
+// EnableMFA enables MFA for the user and returns the setup info.
+func (s *AuthService) EnableMFA(ctx context.Context, userID uuid.UUID, req *models.EnableMFARequest) (*MFASetupResponse, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// If code is provided, verify and enable MFA
+	if req != nil && req.Code != "" {
+		if !user.MFASecret.Valid || user.MFASecret.String == "" {
+			return nil, fmt.Errorf("MFA setup not initiated")
+		}
+
+		if !totp.Validate(req.Code, user.MFASecret.String) {
+			return nil, ErrMFAInvalidCode
+		}
+
+		user.MFAEnabled = true
+		if err := s.repo.UpdateUser(ctx, user); err != nil {
+			return nil, fmt.Errorf("failed to enable MFA: %w", err)
+		}
+
+		return &MFASetupResponse{Enabled: true}, nil
+	}
+
+	// Generate new TOTP secret
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      s.config.Security.MFAIssuer,
+		AccountName: user.Email,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate TOTP key: %w", err)
+	}
+
+	// Store the secret temporarily (not enabled until verified)
+	user.MFASecret = sql.NullString{String: key.Secret(), Valid: true}
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return nil, fmt.Errorf("failed to save MFA secret: %w", err)
+	}
+
+	return &MFASetupResponse{
+		Secret: key.Secret(),
+		QRCode: key.URL(),
+	}, nil
+}
+
+// DisableMFA disables MFA for the user after verifying password and code.
+func (s *AuthService) DisableMFA(ctx context.Context, userID uuid.UUID, req *models.DisableMFARequest) error {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if !user.MFAEnabled {
+		return ErrMFANotEnabled
+	}
+
+	// Verify password
+	if !user.PasswordHash.Valid {
+		return fmt.Errorf("no password set for this account")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(req.Password)); err != nil {
+		return ErrInvalidCredentials
+	}
+
+	// Verify MFA code
+	if !totp.Validate(req.Code, user.MFASecret.String) {
+		return ErrMFAInvalidCode
+	}
+
+	// Disable MFA
+	user.MFAEnabled = false
+	user.MFASecret = sql.NullString{}
+	user.MFABackupCodes = sql.NullString{}
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return fmt.Errorf("failed to disable MFA: %w", err)
+	}
+
+	return nil
+}
+
+// GetBackupCodes returns the MFA backup codes for the user.
+func (s *AuthService) GetBackupCodes(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if !user.MFAEnabled {
+		return nil, ErrMFANotEnabled
+	}
+
+	if !user.MFABackupCodes.Valid || user.MFABackupCodes.String == "" {
+		// Generate new backup codes if none exist
+		codes := s.generateBackupCodes()
+		codesJSON, _ := json.Marshal(codes)
+		user.MFABackupCodes = sql.NullString{String: string(codesJSON), Valid: true}
+		if err := s.repo.UpdateUser(ctx, user); err != nil {
+			return nil, fmt.Errorf("failed to save backup codes: %w", err)
+		}
+		return codes, nil
+	}
+
+	var codes []string
+	if err := json.Unmarshal([]byte(user.MFABackupCodes.String), &codes); err != nil {
+		return nil, fmt.Errorf("failed to parse backup codes: %w", err)
+	}
+
+	return codes, nil
+}
+
+// RegenerateBackupCodes regenerates MFA backup codes after verifying password.
+func (s *AuthService) RegenerateBackupCodes(ctx context.Context, userID uuid.UUID, req *models.RegenerateBackupCodesRequest) ([]string, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if !user.MFAEnabled {
+		return nil, ErrMFANotEnabled
+	}
+
+	// Verify password
+	if !user.PasswordHash.Valid {
+		return nil, fmt.Errorf("no password set for this account")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(req.Password)); err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Generate new backup codes
+	codes := s.generateBackupCodes()
+	codesJSON, _ := json.Marshal(codes)
+	user.MFABackupCodes = sql.NullString{String: string(codesJSON), Valid: true}
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return nil, fmt.Errorf("failed to save backup codes: %w", err)
+	}
+
+	return codes, nil
+}
+
+// generateBackupCodes generates a set of 10 backup codes.
+func (s *AuthService) generateBackupCodes() []string {
+	codes := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		b := make([]byte, 5)
+		rand.Read(b)
+		codes[i] = fmt.Sprintf("%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4])
+	}
+	return codes
 }
 
 // ============================================================

@@ -550,7 +550,7 @@ export function EmailCompose({ context, onClose, className }: EmailComposeProps)
             : undefined,
       };
 
-      await sendEmail.mutateAsync(request);
+      await sendEmail.mutateAsync({ request });
 
       // Close compose on success
       closeCompose();

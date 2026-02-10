@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/artpromedia/email/services/transactional-api/middleware"
-	"github.com/artpromedia/email/services/transactional-api/models"
-	"github.com/artpromedia/email/services/transactional-api/repository"
+	"transactional-api/middleware"
+	"transactional-api/models"
+	"transactional-api/repository"
 	"github.com/go-chi/chi/v5"
 )
 

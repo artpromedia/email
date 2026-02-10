@@ -45,11 +45,11 @@ func main() {
 
 	// Connect to database
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		cfg.Database.Username,
+		cfg.Database.User,
 		cfg.Database.Password,
 		cfg.Database.Host,
 		cfg.Database.Port,
-		cfg.Database.Database,
+		cfg.Database.Name,
 		cfg.Database.SSLMode,
 	)
 
@@ -58,10 +58,10 @@ func main() {
 		logger.Fatal("Failed to parse database URL", zap.Error(err))
 	}
 
-	poolConfig.MaxConns = int32(cfg.Database.MaxConnections)
-	poolConfig.MinConns = int32(cfg.Database.MinConnections)
-	poolConfig.MaxConnLifetime = cfg.Database.MaxLifetime
-	poolConfig.MaxConnIdleTime = cfg.Database.IdleTimeout
+	poolConfig.MaxConns = int32(cfg.Database.MaxConns)
+	poolConfig.MinConns = int32(cfg.Database.MinConns)
+	poolConfig.MaxConnLifetime = cfg.Database.MaxConnLifetime
+	poolConfig.MaxConnIdleTime = cfg.Database.MaxConnIdleTime
 
 	db, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {

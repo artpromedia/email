@@ -7,7 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 )
 
 // Router handles message routing decisions
@@ -106,14 +106,14 @@ func (r *Router) routeRecipient(ctx context.Context, msg *MessageContext, recipi
 		if r.ruleMatches(msg, recipient, rule) {
 			result = r.applyRule(rule)
 			result.MatchedRule = rule
-			
+
 			r.logger.Debug("Routing rule matched",
 				zap.String("rule", rule.Name),
 				zap.String("recipient", recipient),
 				zap.String("action", string(result.Action)))
-			
+
 			// Stop processing if this is a terminal action
-			if result.Action == ActionReject || 
+			if result.Action == ActionReject ||
 			   result.Action == ActionDiscard ||
 			   result.Action == ActionQuarantine {
 				return result

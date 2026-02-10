@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
@@ -193,7 +192,7 @@ func (s *Service) AddReference(ctx context.Context, dedupID string, ref *models.
 
 	// Increment ref count
 	updateQuery := `
-		UPDATE deduplicated_attachments 
+		UPDATE deduplicated_attachments
 		SET ref_count = ref_count + 1, last_seen_at = $1, updated_at = $1
 		WHERE id = $2
 	`
@@ -239,7 +238,7 @@ func (s *Service) RemoveReference(ctx context.Context, refID string) error {
 
 	// Decrement ref count
 	updateQuery := `
-		UPDATE deduplicated_attachments 
+		UPDATE deduplicated_attachments
 		SET ref_count = GREATEST(0, ref_count - 1), updated_at = $1
 		WHERE id = $2
 		RETURNING ref_count, storage_key
@@ -400,7 +399,7 @@ func (s *Service) CleanupOrphans(ctx context.Context) (int, int64, error) {
 	cutoff := time.Now().Add(-s.dedupCfg.OrphanGracePeriod)
 
 	query := `
-		SELECT id, storage_key, size 
+		SELECT id, storage_key, size
 		FROM deduplicated_attachments
 		WHERE ref_count = 0 AND updated_at < $1
 	`

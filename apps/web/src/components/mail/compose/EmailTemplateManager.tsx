@@ -233,7 +233,10 @@ function TemplateEditor({ template, categories, onSave, onCancel }: TemplateEdit
     let match;
 
     while ((match = regex.exec(allText)) !== null) {
-      matches.add(match[1]);
+      const captured = match[1];
+      if (captured) {
+        matches.add(captured);
+      }
     }
 
     // Add detected variables that don't exist

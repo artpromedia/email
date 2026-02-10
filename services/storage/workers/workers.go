@@ -43,7 +43,7 @@ func NewRetentionWorker(
 func (w *RetentionWorker) Start(ctx context.Context) {
 	w.logger.Info().Msg("Starting retention worker")
 
-	ticker := time.NewTicker(time.Duration(w.cfg.Workers.RetentionIntervalMinutes) * time.Minute)
+	ticker := time.NewTicker(w.cfg.RetentionCheckInterval)
 	defer ticker.Stop()
 
 	// Run immediately on start
@@ -125,16 +125,16 @@ func (w *RetentionWorker) processDomainRetention(ctx context.Context, domainID s
 	w.logger.Debug().Str("domain_id", domainID).Msg("Processing domain retention")
 
 	// Process using the retention service
-	deleted, archived, err := w.retention.ProcessDomainRetention(ctx, domainID)
+	summary, err := w.retention.ProcessDomainRetention(ctx, domainID)
 	if err != nil {
 		return err
 	}
 
-	if deleted > 0 || archived > 0 {
+	if summary != nil && (summary.Deleted > 0 || summary.Archived > 0) {
 		w.logger.Info().
 			Str("domain_id", domainID).
-			Int("deleted", deleted).
-			Int("archived", archived).
+			Int64("deleted", summary.Deleted).
+			Int64("archived", summary.Archived).
 			Msg("Retention processing complete")
 	}
 

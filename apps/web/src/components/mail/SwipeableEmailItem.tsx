@@ -141,8 +141,8 @@ function ActionBackground({ action, progress, direction }: ActionBackgroundProps
 export function SwipeableEmailItem({
   children,
   emailId,
-  _isRead = true,
-  _isStarred = false,
+  isRead: _isRead = true,
+  isStarred: _isStarred = false,
   onArchive,
   onDelete,
   onToggleRead,
@@ -286,8 +286,6 @@ export function SwipeableEmailItem({
 
   // Calculate progress for visual feedback
   const progress = Math.abs(offsetX) / threshold;
-  const direction = offsetX > 0 ? "right" : "left";
-  const _currentAction = getActionForDirection(direction);
 
   return (
     <div

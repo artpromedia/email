@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 )
 
 // Repository errors

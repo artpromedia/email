@@ -16,12 +16,12 @@ tls:
   require_starttls: true
 
 database:
-  host: "postgres"
+  host: "${DB_HOST:postgres}"
   port: 5432
-  name: "email"
-  user: "imap_service"
+  database: "${DB_NAME:oonrumail}"
+  username: "${DB_USER:oonrumail}"
   password: "${DB_PASSWORD}"
-  ssl_mode: "require"
+  ssl_mode: "disable"
   max_connections: 100
   min_connections: 10
 
@@ -33,9 +33,9 @@ redis:
   pool_size: 50
 
 storage:
-  type: "s3"  # "file" or "s3"
+  type: "s3" # "file" or "s3"
   path: "/var/mail/storage"
-  
+
   # S3 configuration
   s3:
     endpoint: "https://s3.amazonaws.com"
@@ -82,16 +82,16 @@ imap:
 
   # Enable QRESYNC for fast mailbox resync
   qresync: true
-  
+
   # Enable CONDSTORE for flag tracking
   condstore: true
-  
+
   # Enable compression
   compress: true
-  
+
   # Maximum message size (25MB) - aligned with SMTP and industry standard (Gmail)
   max_message_size: 26214400
-  
+
   # Maximum simultaneous commands
   max_commands: 5
 

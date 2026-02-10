@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -154,11 +155,11 @@ func (h *Handler) storeMessage(w http.ResponseWriter, r *http.Request) {
 		OrgID:     req.OrgID,
 		DomainID:  req.DomainID,
 		UserID:    req.UserID,
-		MailboxID: req.MailboxID,
+		Type:      models.StorageTypeMessage,
 		MessageID: req.MessageID,
 	}
 
-	uploadURL, err := h.storage.GetUploadURL(r.Context(), key.Build(), 15*time.Minute)
+	uploadURL, err := h.storage.GetPresignedUploadURL(r.Context(), key.String(), "message/rfc822", 15*time.Minute)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to generate upload URL")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to generate upload URL")
@@ -167,7 +168,7 @@ func (h *Handler) storeMessage(w http.ResponseWriter, r *http.Request) {
 
 	h.jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"upload_url":  uploadURL,
-		"storage_key": key.Build(),
+		"storage_key": key.String(),
 		"expires_in":  "15m",
 	})
 }
@@ -177,34 +178,30 @@ func (h *Handler) getMessage(w http.ResponseWriter, r *http.Request) {
 	orgID := r.URL.Query().Get("org_id")
 	domainID := r.URL.Query().Get("domain_id")
 	userID := r.URL.Query().Get("user_id")
-	mailboxID := r.URL.Query().Get("mailbox_id")
 
 	key := models.StorageKey{
 		OrgID:     orgID,
 		DomainID:  domainID,
 		UserID:    userID,
-		MailboxID: mailboxID,
+		Type:      models.StorageTypeMessage,
 		MessageID: messageID,
 	}
 
-	data, metadata, err := h.storage.GetMessage(r.Context(), key)
+	reader, metadata, err := h.storage.GetMessage(r.Context(), orgID, domainID, userID, messageID)
 	if err != nil {
-		h.logger.Error().Err(err).Str("key", key.Build()).Msg("Failed to get message")
+		h.logger.Error().Err(err).Str("key", key.String()).Msg("Failed to get message")
 		h.errorResponse(w, http.StatusNotFound, "Message not found")
 		return
 	}
+	defer reader.Close()
 
 	// Set headers
-	if metadata.ContentType != "" {
-		w.Header().Set("Content-Type", metadata.ContentType)
-	} else {
-		w.Header().Set("Content-Type", "message/rfc822")
-	}
+	w.Header().Set("Content-Type", "message/rfc822")
 	w.Header().Set("Content-Length", strconv.FormatInt(metadata.Size, 10))
-	w.Header().Set("X-Storage-Key", key.Build())
+	w.Header().Set("X-Storage-Key", key.String())
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	io.Copy(w, reader)
 }
 
 func (h *Handler) deleteMessage(w http.ResponseWriter, r *http.Request) {
@@ -212,18 +209,17 @@ func (h *Handler) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	orgID := r.URL.Query().Get("org_id")
 	domainID := r.URL.Query().Get("domain_id")
 	userID := r.URL.Query().Get("user_id")
-	mailboxID := r.URL.Query().Get("mailbox_id")
 
 	key := models.StorageKey{
 		OrgID:     orgID,
 		DomainID:  domainID,
 		UserID:    userID,
-		MailboxID: mailboxID,
+		Type:      models.StorageTypeMessage,
 		MessageID: messageID,
 	}
 
-	if err := h.storage.DeleteMessage(r.Context(), key); err != nil {
-		h.logger.Error().Err(err).Str("key", key.Build()).Msg("Failed to delete message")
+	if err := h.storage.DeleteMessage(r.Context(), orgID, domainID, userID, messageID); err != nil {
+		h.logger.Error().Err(err).Str("key", key.String()).Msg("Failed to delete message")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to delete message")
 		return
 	}
@@ -239,7 +235,6 @@ func (h *Handler) getMessagePresignedURL(w http.ResponseWriter, r *http.Request)
 	orgID := r.URL.Query().Get("org_id")
 	domainID := r.URL.Query().Get("domain_id")
 	userID := r.URL.Query().Get("user_id")
-	mailboxID := r.URL.Query().Get("mailbox_id")
 	expiryStr := r.URL.Query().Get("expiry")
 
 	expiry := 15 * time.Minute
@@ -253,11 +248,11 @@ func (h *Handler) getMessagePresignedURL(w http.ResponseWriter, r *http.Request)
 		OrgID:     orgID,
 		DomainID:  domainID,
 		UserID:    userID,
-		MailboxID: mailboxID,
+		Type:      models.StorageTypeMessage,
 		MessageID: messageID,
 	}
 
-	url, err := h.storage.GetDownloadURL(r.Context(), key.Build(), expiry)
+	url, err := h.storage.GetPresignedDownloadURL(r.Context(), key.String(), expiry)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to generate presigned URL")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to generate URL")
@@ -311,16 +306,9 @@ func (h *Handler) storeAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate upload URL for new attachment
-	key := models.StorageKey{
-		OrgID:     req.OrgID,
-		DomainID:  req.DomainID,
-		UserID:    req.UserID,
-		MailboxID: req.MailboxID,
-		MessageID: req.MessageID,
-	}
-	attachmentKey := key.AttachmentKey(req.Filename)
+	attachmentKey := models.NewAttachmentKey(req.OrgID, req.DomainID, req.UserID, req.Filename)
 
-	uploadURL, err := h.storage.GetUploadURL(r.Context(), attachmentKey, 15*time.Minute)
+	uploadURL, err := h.storage.GetPresignedUploadURL(r.Context(), attachmentKey.String(), req.ContentType, 15*time.Minute)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to generate upload URL")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to generate upload URL")
@@ -330,7 +318,7 @@ func (h *Handler) storeAttachment(w http.ResponseWriter, r *http.Request) {
 	h.jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"status":      "new",
 		"upload_url":  uploadURL,
-		"storage_key": attachmentKey,
+		"storage_key": attachmentKey.String(),
 		"expires_in":  "15m",
 	})
 }
@@ -345,18 +333,19 @@ func (h *Handler) getAttachment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := h.storage.GetRaw(r.Context(), dedup.StorageKey)
+	reader, _, err := h.storage.Get(r.Context(), dedup.StorageKey)
 	if err != nil {
 		h.logger.Error().Err(err).Str("key", dedup.StorageKey).Msg("Failed to get attachment data")
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to retrieve attachment")
 		return
 	}
+	defer reader.Close()
 
 	w.Header().Set("Content-Type", ref.ContentType)
 	w.Header().Set("Content-Length", strconv.FormatInt(ref.Size, 10))
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+ref.Filename+"\"")
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	io.Copy(w, reader)
 }
 
 func (h *Handler) deleteAttachment(w http.ResponseWriter, r *http.Request) {
@@ -391,7 +380,7 @@ func (h *Handler) getAttachmentPresignedURL(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	url, err := h.storage.GetDownloadURL(r.Context(), dedup.StorageKey, expiry)
+	url, err := h.storage.GetPresignedDownloadURL(r.Context(), dedup.StorageKey, expiry)
 	if err != nil {
 		h.errorResponse(w, http.StatusInternalServerError, "Failed to generate URL")
 		return
@@ -423,10 +412,11 @@ func (h *Handler) getMessageAttachments(w http.ResponseWriter, r *http.Request) 
 
 // Cross-domain handlers
 type CopyBetweenDomainsRequest struct {
-	SourceOrgID    string `json:"source_org_id"`
-	SourceDomainID string `json:"source_domain_id"`
-	TargetOrgID    string `json:"target_org_id"`
-	TargetDomainID string `json:"target_domain_id"`
+	SourceOrgID    string   `json:"source_org_id"`
+	SourceDomainID string   `json:"source_domain_id"`
+	TargetOrgID    string   `json:"target_org_id"`
+	TargetDomainID string   `json:"target_domain_id"`
+	TargetUserID   string   `json:"target_user_id"`
 	Keys           []string `json:"keys"`
 }
 
@@ -438,12 +428,15 @@ func (h *Handler) copyBetweenDomains(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, key := range req.Keys {
-		if err := h.storage.CopyBetweenDomains(
-			r.Context(),
-			req.SourceOrgID, req.SourceDomainID,
-			req.TargetOrgID, req.TargetDomainID,
-			key,
-		); err != nil {
+		copyReq := &models.CopyRequest{
+			SourceOrgID:    req.SourceOrgID,
+			SourceDomainID: req.SourceDomainID,
+			SourceKey:      key,
+			DestOrgID:      req.TargetOrgID,
+			DestDomainID:   req.TargetDomainID,
+			DestUserID:     req.TargetUserID,
+		}
+		if err := h.storage.CopyBetweenDomains(r.Context(), copyReq); err != nil {
 			h.logger.Error().Err(err).Str("key", key).Msg("Failed to copy between domains")
 			h.errorResponse(w, http.StatusInternalServerError, "Copy failed")
 			return
@@ -464,12 +457,18 @@ func (h *Handler) moveBetweenDomains(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, key := range req.Keys {
-		if err := h.storage.MoveBetweenDomains(
-			r.Context(),
-			req.SourceOrgID, req.SourceDomainID,
-			req.TargetOrgID, req.TargetDomainID,
-			key,
-		); err != nil {
+		moveReq := &models.MoveRequest{
+			CopyRequest: models.CopyRequest{
+				SourceOrgID:    req.SourceOrgID,
+				SourceDomainID: req.SourceDomainID,
+				SourceKey:      key,
+				DestOrgID:      req.TargetOrgID,
+				DestDomainID:   req.TargetDomainID,
+				DestUserID:     req.TargetUserID,
+			},
+			DeleteSource: true,
+		}
+		if err := h.storage.MoveBetweenDomains(r.Context(), moveReq); err != nil {
 			h.logger.Error().Err(err).Str("key", key).Msg("Failed to move between domains")
 			h.errorResponse(w, http.StatusInternalServerError, "Move failed")
 			return

@@ -31,10 +31,7 @@ func main() {
 	initLogger()
 
 	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to load configuration")
-	}
+	cfg := config.Load()
 
 	log.Info().
 		Str("environment", cfg.Server.Environment).
@@ -59,10 +56,7 @@ func main() {
 	repo := repository.New(dbPool)
 
 	// Initialize token service
-	tokenService, err := token.NewService(cfg.JWT.AccessSecret, cfg.JWT.RefreshSecret, cfg.JWT.AccessExpiry, cfg.JWT.RefreshExpiry)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize token service")
-	}
+	tokenService := token.NewService(&cfg.JWT)
 
 	// Initialize services
 	authService := service.NewAuthService(repo, tokenService, cfg)
@@ -84,9 +78,9 @@ func main() {
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      router,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
-		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
 	// Start server in goroutine
@@ -144,14 +138,25 @@ func initDatabase(cfg *config.Config) (*pgxpool.Pool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	poolConfig, err := pgxpool.ParseConfig(cfg.Database.URL)
+	// Build connection string from config
+	connStr := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Database,
+		cfg.Database.SSLMode,
+	)
+
+	poolConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse database URL: %w", err)
+		return nil, fmt.Errorf("failed to parse database config: %w", err)
 	}
 
 	poolConfig.MaxConns = int32(cfg.Database.MaxOpenConns)
 	poolConfig.MinConns = int32(cfg.Database.MaxIdleConns)
-	poolConfig.MaxConnLifetime = time.Duration(cfg.Database.ConnMaxLifetime) * time.Minute
+	poolConfig.MaxConnLifetime = cfg.Database.MaxLifetime
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
@@ -172,7 +177,7 @@ func initRedis(cfg *config.Config) (*redis.Client, error) {
 	defer cancel()
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Addr,
+		Addr:     fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port),
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
@@ -207,7 +212,7 @@ func createRouter(
 
 	// CORS configuration
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.Server.AllowedOrigins,
+		AllowedOrigins:   cfg.Security.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID", "X-Domain-ID"},
 		ExposedHeaders:   []string{"X-Request-ID"},

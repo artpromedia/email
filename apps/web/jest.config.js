@@ -24,6 +24,10 @@ const customJestConfig = {
       statements: 6,
     },
   },
+  transform: {
+    "^.+\\.(ts|tsx)$": ["babel-jest", { configFile: "./babel.config.js" }],
+  },
+  transformIgnorePatterns: ["/node_modules/", "^.+\\.module\\.(css|sass|scss)$"],
 };
 
 module.exports = createJestConfig(customJestConfig);

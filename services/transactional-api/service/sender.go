@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/config"
-	"github.com/artpromedia/email/services/transactional-api/models"
-	"github.com/artpromedia/email/services/transactional-api/repository"
+	"transactional-api/config"
+	"transactional-api/models"
+	"transactional-api/repository"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -79,7 +79,7 @@ func (s *SenderService) Send(ctx context.Context, req *models.SendRequest, apiKe
 			return nil, fmt.Errorf("invalid template_id: %w", err)
 		}
 
-		rendered, err := s.templateService.Render(ctx, templateID, req.Substitutions)
+		rendered, err := s.templateService.Render(ctx, templateID, apiKey.DomainID, req.Substitutions)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render template: %w", err)
 		}
@@ -109,8 +109,8 @@ func (s *SenderService) Send(ctx context.Context, req *models.SendRequest, apiKe
 	}
 
 	// Determine tracking settings
-	trackOpens := s.config.Tracking.Enabled
-	trackClicks := s.config.Tracking.Enabled
+	trackOpens := s.config.Tracking.EnableOpen
+	trackClicks := s.config.Tracking.EnableClick
 	if req.TrackOpens != nil {
 		trackOpens = *req.TrackOpens
 	}
@@ -271,19 +271,19 @@ func (s *SenderService) filterSuppressedRecipients(ctx context.Context, domainID
 	var accepted []string
 	var rejected []models.RejectedRecipient
 
-	// Check all recipients against suppression list
-	checkResp, err := s.suppressionRepo.CheckMultiple(ctx, domainID, recipients)
-	if err != nil {
-		s.logger.Warn().Err(err).Msg("Failed to check suppression list, accepting all recipients")
-		return recipients, nil
-	}
-
+	// Check each recipient against suppression list
 	for _, email := range recipients {
-		status, ok := checkResp.Results[email]
-		if ok && status.Suppressed {
+		suppressed, suppressionType, err := s.suppressionRepo.Exists(ctx, domainID, email)
+		if err != nil {
+			s.logger.Warn().Err(err).Str("email", email).Msg("Failed to check suppression, accepting recipient")
+			accepted = append(accepted, email)
+			continue
+		}
+
+		if suppressed {
 			rejected = append(rejected, models.RejectedRecipient{
 				Email:  email,
-				Reason: string(status.Reason),
+				Reason: string(suppressionType),
 				Code:   "suppressed",
 			})
 		} else {

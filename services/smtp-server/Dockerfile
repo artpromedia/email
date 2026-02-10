@@ -9,11 +9,14 @@ WORKDIR /app
 # Copy go mod files
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download
+# Download dependencies and update go.sum
+RUN go mod download && go mod tidy
 
 # Copy source code
 COPY . .
+
+# Re-run go mod tidy with full source to ensure all dependencies
+RUN go mod tidy
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o smtp-server .

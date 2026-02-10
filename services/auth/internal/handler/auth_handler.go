@@ -10,6 +10,7 @@ import (
 	"github.com/artpromedia/email/services/auth/internal/middleware"
 	"github.com/artpromedia/email/services/auth/internal/models"
 	"github.com/artpromedia/email/services/auth/internal/service"
+	"github.com/artpromedia/email/services/auth/internal/token"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -90,7 +91,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	clientIP := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	response, err := h.authService.Register(r.Context(), &req, clientIP, userAgent)
+	params := service.RegisterParams{
+		Email:       req.Email,
+		Password:    req.Password,
+		DisplayName: req.DisplayName,
+		IPAddress:   clientIP,
+		UserAgent:   userAgent,
+	}
+
+	response, err := h.authService.Register(r.Context(), params)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -117,14 +126,24 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	clientIP := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	response, err := h.authService.Login(r.Context(), &req, clientIP, userAgent)
+	params := service.LoginParams{
+		Email:     req.Email,
+		Password:  req.Password,
+		MFACode:   req.MFACode,
+		IPAddress: clientIP,
+		UserAgent: userAgent,
+	}
+
+	response, err := h.authService.Login(r.Context(), params)
 	if err != nil {
 		handleServiceError(w, err)
 		return
 	}
 
-	// Set cookies for tokens (in addition to response body)
-	setTokenCookies(w, response)
+	// Set cookies for tokens if tokens were issued (not MFA pending)
+	if response.TokenPair != nil {
+		setTokenCookies(w, response.TokenPair)
+	}
 
 	respondJSON(w, http.StatusOK, response)
 }
@@ -133,7 +152,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // POST /api/auth/refresh
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var req models.RefreshTokenRequest
-	
+
 	// Try to get refresh token from cookie first
 	if cookie, err := r.Cookie("refresh_token"); err == nil {
 		req.RefreshToken = cookie.Value
@@ -213,7 +232,15 @@ func (h *AuthHandler) AddEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, err := h.authService.AddEmail(r.Context(), claims.UserID, &req)
+	params := service.AddEmailParams{
+		UserID:        claims.UserID,
+		Email:         req.Email,
+		CreateMailbox: req.CreateMailbox,
+		IPAddress:     r.RemoteAddr,
+		UserAgent:     r.UserAgent(),
+	}
+
+	email, err := h.authService.AddEmail(r.Context(), params)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -231,7 +258,7 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.authService.VerifyEmail(r.Context(), token)
+	_, err := h.authService.VerifyEmail(r.Context(), token)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -258,7 +285,7 @@ func (h *AuthHandler) DeleteEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.authService.DeleteEmail(r.Context(), claims.UserID, emailID)
+	err = h.authService.DeleteEmail(r.Context(), claims.UserID, emailID, r.RemoteAddr, r.UserAgent())
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -283,7 +310,7 @@ func (h *AuthHandler) SetPrimaryEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.authService.SetPrimaryEmail(r.Context(), claims.UserID, emailID)
+	err = h.authService.SetPrimaryEmail(r.Context(), claims.UserID, emailID, r.RemoteAddr, r.UserAgent())
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -455,7 +482,7 @@ func (h *AuthHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := h.authService.GetUserSessions(r.Context(), claims.UserID)
+	sessions, err := h.authService.GetUserSessions(r.Context(), claims.UserID, claims.SessionID)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -480,7 +507,7 @@ func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.authService.RevokeSession(r.Context(), claims.UserID, sessionID)
+	err = h.authService.RevokeSession(r.Context(), claims.UserID, sessionID, r.RemoteAddr, r.UserAgent())
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -501,7 +528,7 @@ func (h *AuthHandler) RevokeAllSessions(w http.ResponseWriter, r *http.Request) 
 	// Get current session ID from token
 	currentSessionID := claims.SessionID
 
-	err := h.authService.RevokeAllSessions(r.Context(), claims.UserID, currentSessionID)
+	err := h.authService.LogoutAllSessions(r.Context(), claims.UserID, &currentSessionID)
 	if err != nil {
 		handleServiceError(w, err)
 		return
@@ -623,7 +650,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	// Revoke current session
 	if claims.SessionID != uuid.Nil {
-		if err := h.authService.RevokeSession(r.Context(), claims.UserID, claims.SessionID); err != nil {
+		if err := h.authService.RevokeSession(r.Context(), claims.UserID, claims.SessionID, r.RemoteAddr, r.UserAgent()); err != nil {
 			log.Error().Err(err).Msg("Failed to revoke session on logout")
 		}
 	}
@@ -654,13 +681,10 @@ func respondError(w http.ResponseWriter, status int, code string, message string
 }
 
 func respondValidationError(w http.ResponseWriter, err error) {
-	var details []models.ValidationErrorDetail
+	details := make(map[string]string)
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range validationErrors {
-			details = append(details, models.ValidationErrorDetail{
-				Field:   e.Field(),
-				Message: formatValidationError(e),
-			})
+			details[e.Field()] = formatValidationError(e)
 		}
 	}
 
@@ -726,11 +750,11 @@ func handleServiceError(w http.ResponseWriter, err error) {
 	}
 }
 
-func setTokenCookies(w http.ResponseWriter, response *models.AuthResponse) {
+func setTokenCookies(w http.ResponseWriter, tokenPair *token.TokenPair) {
 	// Set access token cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
-		Value:    response.AccessToken,
+		Value:    tokenPair.AccessToken,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
@@ -741,7 +765,7 @@ func setTokenCookies(w http.ResponseWriter, response *models.AuthResponse) {
 	// Set refresh token cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
-		Value:    response.RefreshToken,
+		Value:    tokenPair.RefreshToken,
 		Path:     "/api/auth/refresh",
 		HttpOnly: true,
 		Secure:   true,

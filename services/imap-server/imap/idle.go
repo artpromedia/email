@@ -21,13 +21,13 @@ func (c *Connection) handleIdle(tag string) error {
 
 	// Subscribe to notifications for all user's mailboxes
 	// In addition to the active mailbox, we want notifications for all mailboxes
-	channels := make(map[string]<-chan *IdleNotification)
+	channels := make(map[string]<-chan IdleNotification)
 
 	for _, mb := range c.ctx.Mailboxes {
 		channels[mb.ID] = c.notifyHub.Subscribe(mb.ID, c.id)
 	}
 	for _, shared := range c.ctx.SharedMailboxes {
-		channels[shared.MailboxID] = c.notifyHub.Subscribe(shared.MailboxID, c.id)
+		channels[shared.ID] = c.notifyHub.Subscribe(shared.ID, c.id)
 	}
 
 	// Set up timeout
@@ -42,8 +42,8 @@ func (c *Connection) handleIdle(tag string) error {
 		select {
 		case notification := <-c.idleChan:
 			// Notification for active mailbox
-			if notification != nil {
-				c.sendIdleNotification(notification)
+			if notification.Type != "" {
+				c.sendIdleNotification(&notification)
 			}
 
 		case <-timeout.C:
@@ -56,10 +56,6 @@ func (c *Connection) handleIdle(tag string) error {
 			// Client sent DONE
 			c.logger.Info("IDLE terminated by client")
 			c.sendTagged(tag, "OK IDLE terminated")
-			return nil
-
-		case <-c.server.stopChan:
-			// Server shutting down
 			return nil
 		}
 	}
@@ -85,41 +81,32 @@ func (c *Connection) waitForDone(done chan<- struct{}) {
 func (c *Connection) sendIdleNotification(notification *IdleNotification) {
 	switch notification.Type {
 	case "EXISTS":
-		if count, ok := notification.Data["count"].(int); ok {
-			c.sendUntagged("%d EXISTS", c.ctx.ActiveFolder.MessageCount+uint32(count))
-		}
+		// EXISTS notification - send new message count
+		c.sendUntagged("%d EXISTS", c.ctx.ActiveFolder.MessageCount+1)
 
 	case "RECENT":
-		if count, ok := notification.Data["count"].(int); ok {
-			c.sendUntagged("%d RECENT", count)
-		}
+		c.sendUntagged("%d RECENT", 1)
 
 	case "EXPUNGE":
-		if seqNum, ok := notification.Data["sequence"].(uint32); ok {
-			c.sendUntagged("%d EXPUNGE", seqNum)
+		if notification.SeqNum > 0 {
+			c.sendUntagged("%d EXPUNGE", notification.SeqNum)
 		}
 
 	case "FLAGS":
-		if seqNum, ok := notification.Data["sequence"].(uint32); ok {
-			if flags, ok := notification.Data["flags"].([]string); ok {
-				flagStr := ""
-				for i, f := range flags {
-					if i > 0 {
-						flagStr += " "
-					}
-					flagStr += f
+		if notification.SeqNum > 0 && len(notification.Flags) > 0 {
+			flagStr := ""
+			for i, f := range notification.Flags {
+				if i > 0 {
+					flagStr += " "
 				}
-				c.sendUntagged("%d FETCH (FLAGS (%s))", seqNum, flagStr)
+				flagStr += string(f)
 			}
+			c.sendUntagged("%d FETCH (FLAGS (%s))", notification.SeqNum, flagStr)
 		}
 
 	case "STATUS":
 		// Status update for non-selected mailbox
-		if mailboxName, ok := notification.Data["mailbox"].(string); ok {
-			if messages, ok := notification.Data["messages"].(uint32); ok {
-				c.sendUntagged("STATUS %s (MESSAGES %d)", mailboxName, messages)
-			}
-		}
+		c.sendUntagged("STATUS %s (MESSAGES %d)", notification.FolderPath, c.ctx.ActiveFolder.MessageCount)
 	}
 }
 
@@ -145,63 +132,4 @@ func (c *Connection) handleNotify(tag, args string) error {
 
 	c.sendTagged(tag, "OK NOTIFY enabled")
 	return nil
-}
-
-// NotifyHub methods for multi-domain notification support
-
-// NotifyAllMailboxes sends notification to all mailboxes owned by a user
-func (h *NotifyHub) NotifyAllMailboxes(mailboxIDs []string, notification *IdleNotification) {
-	for _, id := range mailboxIDs {
-		h.Notify(id, notification)
-	}
-}
-
-// SubscribeMultiple subscribes to notifications from multiple mailboxes
-func (h *NotifyHub) SubscribeMultiple(mailboxIDs []string, connID string) map[string]<-chan *IdleNotification {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	channels := make(map[string]<-chan *IdleNotification)
-
-	for _, id := range mailboxIDs {
-		if _, exists := h.subscribers[id]; !exists {
-			h.subscribers[id] = make(map[string]chan *IdleNotification)
-		}
-
-		ch := make(chan *IdleNotification, 100)
-		h.subscribers[id][connID] = ch
-		channels[id] = ch
-	}
-
-	return channels
-}
-
-// UnsubscribeMultiple removes subscription from multiple mailboxes
-func (h *NotifyHub) UnsubscribeMultiple(mailboxIDs []string, connID string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	for _, id := range mailboxIDs {
-		if subs, exists := h.subscribers[id]; exists {
-			if ch, ok := subs[connID]; ok {
-				close(ch)
-				delete(subs, connID)
-			}
-		}
-	}
-}
-
-// GetSubscribedMailboxes returns all mailbox IDs a connection is subscribed to
-func (h *NotifyHub) GetSubscribedMailboxes(connID string) []string {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	var mailboxIDs []string
-	for mailboxID, subs := range h.subscribers {
-		if _, ok := subs[connID]; ok {
-			mailboxIDs = append(mailboxIDs, mailboxID)
-		}
-	}
-
-	return mailboxIDs
 }

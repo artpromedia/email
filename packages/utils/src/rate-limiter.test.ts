@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { InMemoryRateLimiter, RATE_LIMIT_TIERS } from "./rate-limiter.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  InMemoryRateLimiter,
+  RedisRateLimiter,
+  createRateLimiter,
+  RATE_LIMIT_TIERS,
+  type RateLimitTier,
+} from "./rate-limiter.js";
 
 describe("InMemoryRateLimiter", () => {
   let limiter: InMemoryRateLimiter;
@@ -139,5 +145,288 @@ describe("RATE_LIMIT_TIERS", () => {
   it("api tier has moderate limits", () => {
     const apiMinuteLimit = RATE_LIMIT_TIERS.api[0];
     expect(apiMinuteLimit.limit).toBeGreaterThan(50);
+  });
+
+  it("web tier has lenient limits", () => {
+    const webMinuteLimit = RATE_LIMIT_TIERS.web[0];
+    expect(webMinuteLimit.limit).toBeGreaterThanOrEqual(300);
+  });
+
+  it("expensive tier has very strict limits", () => {
+    const expensiveMinuteLimit = RATE_LIMIT_TIERS.expensive[0];
+    expect(expensiveMinuteLimit.limit).toBeLessThanOrEqual(10);
+  });
+
+  it("each tier has windowMs values", () => {
+    const tiers: RateLimitTier[] = ["auth", "api", "web", "expensive"];
+    tiers.forEach((tier) => {
+      RATE_LIMIT_TIERS[tier].forEach((config) => {
+        expect(config.windowMs).toBeGreaterThan(0);
+        expect(config.limit).toBeGreaterThan(0);
+      });
+    });
+  });
+});
+
+describe("RedisRateLimiter", () => {
+  let limiter: RedisRateLimiter;
+
+  function createMockRedis(overrides: Record<string, unknown> = {}) {
+    const mockPipeline = {
+      incr: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([
+        [null, 1], // INCR result
+        [null, 1], // EXPIRE result
+      ]),
+      ...overrides,
+    };
+    return {
+      pipeline: vi.fn(() => mockPipeline),
+      keys: vi.fn().mockResolvedValue([]),
+      del: vi.fn().mockResolvedValue(1),
+      get: vi.fn().mockResolvedValue(null),
+      __pipeline: mockPipeline,
+    };
+  }
+
+  describe("check", () => {
+    it("allows first request", async () => {
+      const mockRedis = createMockRedis();
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const result = await limiter.check("test-id", 5, 60000);
+
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(4);
+      expect(result.retryAfter).toBeUndefined();
+    });
+
+    it("blocks requests over limit", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.__pipeline.exec.mockResolvedValue([
+        [null, 6], // INCR result: 6th request
+        [null, 1],
+      ]);
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const result = await limiter.check("test-id", 5, 60000);
+
+      expect(result.allowed).toBe(false);
+      expect(result.remaining).toBe(0);
+      expect(result.retryAfter).toBeDefined();
+      expect(result.retryAfter).toBeGreaterThan(0);
+    });
+
+    it("returns fallback result on Redis error (fallbackToAllow=true)", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.__pipeline.exec.mockRejectedValue(new Error("Redis connection failed"));
+      limiter = new RedisRateLimiter({ redis: mockRedis as any, fallbackToAllow: true });
+
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const result = await limiter.check("test-id", 5, 60000);
+      consoleSpy.mockRestore();
+
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(5);
+    });
+
+    it("returns fallback result on Redis error (fallbackToAllow=false)", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.__pipeline.exec.mockRejectedValue(new Error("Redis connection failed"));
+      limiter = new RedisRateLimiter({ redis: mockRedis as any, fallbackToAllow: false });
+
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const result = await limiter.check("test-id", 5, 60000);
+      consoleSpy.mockRestore();
+
+      expect(result.allowed).toBe(false);
+      expect(result.remaining).toBe(0);
+    });
+
+    it("handles null pipeline results", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.__pipeline.exec.mockResolvedValue(null);
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const result = await limiter.check("test-id", 5, 60000);
+
+      // Should use fallback
+      expect(result.allowed).toBe(true);
+    });
+
+    it("handles empty pipeline results", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.__pipeline.exec.mockResolvedValue([]);
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const result = await limiter.check("test-id", 5, 60000);
+      expect(result.allowed).toBe(true);
+    });
+
+    it("uses custom prefix", async () => {
+      const mockRedis = createMockRedis();
+      limiter = new RedisRateLimiter({
+        redis: mockRedis as any,
+        prefix: "custom-prefix",
+      });
+
+      await limiter.check("test-id", 5, 60000);
+
+      expect(mockRedis.__pipeline.incr).toHaveBeenCalledWith(
+        expect.stringContaining("custom-prefix:")
+      );
+    });
+  });
+
+  describe("checkMultiple", () => {
+    it("returns most restrictive result when denied", async () => {
+      const mockRedis = createMockRedis();
+      let callCount = 0;
+      mockRedis.__pipeline.exec.mockImplementation(() => {
+        callCount++;
+        // First call: count=1 (allowed), Second call: count=3 (denied with limit 2)
+        if (callCount === 1) {
+          return Promise.resolve([
+            [null, 1],
+            [null, 1],
+          ]);
+        }
+        return Promise.resolve([
+          [null, 3],
+          [null, 1],
+        ]);
+      });
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const result = await limiter.checkMultiple("test-id", [
+        { limit: 100, windowMs: 60000 },
+        { limit: 2, windowMs: 60000 },
+      ]);
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it("returns lowest remaining when all pass", async () => {
+      const mockRedis = createMockRedis();
+      let callCount = 0;
+      mockRedis.__pipeline.exec.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve([
+            [null, 1],
+            [null, 1],
+          ]); // remaining = 99
+        }
+        return Promise.resolve([
+          [null, 1],
+          [null, 1],
+        ]); // remaining = 4
+      });
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const result = await limiter.checkMultiple("test-id", [
+        { limit: 100, windowMs: 60000 },
+        { limit: 5, windowMs: 60000 },
+      ]);
+
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(4);
+    });
+  });
+
+  describe("reset", () => {
+    it("deletes all keys matching identifier", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.keys.mockResolvedValue(["ratelimit:test-id:123", "ratelimit:test-id:456"]);
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      await limiter.reset("test-id");
+
+      expect(mockRedis.keys).toHaveBeenCalledWith("ratelimit:test-id:*");
+      expect(mockRedis.del).toHaveBeenCalledWith("ratelimit:test-id:123", "ratelimit:test-id:456");
+    });
+
+    it("handles no keys to delete", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.keys.mockResolvedValue([]);
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      await limiter.reset("test-id");
+
+      expect(mockRedis.del).not.toHaveBeenCalled();
+    });
+
+    it("handles Redis error during reset", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.keys.mockRejectedValue(new Error("Redis error"));
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await expect(limiter.reset("test-id")).resolves.toBeUndefined();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("getUsage", () => {
+    it("returns current count", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.get.mockResolvedValue("5");
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const usage = await limiter.getUsage("test-id", 60000);
+
+      expect(usage).not.toBeNull();
+      expect(usage!.count).toBe(5);
+    });
+
+    it("returns 0 count when key does not exist", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.get.mockResolvedValue(null);
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const usage = await limiter.getUsage("test-id", 60000);
+
+      expect(usage).not.toBeNull();
+      expect(usage!.count).toBe(0);
+    });
+
+    it("returns null on Redis error", async () => {
+      const mockRedis = createMockRedis();
+      mockRedis.get.mockRejectedValue(new Error("Redis error"));
+      limiter = new RedisRateLimiter({ redis: mockRedis as any });
+
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const usage = await limiter.getUsage("test-id", 60000);
+      consoleSpy.mockRestore();
+
+      expect(usage).toBeNull();
+    });
+  });
+});
+
+describe("createRateLimiter", () => {
+  it("returns RedisRateLimiter when Redis is provided", () => {
+    const mockRedis = { pipeline: vi.fn() } as any;
+    const limiter = createRateLimiter(mockRedis);
+    expect(limiter).toBeInstanceOf(RedisRateLimiter);
+  });
+
+  it("returns InMemoryRateLimiter when no Redis is provided", () => {
+    const limiter = createRateLimiter();
+    expect(limiter).toBeInstanceOf(InMemoryRateLimiter);
+    (limiter as InMemoryRateLimiter).destroy();
+  });
+
+  it("returns InMemoryRateLimiter when Redis is undefined", () => {
+    const limiter = createRateLimiter(undefined);
+    expect(limiter).toBeInstanceOf(InMemoryRateLimiter);
+    (limiter as InMemoryRateLimiter).destroy();
+  });
+
+  it("passes options to RedisRateLimiter", () => {
+    const mockRedis = { pipeline: vi.fn() } as any;
+    const limiter = createRateLimiter(mockRedis, { prefix: "custom" });
+    expect(limiter).toBeInstanceOf(RedisRateLimiter);
   });
 });

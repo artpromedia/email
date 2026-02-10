@@ -476,8 +476,6 @@ func (s *ContactService) SetContactGroups(ctx context.Context, contactID uuid.UU
 // Import/Export
 
 func (s *ContactService) ImportContacts(ctx context.Context, userID uuid.UUID, req *models.ImportRequest) (*models.ImportResult, error) {
-	result := &models.ImportResult{}
-
 	switch req.Format {
 	case "vcard":
 		return s.importVCard(ctx, userID, req)

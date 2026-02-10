@@ -2,10 +2,35 @@ package config
 
 import (
 	"os"
+	"regexp"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+// expandEnvWithDefaults expands environment variables with support for ${VAR:-default} syntax
+func expandEnvWithDefaults(s string) string {
+	// Pattern to match ${VAR:-default} syntax
+	re := regexp.MustCompile(`\$\{([^}:]+)(:-([^}]*))?\}`)
+	return re.ReplaceAllStringFunc(s, func(match string) string {
+		// Parse the match
+		submatch := re.FindStringSubmatch(match)
+		if len(submatch) < 2 {
+			return match
+		}
+		varName := submatch[1]
+		defaultValue := ""
+		if len(submatch) >= 4 {
+			defaultValue = submatch[3]
+		}
+
+		// Get environment variable
+		if value, exists := os.LookupEnv(varName); exists {
+			return value
+		}
+		return defaultValue
+	})
+}
 
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
@@ -67,8 +92,8 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// Expand environment variables
-	expanded := os.ExpandEnv(string(data))
+	// Expand environment variables using our custom expander that handles ${VAR:-default}
+	expanded := expandEnvWithDefaults(string(data))
 
 	var cfg Config
 	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {

@@ -215,7 +215,9 @@ function CustomDatePicker({ selectedDate, onSelect, minDate }: CustomDatePickerP
   };
 
   const handleDateClick = (date: Date) => {
-    const [hours, minutes] = selectedTime.split(":").map(Number);
+    const [hoursStr, minutesStr] = selectedTime.split(":");
+    const hours = Number(hoursStr) || 0;
+    const minutes = Number(minutesStr) || 0;
     const finalDate = new Date(date);
     finalDate.setHours(hours, minutes, 0, 0);
     onSelect(finalDate);
@@ -437,8 +439,9 @@ export function EmailSnooze({
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
 
-    if (focusableElements.length > 0) {
-      focusableElements[0].focus();
+    const firstElement = focusableElements[0];
+    if (focusableElements.length > 0 && firstElement) {
+      firstElement.focus();
     }
   }, [isOpen, showCustomPicker]);
 

@@ -1,0 +1,26 @@
+# Add this to docker-compose.yml under services:
+
+caddy:
+  image: caddy:2-alpine
+  container_name: oonrumail-caddy
+  restart: unless-stopped
+  ports:
+    - "80:80"
+    - "443:443"
+    - "443:443/udp" # HTTP/3
+  volumes:
+    - ./docker/config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    - caddy_data:/data
+    - caddy_config:/config
+  networks:
+    - email-network
+  depends_on:
+    - auth
+    - web
+    - admin
+  environment:
+    ACME_AGREE: "true"
+
+# Add these volumes at the bottom:
+#   caddy_data:
+#   caddy_config:

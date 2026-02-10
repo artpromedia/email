@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // OAuth2 errors

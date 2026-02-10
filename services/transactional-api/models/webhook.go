@@ -23,21 +23,24 @@ const (
 
 // Webhook represents a webhook configuration
 type Webhook struct {
-	ID           uuid.UUID          `json:"id"`
-	DomainID     uuid.UUID          `json:"domain_id"`
-	URL          string             `json:"url"`
-	Events       []WebhookEventType `json:"events"`
-	Secret       string             `json:"-"` // For HMAC signature verification
-	SecretPrefix string             `json:"secret_prefix,omitempty"` // First 8 chars
-	Active       bool               `json:"active"`
-	Description  string             `json:"description,omitempty"`
-	Headers      map[string]string  `json:"headers,omitempty"` // Custom headers to send
-	RetryPolicy  *RetryPolicy       `json:"retry_policy,omitempty"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	LastTriggeredAt *time.Time      `json:"last_triggered_at,omitempty"`
-	FailureCount int                `json:"failure_count"`
-	LastError    string             `json:"last_error,omitempty"`
+	ID              uuid.UUID          `json:"id"`
+	DomainID        uuid.UUID          `json:"domain_id"`
+	OrganizationID  uuid.UUID          `json:"organization_id"`
+	URL             string             `json:"url"`
+	Events          []WebhookEventType `json:"events"`
+	Secret          string             `json:"-"` // For HMAC signature verification
+	SecretPrefix    string             `json:"secret_prefix,omitempty"` // First 8 chars
+	Active          bool               `json:"active"`
+	IsActive        bool               `json:"is_active"`
+	Description     string             `json:"description,omitempty"`
+	Headers         map[string]string  `json:"headers,omitempty"` // Custom headers to send
+	RetryPolicy     *RetryPolicy       `json:"retry_policy,omitempty"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	LastTriggeredAt *time.Time         `json:"last_triggered_at,omitempty"`
+	LastTriggered   *time.Time         `json:"last_triggered,omitempty"`
+	FailureCount    int                `json:"failure_count"`
+	LastError       string             `json:"last_error,omitempty"`
 }
 
 // RetryPolicy defines the retry behavior for failed webhook deliveries
@@ -66,6 +69,7 @@ type UpdateWebhookRequest struct {
 	Headers     map[string]string  `json:"headers,omitempty"`
 	RetryPolicy *RetryPolicy       `json:"retry_policy,omitempty"`
 	Active      *bool              `json:"active,omitempty"`
+	IsActive    *bool              `json:"is_active,omitempty"`
 }
 
 // WebhookListResponse represents a paginated list of webhooks

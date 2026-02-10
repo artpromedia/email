@@ -197,11 +197,7 @@ func (h *CalendarHandler) ShareCalendar(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	targetUserID, err := uuid.Parse(req.UserID)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid user id")
-		return
-	}
+	targetUserID := req.UserID
 
 	if err := h.service.ShareCalendar(r.Context(), userID, calendarID, targetUserID, req.Permission); err != nil {
 		if err.Error() == "access denied" {

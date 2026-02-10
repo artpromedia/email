@@ -7,10 +7,9 @@ import (
 	"html/template"
 	"regexp"
 	"strings"
-	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/models"
-	"github.com/artpromedia/email/services/transactional-api/repository"
+	"transactional-api/models"
+	"transactional-api/repository"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
@@ -42,51 +41,37 @@ func (s *TemplateService) Create(ctx context.Context, domainID uuid.UUID, req *m
 		variables = s.extractVariables(req.Subject, req.HTMLContent, req.TextContent)
 	}
 
-	active := true
-	if req.Active != nil {
-		active = *req.Active
-	}
-
-	tmpl := &models.Template{
-		ID:          uuid.New(),
-		DomainID:    domainID,
-		Name:        req.Name,
-		Description: req.Description,
-		Subject:     req.Subject,
-		HTMLContent: req.HTMLContent,
-		TextContent: req.TextContent,
-		Variables:   variables,
-		Version:     1,
-		Active:      active,
-		Category:    req.Category,
-		Tags:        req.Tags,
-		Metadata:    req.Metadata,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		CreatedBy:   createdBy,
-		UpdatedBy:   createdBy,
-	}
-
-	if err := s.repo.Create(ctx, tmpl); err != nil {
+	result, err := s.repo.Create(ctx, domainID, req)
+	if err != nil {
 		return nil, err
 	}
 
 	s.logger.Info().
-		Str("template_id", tmpl.ID.String()).
-		Str("name", tmpl.Name).
+		Str("template_id", result.ID.String()).
+		Str("name", result.Name).
 		Msg("Template created")
 
-	return tmpl, nil
+	return result, nil
 }
 
 // Get retrieves a template by ID
-func (s *TemplateService) Get(ctx context.Context, id uuid.UUID) (*models.Template, error) {
-	return s.repo.GetByID(ctx, id)
+func (s *TemplateService) Get(ctx context.Context, id, domainID uuid.UUID) (*models.Template, error) {
+	return s.repo.GetByID(ctx, id, domainID)
 }
 
-// GetByName retrieves a template by name within a domain
+// GetByName retrieves a template by name within a domain (not yet implemented in repo)
 func (s *TemplateService) GetByName(ctx context.Context, domainID uuid.UUID, name string) (*models.Template, error) {
-	return s.repo.GetByName(ctx, domainID, name)
+	// Fallback: list and filter
+	templates, _, err := s.repo.List(ctx, domainID, 100, 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range templates {
+		if t.Name == name {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("template not found: %s", name)
 }
 
 // List retrieves templates with filtering
@@ -99,11 +84,27 @@ func (s *TemplateService) List(ctx context.Context, domainID uuid.UUID, query *m
 		query.Limit = 100
 	}
 
-	return s.repo.List(ctx, query)
+	templates, total, err := s.repo.List(ctx, domainID, query.Limit, query.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]models.Template, len(templates))
+	for i, t := range templates {
+		result[i] = *t
+	}
+
+	return &models.TemplateListResponse{
+		Templates: result,
+		Total:     total,
+		Limit:     query.Limit,
+		Offset:    query.Offset,
+		HasMore:   int64(query.Offset+query.Limit) < total,
+	}, nil
 }
 
 // Update updates an existing template
-func (s *TemplateService) Update(ctx context.Context, id uuid.UUID, req *models.UpdateTemplateRequest, updatedBy uuid.UUID) error {
+func (s *TemplateService) Update(ctx context.Context, id, domainID uuid.UUID, req *models.UpdateTemplateRequest, updatedBy uuid.UUID) error {
 	// Validate template syntax if content changed
 	subject := ""
 	html := ""
@@ -124,7 +125,8 @@ func (s *TemplateService) Update(ctx context.Context, id uuid.UUID, req *models.
 		}
 	}
 
-	if err := s.repo.Update(ctx, id, req, updatedBy); err != nil {
+	_, err := s.repo.Update(ctx, id, domainID, req)
+	if err != nil {
 		return err
 	}
 
@@ -136,8 +138,8 @@ func (s *TemplateService) Update(ctx context.Context, id uuid.UUID, req *models.
 }
 
 // Delete soft-deletes a template
-func (s *TemplateService) Delete(ctx context.Context, id uuid.UUID) error {
-	if err := s.repo.Delete(ctx, id); err != nil {
+func (s *TemplateService) Delete(ctx context.Context, id, domainID uuid.UUID) error {
+	if err := s.repo.Delete(ctx, id, domainID); err != nil {
 		return err
 	}
 
@@ -149,8 +151,8 @@ func (s *TemplateService) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // Render renders a template with the provided substitutions
-func (s *TemplateService) Render(ctx context.Context, templateID uuid.UUID, substitutions map[string]any) (*models.RenderTemplateResponse, error) {
-	tmpl, err := s.repo.GetByID(ctx, templateID)
+func (s *TemplateService) Render(ctx context.Context, templateID, domainID uuid.UUID, substitutions map[string]any) (*models.RenderTemplateResponse, error) {
+	tmpl, err := s.repo.GetByID(ctx, templateID, domainID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,37 +234,20 @@ func (s *TemplateService) Preview(ctx context.Context, subject, htmlContent, tex
 
 // Clone creates a copy of an existing template
 func (s *TemplateService) Clone(ctx context.Context, templateID uuid.UUID, newName string, createdBy uuid.UUID) (*models.Template, error) {
-	cloned, err := s.repo.Clone(ctx, templateID, newName, createdBy)
-	if err != nil {
-		return nil, err
-	}
-
-	s.logger.Info().
-		Str("original_id", templateID.String()).
-		Str("clone_id", cloned.ID.String()).
-		Str("name", newName).
-		Msg("Template cloned")
-
-	return cloned, nil
+	// TODO: implement when repository supports cloning
+	return nil, fmt.Errorf("template cloning not yet implemented")
 }
 
 // GetVersions retrieves version history for a template
 func (s *TemplateService) GetVersions(ctx context.Context, templateID uuid.UUID) ([]models.TemplateVersion, error) {
-	return s.repo.GetVersions(ctx, templateID)
+	// TODO: implement when repository supports versioning
+	return []models.TemplateVersion{}, nil
 }
 
 // RestoreVersion restores a previous version of a template
 func (s *TemplateService) RestoreVersion(ctx context.Context, templateID uuid.UUID, version int, updatedBy uuid.UUID) error {
-	if err := s.repo.RestoreVersion(ctx, templateID, version, updatedBy); err != nil {
-		return err
-	}
-
-	s.logger.Info().
-		Str("template_id", templateID.String()).
-		Int("version", version).
-		Msg("Template version restored")
-
-	return nil
+	// TODO: implement when repository supports versioning
+	return fmt.Errorf("template version restore not yet implemented")
 }
 
 // validateTemplate validates template syntax

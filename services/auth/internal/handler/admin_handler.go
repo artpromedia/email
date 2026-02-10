@@ -729,9 +729,9 @@ func parseIntQuery(r *http.Request, key string, defaultValue int) int {
 	if value == "" {
 		return defaultValue
 	}
-	
+
 	var result int
-	_, err := json.Unmarshal([]byte(value), &result)
+	err := json.Unmarshal([]byte(value), &result)
 	if err != nil {
 		return defaultValue
 	}

@@ -4,14 +4,34 @@
  * Verify Email Page - Email verification confirmation
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Mail, ArrowRight, Loader2, AlertCircle, CheckCircle, Send } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@email/ui";
 import { useVerifyEmail, useResendVerificationEmail } from "@/lib/auth";
 
-export default function VerifyEmailPage() {
+// Loading fallback component
+function VerifyEmailLoadingFallback() {
+  return (
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <Mail className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <CardTitle className="text-2xl">Loading...</CardTitle>
+          <CardDescription className="mt-2">Please wait</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
@@ -218,5 +238,14 @@ export default function VerifyEmailPage() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Export wrapped in Suspense for Next.js static generation
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailLoadingFallback />}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

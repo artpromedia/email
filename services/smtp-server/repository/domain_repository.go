@@ -2,8 +2,11 @@ package repository
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -13,8 +16,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 )
+
+// dkimEncryptionKey is set by the SMTP server from config
+var dkimEncryptionKey string
+
+// SetDKIMEncryptionKey sets the encryption key for decrypting DKIM private keys
+func SetDKIMEncryptionKey(key string) {
+	dkimEncryptionKey = key
+}
 
 // DomainRepository implements domain.Repository
 type DomainRepository struct {
@@ -33,7 +44,7 @@ func NewDomainRepository(db *pgxpool.Pool, logger *zap.Logger) *DomainRepository
 // GetAllDomains returns all verified domains
 func (r *DomainRepository) GetAllDomains(ctx context.Context) ([]*domain.Domain, error) {
 	query := `
-		SELECT 
+		SELECT
 			d.id, d.organization_id, d.name, d.status, d.is_primary,
 			d.mx_verified, d.spf_verified, d.dkim_verified, d.dmarc_verified,
 			d.catch_all_enabled, d.catch_all_address,
@@ -66,7 +77,7 @@ func (r *DomainRepository) GetAllDomains(ctx context.Context) ([]*domain.Domain,
 // GetDomainByName returns a domain by its name
 func (r *DomainRepository) GetDomainByName(ctx context.Context, name string) (*domain.Domain, error) {
 	query := `
-		SELECT 
+		SELECT
 			d.id, d.organization_id, d.name, d.status, d.is_primary,
 			d.mx_verified, d.spf_verified, d.dkim_verified, d.dmarc_verified,
 			d.catch_all_enabled, d.catch_all_address,
@@ -92,7 +103,7 @@ func (r *DomainRepository) GetDomainByName(ctx context.Context, name string) (*d
 // GetDomainsByOrganization returns all domains for an organization
 func (r *DomainRepository) GetDomainsByOrganization(ctx context.Context, orgID string) ([]*domain.Domain, error) {
 	query := `
-		SELECT 
+		SELECT
 			d.id, d.organization_id, d.name, d.status, d.is_primary,
 			d.mx_verified, d.spf_verified, d.dkim_verified, d.dmarc_verified,
 			d.catch_all_enabled, d.catch_all_address,
@@ -125,7 +136,7 @@ func (r *DomainRepository) GetDomainsByOrganization(ctx context.Context, orgID s
 // GetDKIMKeys returns all DKIM keys for a domain
 func (r *DomainRepository) GetDKIMKeys(ctx context.Context, domainID string) ([]*domain.DKIMKey, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, domain_id, selector, private_key, public_key,
 			algorithm, key_size, is_active, created_at, expires_at, rotated_at
 		FROM dkim_keys
@@ -154,7 +165,7 @@ func (r *DomainRepository) GetDKIMKeys(ctx context.Context, domainID string) ([]
 // GetActiveDKIMKey returns the active DKIM key for a domain
 func (r *DomainRepository) GetActiveDKIMKey(ctx context.Context, domainName string) (*domain.DKIMKey, error) {
 	query := `
-		SELECT 
+		SELECT
 			dk.id, dk.domain_id, dk.selector, dk.private_key, dk.public_key,
 			dk.algorithm, dk.key_size, dk.is_active, dk.created_at, dk.expires_at, dk.rotated_at
 		FROM dkim_keys dk
@@ -179,7 +190,7 @@ func (r *DomainRepository) GetActiveDKIMKey(ctx context.Context, domainName stri
 // GetMailboxByEmail returns a mailbox by email address
 func (r *DomainRepository) GetMailboxByEmail(ctx context.Context, email string) (*domain.Mailbox, error) {
 	query := `
-		SELECT 
+		SELECT
 			m.id, m.user_id, m.domain_id, m.local_part, m.email, m.display_name,
 			m.storage_quota_bytes, m.storage_used_bytes, m.is_active, m.auto_reply_enabled,
 			m.auto_reply_subject, m.auto_reply_body, m.auto_reply_start, m.auto_reply_end,
@@ -204,7 +215,7 @@ func (r *DomainRepository) GetMailboxByEmail(ctx context.Context, email string) 
 // GetAliasesBySource returns aliases that point to a source email
 func (r *DomainRepository) GetAliasesBySource(ctx context.Context, email string) ([]*domain.Alias, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, domain_id, source_email, target_email, is_active, created_at
 		FROM aliases
 		WHERE source_email = $1 AND is_active = true
@@ -235,7 +246,7 @@ func (r *DomainRepository) GetAliasesBySource(ctx context.Context, email string)
 // GetAliasesByTarget returns aliases that point to a target email
 func (r *DomainRepository) GetAliasesByTarget(ctx context.Context, email string) ([]*domain.Alias, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, domain_id, source_email, target_email, is_active, created_at
 		FROM aliases
 		WHERE target_email = $1 AND is_active = true
@@ -266,7 +277,7 @@ func (r *DomainRepository) GetAliasesByTarget(ctx context.Context, email string)
 // GetDistributionListByEmail returns a distribution list by email
 func (r *DomainRepository) GetDistributionListByEmail(ctx context.Context, email string) (*domain.DistributionList, error) {
 	query := `
-		SELECT 
+		SELECT
 			dl.id, dl.domain_id, dl.email, dl.name, dl.description,
 			dl.members_only, dl.moderated, dl.is_active, dl.created_at
 		FROM distribution_lists dl
@@ -331,7 +342,7 @@ func (r *DomainRepository) GetDistributionListByEmail(ctx context.Context, email
 // GetRoutingRules returns routing rules for a domain
 func (r *DomainRepository) GetRoutingRules(ctx context.Context, domainID string) ([]*domain.RoutingRule, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, domain_id, name, priority, is_active,
 			condition_sender_pattern, condition_recipient_pattern,
 			condition_subject_pattern, condition_header_name, condition_header_pattern,
@@ -366,7 +377,7 @@ func (r *DomainRepository) GetRoutingRules(ctx context.Context, domainID string)
 // GetUserDomainPermission returns a user's permission for a domain
 func (r *DomainRepository) GetUserDomainPermission(ctx context.Context, userID, domainID string) (*domain.UserDomainPermission, error) {
 	query := `
-		SELECT 
+		SELECT
 			id, user_id, domain_id, can_send, can_send_as,
 			allowed_send_as_addresses, daily_send_limit, created_at
 		FROM user_domain_permissions
@@ -444,6 +455,7 @@ func (r *DomainRepository) ListenForChanges(ctx context.Context, callback func(t
 
 func scanDomain(rows pgx.Rows) (*domain.Domain, error) {
 	var d domain.Domain
+	d.Policies = &domain.DomainPolicies{}
 	var catchAllAddr *string
 	var verifiedAt *time.Time
 
@@ -471,6 +483,7 @@ func scanDomain(rows pgx.Rows) (*domain.Domain, error) {
 
 func scanDomainRow(row pgx.Row) (*domain.Domain, error) {
 	var d domain.Domain
+	d.Policies = &domain.DomainPolicies{}
 	var catchAllAddr *string
 	var verifiedAt *time.Time
 
@@ -499,15 +512,19 @@ func scanDomainRow(row pgx.Row) (*domain.Domain, error) {
 func scanDKIMKey(rows pgx.Rows) (*domain.DKIMKey, error) {
 	var k domain.DKIMKey
 	var privateKeyPEM string
+	var publicKeyPEM string
 	var expiresAt, rotatedAt *time.Time
 
 	err := rows.Scan(
-		&k.ID, &k.DomainID, &k.Selector, &privateKeyPEM, &k.PublicKey,
+		&k.ID, &k.DomainID, &k.Selector, &privateKeyPEM, &publicKeyPEM,
 		&k.Algorithm, &k.KeySize, &k.IsActive, &k.CreatedAt, &expiresAt, &rotatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	// Store public key PEM
+	k.PublicKeyPEM = publicKeyPEM
 
 	// Parse private key
 	key, err := parsePEMPrivateKey(privateKeyPEM)
@@ -515,6 +532,9 @@ func scanDKIMKey(rows pgx.Rows) (*domain.DKIMKey, error) {
 		return nil, fmt.Errorf("parse private key: %w", err)
 	}
 	k.PrivateKey = key
+
+	// Set public key from private key
+	k.PublicKey = &key.PublicKey
 
 	if expiresAt != nil {
 		k.ExpiresAt = expiresAt
@@ -529,15 +549,19 @@ func scanDKIMKey(rows pgx.Rows) (*domain.DKIMKey, error) {
 func scanDKIMKeyRow(row pgx.Row) (*domain.DKIMKey, error) {
 	var k domain.DKIMKey
 	var privateKeyPEM string
+	var publicKeyPEM string
 	var expiresAt, rotatedAt *time.Time
 
 	err := row.Scan(
-		&k.ID, &k.DomainID, &k.Selector, &privateKeyPEM, &k.PublicKey,
+		&k.ID, &k.DomainID, &k.Selector, &privateKeyPEM, &publicKeyPEM,
 		&k.Algorithm, &k.KeySize, &k.IsActive, &k.CreatedAt, &expiresAt, &rotatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	// Store public key PEM
+	k.PublicKeyPEM = publicKeyPEM
 
 	// Parse private key
 	key, err := parsePEMPrivateKey(privateKeyPEM)
@@ -545,6 +569,9 @@ func scanDKIMKeyRow(row pgx.Row) (*domain.DKIMKey, error) {
 		return nil, fmt.Errorf("parse private key: %w", err)
 	}
 	k.PrivateKey = key
+
+	// Set public key from private key
+	k.PublicKey = &key.PublicKey
 
 	if expiresAt != nil {
 		k.ExpiresAt = expiresAt
@@ -633,10 +660,10 @@ func scanRoutingRule(rows pgx.Rows) (*domain.RoutingRule, error) {
 		r.Conditions.HeaderPattern = *condHeaderPattern
 	}
 	if condSizeMin != nil {
-		r.Conditions.SizeMin = *condSizeMin
+		r.Conditions.SizeMin = condSizeMin
 	}
 	if condSizeMax != nil {
-		r.Conditions.SizeMax = *condSizeMax
+		r.Conditions.SizeMax = condSizeMax
 	}
 	if condHasAttachment != nil {
 		r.Conditions.HasAttachment = condHasAttachment
@@ -669,25 +696,106 @@ func scanRoutingRule(rows pgx.Rows) (*domain.RoutingRule, error) {
 }
 
 func parsePEMPrivateKey(pemStr string) (*rsa.PrivateKey, error) {
+	// Try PEM decoding first
 	block, _ := pem.Decode([]byte(pemStr))
-	if block == nil {
-		return nil, errors.New("failed to decode PEM block")
+	if block != nil {
+		switch block.Type {
+		case "RSA PRIVATE KEY":
+			return x509.ParsePKCS1PrivateKey(block.Bytes)
+		case "PRIVATE KEY":
+			key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			rsaKey, ok := key.(*rsa.PrivateKey)
+			if !ok {
+				return nil, errors.New("not an RSA private key")
+			}
+			return rsaKey, nil
+		default:
+			return nil, fmt.Errorf("unsupported key type: %s", block.Type)
+		}
 	}
 
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		return x509.ParsePKCS1PrivateKey(block.Bytes)
-	case "PRIVATE KEY":
-		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, err
+	// If PEM decoding fails, the key may be encrypted
+	// Try to decrypt first
+	if dkimEncryptionKey != "" {
+		decrypted, err := decryptPrivateKey(pemStr)
+		if err == nil {
+			// The decrypted data should be PEM-encoded
+			return parsePEMPrivateKey(string(decrypted))
 		}
-		rsaKey, ok := key.(*rsa.PrivateKey)
-		if !ok {
-			return nil, errors.New("not an RSA private key")
-		}
-		return rsaKey, nil
-	default:
-		return nil, fmt.Errorf("unsupported key type: %s", block.Type)
+		// If decryption fails, try other methods
 	}
+
+	// If PEM decoding fails, try raw base64
+	keyBytes, err := base64.StdEncoding.DecodeString(pemStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64: %w", err)
+	}
+
+	// Try PKCS1 first
+	if key, err := x509.ParsePKCS1PrivateKey(keyBytes); err == nil {
+		return key, nil
+	}
+
+	// Try PKCS8
+	pkcs8Key, err := x509.ParsePKCS8PrivateKey(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	rsaKey, ok := pkcs8Key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("not an RSA private key")
+	}
+	return rsaKey, nil
+}
+
+// decryptPrivateKey decrypts an AES-GCM encrypted private key
+func decryptPrivateKey(encryptedKey string) ([]byte, error) {
+	if dkimEncryptionKey == "" {
+		return nil, errors.New("DKIM encryption key not configured")
+	}
+
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedKey)
+	if err != nil {
+		return nil, fmt.Errorf("decode ciphertext: %w", err)
+	}
+
+	// Decode the encryption key from base64
+	key, err := base64.StdEncoding.DecodeString(dkimEncryptionKey)
+	if err != nil {
+		// If not base64, use the key directly (padded/truncated to 32 bytes)
+		key = []byte(dkimEncryptionKey)
+		if len(key) < 32 {
+			paddedKey := make([]byte, 32)
+			copy(paddedKey, key)
+			key = paddedKey
+		} else if len(key) > 32 {
+			key = key[:32]
+		}
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("create cipher: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("create gcm: %w", err)
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt: %w", err)
+	}
+
+	return plaintext, nil
 }

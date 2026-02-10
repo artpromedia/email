@@ -36,6 +36,9 @@ type ServerConfig struct {
 	MaxConnections    int           `yaml:"max_connections"`
 	RequireAuth       bool          `yaml:"require_auth"`
 	AllowInsecureAuth bool          `yaml:"allow_insecure_auth"`
+	DefaultDomain     string        `yaml:"default_domain"`
+	SMTPAddr          string        `yaml:"smtp_addr"`
+	SubmissionAddr    string        `yaml:"submission_addr"`
 }
 
 // DatabaseConfig holds PostgreSQL settings
@@ -73,6 +76,8 @@ type QueueConfig struct {
 	ProcessingTimeout  time.Duration `yaml:"processing_timeout"`
 	CleanupInterval    time.Duration `yaml:"cleanup_interval"`
 	StaleMessageAge    time.Duration `yaml:"stale_message_age"`
+	StoragePath        string        `yaml:"storage_path"`
+	MaxRetries         int           `yaml:"max_retries"`
 }
 
 // DKIMConfig holds DKIM settings
@@ -80,6 +85,7 @@ type DKIMConfig struct {
 	KeysPath       string        `yaml:"keys_path"`
 	DefaultSelector string       `yaml:"default_selector"`
 	CacheTTL       time.Duration `yaml:"cache_ttl"`
+	EncryptionKey  string        `yaml:"encryption_key"` // AES key for decrypting stored private keys
 }
 
 // TLSConfig holds TLS settings
@@ -98,6 +104,7 @@ type LimitsConfig struct {
 	MessagesPerDay      int           `yaml:"messages_per_day"`
 	RecipientsPerMessage int          `yaml:"recipients_per_message"`
 	RateLimitWindow     time.Duration `yaml:"rate_limit_window"`
+	TrustedNetworks     []string      `yaml:"trusted_networks"` // CIDR networks allowed to relay without auth
 }
 
 // MetricsConfig holds Prometheus metrics settings
@@ -168,6 +175,9 @@ func DefaultConfig() *Config {
 			MaxConnections:    1000,
 			RequireAuth:       false,
 			AllowInsecureAuth: false,
+			DefaultDomain:     "example.com",
+			SMTPAddr:          "0.0.0.0:25",
+			SubmissionAddr:    "0.0.0.0:587",
 		},
 		Database: DatabaseConfig{
 			Host:            "localhost",
@@ -199,6 +209,8 @@ func DefaultConfig() *Config {
 			ProcessingTimeout: 5 * time.Minute,
 			CleanupInterval:   1 * time.Hour,
 			StaleMessageAge:   7 * 24 * time.Hour,
+			StoragePath:       "/var/spool/smtp",
+			MaxRetries:        5,
 		},
 		DKIM: DKIMConfig{
 			KeysPath:        "/etc/smtp/dkim",
@@ -292,6 +304,16 @@ func (c *Config) loadFromEnv() {
 	}
 
 	// Redis
+	if v := os.Getenv("REDIS_ADDR"); v != "" {
+		// Parse host:port format
+		parts := splitHostPort(v)
+		c.Redis.Host = parts[0]
+		if len(parts) > 1 {
+			if port, err := strconv.Atoi(parts[1]); err == nil {
+				c.Redis.Port = port
+			}
+		}
+	}
 	if v := os.Getenv("REDIS_HOST"); v != "" {
 		c.Redis.Host = v
 	}
@@ -310,6 +332,9 @@ func (c *Config) loadFromEnv() {
 	}
 	if v := os.Getenv("DKIM_DEFAULT_SELECTOR"); v != "" {
 		c.DKIM.DefaultSelector = v
+	}
+	if v := os.Getenv("DKIM_ENCRYPTION_KEY"); v != "" {
+		c.DKIM.EncryptionKey = v
 	}
 
 	// TLS
@@ -352,4 +377,23 @@ func (c *DatabaseConfig) DSN() string {
 // RedisAddr returns Redis address
 func (c *RedisConfig) Addr() string {
 	return c.Host + ":" + strconv.Itoa(c.Port)
+}
+
+// splitHostPort splits a host:port string into [host, port]
+func splitHostPort(hostport string) []string {
+	parts := make([]string, 0, 2)
+	lastColon := -1
+	for i := len(hostport) - 1; i >= 0; i-- {
+		if hostport[i] == ':' {
+			lastColon = i
+			break
+		}
+	}
+	if lastColon > 0 {
+		parts = append(parts, hostport[:lastColon])
+		parts = append(parts, hostport[lastColon+1:])
+	} else {
+		parts = append(parts, hostport)
+	}
+	return parts
 }

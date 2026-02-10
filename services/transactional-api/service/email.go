@@ -184,8 +184,8 @@ func (s *EmailService) Send(ctx context.Context, orgID uuid.UUID, req *models.Se
 	}, nil
 }
 
-func (s *EmailService) SendBatch(ctx context.Context, orgID uuid.UUID, req *models.BatchSendRequest) (*models.BatchSendResponse, error) {
-	response := &models.BatchSendResponse{
+func (s *EmailService) SendBatch(ctx context.Context, orgID uuid.UUID, req *models.BatchSendRequest) (*models.BatchSendEmailResponse, error) {
+	response := &models.BatchSendEmailResponse{
 		Messages: make([]models.SendEmailResponse, 0, len(req.Messages)),
 		Errors:   make([]models.BatchError, 0),
 	}
@@ -200,11 +200,17 @@ func (s *EmailService) SendBatch(ctx context.Context, orgID uuid.UUID, req *mode
 		wg.Add(1)
 		semaphore <- struct{}{}
 
-		go func(idx int, m models.SendEmailRequest) {
+		go func(idx int, m models.SendRequest) {
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			result, err := s.Send(ctx, orgID, &m)
+			sendReq := &models.SendEmailRequest{
+				Subject:  m.Subject,
+				TextBody: m.Text,
+				HTMLBody: m.HTML,
+			}
+
+			result, err := s.Send(ctx, orgID, sendReq)
 			mu.Lock()
 			defer mu.Unlock()
 
@@ -323,11 +329,16 @@ func (s *EmailService) sendViaSMTP(ctx context.Context, email *repository.Transa
 func (s *EmailService) createSMTPConnection() (*smtp.Client, error) {
 	addr := fmt.Sprintf("%s:%d", s.cfg.SMTP.Host, s.cfg.SMTP.Port)
 
+	tlsConfig := &tls.Config{
+		ServerName:         s.cfg.SMTP.Host,
+		InsecureSkipVerify: s.cfg.SMTP.InsecureSkipVerify,
+	}
+
 	var conn net.Conn
 	var err error
 
 	if s.cfg.SMTP.TLS {
-		conn, err = tls.Dial("tcp", addr, &tls.Config{ServerName: s.cfg.SMTP.Host})
+		conn, err = tls.Dial("tcp", addr, tlsConfig)
 	} else {
 		conn, err = net.Dial("tcp", addr)
 	}
@@ -344,7 +355,7 @@ func (s *EmailService) createSMTPConnection() (*smtp.Client, error) {
 	// STARTTLS if not already TLS
 	if !s.cfg.SMTP.TLS {
 		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{ServerName: s.cfg.SMTP.Host}); err != nil {
+			if err := client.StartTLS(tlsConfig); err != nil {
 				s.logger.Warn("STARTTLS failed", zap.Error(err))
 			}
 		}

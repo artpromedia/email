@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/middleware"
-	"github.com/artpromedia/email/services/transactional-api/models"
+	"transactional-api/middleware"
+	"transactional-api/models"
 )
 
 // getAnalyticsOverview handles GET /api/v1/analytics/overview

@@ -49,12 +49,13 @@ export function useUndoSend(settings: UndoSendSettings = DEFAULT_SETTINGS) {
 
       // Get recipient for toast message
       let recipientDisplay: string;
+      const firstRecipient = request.to[0] ?? "recipient";
       if (request.to.length === 1) {
-        recipientDisplay = request.to[0];
+        recipientDisplay = firstRecipient;
       } else if (request.to.length === 2) {
-        recipientDisplay = `${request.to[0]} and 1 other`;
+        recipientDisplay = `${firstRecipient} and 1 other`;
       } else {
-        recipientDisplay = `${request.to[0]} and ${request.to.length - 1} others`;
+        recipientDisplay = `${firstRecipient} and ${request.to.length - 1} others`;
       }
 
       // Show countdown toast

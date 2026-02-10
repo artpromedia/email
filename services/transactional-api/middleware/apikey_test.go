@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/models"
+	"transactional-api/models"
 	"github.com/google/uuid"
 )
 

@@ -196,10 +196,10 @@ export function groupEmailsIntoThreads(
       id: email.id,
       threadId,
       from: {
-        email: email.from.email,
+        email: email.from.address,
         name: email.from.name,
       },
-      to: email.to?.map((r) => ({ email: r.email, name: r.name })) ?? [],
+      to: email.to?.map((r) => ({ email: r.address, name: r.name })) ?? [],
       subject: email.subject,
       body: email.snippet,
       snippet: email.snippet,
@@ -207,7 +207,7 @@ export function groupEmailsIntoThreads(
       receivedAt: messageDate,
       isRead: email.isRead,
       isStarred: email.isStarred,
-      hasAttachments: email.hasAttachments,
+      hasAttachments: (email.attachments?.length ?? 0) > 0,
     };
 
     if (existingThread) {

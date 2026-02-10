@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"

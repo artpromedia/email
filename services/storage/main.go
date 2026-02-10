@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -38,17 +38,14 @@ func main() {
 	logger.Info().Msg("Starting Multi-Domain Storage Service")
 
 	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to load configuration")
-	}
+	cfg := config.Load()
 
 	// Initialize context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Connect to PostgreSQL
-	dbPool, err := pgxpool.New(ctx, cfg.Database.DSN())
+	dbPool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to connect to database")
 	}
@@ -57,9 +54,9 @@ func main() {
 
 	// Connect to Redis
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port),
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+		Addr:     cfg.RedisURL,
+		Password: cfg.RedisPassword,
+		DB:       cfg.RedisDB,
 	})
 	defer redisClient.Close()
 
@@ -69,19 +66,19 @@ func main() {
 	logger.Info().Msg("Connected to Redis")
 
 	// Initialize S3 storage
-	s3Storage, err := storage.NewS3Storage(ctx, cfg, logger)
+	s3Storage, err := storage.NewS3StorageService(cfg, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize S3 storage")
 	}
 	logger.Info().Msg("Initialized S3 storage")
 
-	// Initialize services
-	quotaService := quota.NewService(dbPool, redisClient, cfg, logger)
-	retentionService := retention.NewService(dbPool, s3Storage, cfg, logger)
-	domainStorage := storage.NewDomainStorage(s3Storage, quotaService, cfg, logger)
+	// Initialize services (order matters due to dependencies)
+	quotaService := quota.NewService(dbPool, cfg, logger)
+	dedupService := dedup.NewService(dbPool, s3Storage, cfg, logger)
+	domainStorage := storage.NewDomainAwareStorage(s3Storage, quotaService, dedupService, cfg, logger)
+	retentionService := retention.NewService(dbPool, domainStorage, quotaService, cfg, logger)
 	exportService := export.NewService(dbPool, domainStorage, cfg, logger)
 	deletionService := export.NewDeletionService(dbPool, domainStorage, quotaService, cfg, logger)
-	dedupService := dedup.NewService(dbPool, s3Storage, cfg, logger)
 
 	// Initialize HTTP handlers
 	handler := handlers.NewHandler(
@@ -132,7 +129,8 @@ func main() {
 	deletionWorker := workers.NewDeletionWorker(dbPool, deletionService, cfg, logger)
 	dedupWorker := workers.NewDeduplicationWorker(dbPool, dedupService, cfg, logger)
 
-	if cfg.Workers.Enabled {
+	// Workers always enabled for now (no explicit flag in config)
+	if cfg.NumWorkers > 0 {
 		go retentionWorker.Start(ctx)
 		go exportWorker.Start(ctx)
 		go deletionWorker.Start(ctx)
@@ -140,13 +138,19 @@ func main() {
 		logger.Info().Msg("Background workers started")
 	}
 
+	// Parse port
+	port, _ := strconv.Atoi(cfg.Port)
+	if port == 0 {
+		port = 8085
+	}
+
 	// Start HTTP server
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Addr:         ":" + cfg.Port,
 		Handler:      r,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
-		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	// Graceful shutdown
@@ -164,7 +168,7 @@ func main() {
 		dedupWorker.Stop()
 
 		// Shutdown server
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 		defer shutdownCancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
@@ -174,7 +178,7 @@ func main() {
 		cancel()
 	}()
 
-	logger.Info().Int("port", cfg.Server.Port).Msg("Starting HTTP server")
+	logger.Info().Int("port", port).Msg("Starting HTTP server")
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Fatal().Err(err).Msg("Server failed")
 	}

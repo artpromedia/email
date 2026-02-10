@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/artpromedia/email/services/transactional-api/config"
-	"github.com/artpromedia/email/services/transactional-api/models"
-	"github.com/artpromedia/email/services/transactional-api/repository"
+	"transactional-api/config"
+	"transactional-api/models"
+	"transactional-api/repository"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
@@ -48,7 +48,7 @@ func NewTrackingService(
 
 // AddTrackingPixel adds an invisible tracking pixel to HTML content
 func (s *TrackingService) AddTrackingPixel(html, messageID, domainID string) string {
-	if !s.config.Tracking.Enabled {
+	if !s.config.Tracking.EnableOpen {
 		return html
 	}
 
@@ -61,7 +61,7 @@ func (s *TrackingService) AddTrackingPixel(html, messageID, domainID string) str
 
 	// Build tracking URL
 	trackingURL := fmt.Sprintf("%s%s/%s",
-		s.config.Tracking.TrackingURL,
+		s.config.Tracking.TrackingHost,
 		s.config.Tracking.PixelPath,
 		encoded,
 	)
@@ -81,7 +81,7 @@ func (s *TrackingService) AddTrackingPixel(html, messageID, domainID string) str
 
 // RewriteLinks rewrites links for click tracking
 func (s *TrackingService) RewriteLinks(html, messageID, domainID string) string {
-	if !s.config.Tracking.Enabled {
+	if !s.config.Tracking.EnableClick {
 		return html
 	}
 
@@ -123,8 +123,8 @@ func (s *TrackingService) RewriteLinks(html, messageID, domainID string) string 
 
 		// Build tracking URL
 		trackingURL := fmt.Sprintf("%s%s/%s",
-			s.config.Tracking.TrackingURL,
-			s.config.Tracking.RedirectPath,
+			s.config.Tracking.TrackingHost,
+			s.config.Tracking.ClickPath,
 			encoded,
 		)
 
@@ -185,7 +185,7 @@ func (s *TrackingService) RecordOpen(ctx context.Context, data *models.TrackingP
 	s.analyticsRepo.IncrementDailyStat(ctx, domainID, category, "unique_opened")
 
 	// Trigger webhooks
-	go s.webhookService.TriggerEvent(context.Background(), event)
+	go s.webhookService.DispatchEvent(context.Background(), event.DomainID, event)
 
 	s.logger.Debug().
 		Str("message_id", messageID.String()).
@@ -249,7 +249,7 @@ func (s *TrackingService) RecordClick(ctx context.Context, data *models.Tracking
 	s.analyticsRepo.IncrementDailyStat(ctx, domainID, category, "unique_clicked")
 
 	// Trigger webhooks
-	go s.webhookService.TriggerEvent(context.Background(), event)
+	go s.webhookService.DispatchEvent(context.Background(), event.DomainID, event)
 
 	s.logger.Debug().
 		Str("message_id", messageID.String()).

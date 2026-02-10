@@ -3,7 +3,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -556,6 +555,57 @@ func (r *Repository) DeleteEmailAddress(ctx context.Context, id uuid.UUID) error
 	return err
 }
 
+// UpdateEmailVerificationToken updates the verification token for an email address.
+func (r *Repository) UpdateEmailVerificationToken(ctx context.Context, emailID uuid.UUID, token string, expiresAt time.Time) error {
+	query := `
+		UPDATE user_email_addresses
+		SET verification_token = $2, verification_token_expires_at = $3
+		WHERE id = $1
+	`
+	_, err := r.pool.Exec(ctx, query, emailID, token, expiresAt)
+	return err
+}
+
+// ============================================================
+// PASSWORD RESET TOKENS
+// ============================================================
+
+// CreatePasswordResetToken creates a password reset token for a user.
+func (r *Repository) CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error {
+	query := `
+		INSERT INTO password_reset_tokens (id, user_id, token, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+	_, err := r.pool.Exec(ctx, query, uuid.New(), userID, token, expiresAt, time.Now())
+	return err
+}
+
+// ValidatePasswordResetToken validates a password reset token and returns the user ID.
+func (r *Repository) ValidatePasswordResetToken(ctx context.Context, token string) (*uuid.UUID, error) {
+	query := `
+		SELECT user_id FROM password_reset_tokens
+		WHERE token = $1 AND expires_at > $2 AND used_at IS NULL
+	`
+	var userID uuid.UUID
+	err := r.pool.QueryRow(ctx, query, token, time.Now()).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &userID, nil
+}
+
+// InvalidatePasswordResetToken marks a password reset token as used.
+func (r *Repository) InvalidatePasswordResetToken(ctx context.Context, token string) error {
+	query := `
+		UPDATE password_reset_tokens SET used_at = $2 WHERE token = $1
+	`
+	_, err := r.pool.Exec(ctx, query, token, time.Now())
+	return err
+}
+
 // ============================================================
 // MAILBOX OPERATIONS
 // ============================================================
@@ -816,6 +866,16 @@ func (r *Repository) RevokeAllUserSessions(ctx context.Context, userID uuid.UUID
 	return err
 }
 
+// DeleteSession deletes a session by ID (alias for RevokeSession).
+func (r *Repository) DeleteSession(ctx context.Context, sessionID uuid.UUID) error {
+	return r.RevokeSession(ctx, sessionID)
+}
+
+// DeleteUserSessions deletes all sessions for a user.
+func (r *Repository) DeleteUserSessions(ctx context.Context, userID uuid.UUID) error {
+	return r.RevokeAllUserSessions(ctx, userID, nil)
+}
+
 // ============================================================
 // SSO CONFIG OPERATIONS
 // ============================================================
@@ -943,6 +1003,30 @@ func (r *Repository) UpdateSSOIdentityLogin(ctx context.Context, id uuid.UUID, r
 	query := `UPDATE sso_identities SET last_login_at = $2, raw_attributes = $3, updated_at = $2 WHERE id = $1`
 	_, err := r.pool.Exec(ctx, query, id, time.Now(), rawAttrs)
 	return err
+}
+
+// GetSSOIdentityByUserID retrieves an SSO identity by user ID.
+func (r *Repository) GetSSOIdentityByUserID(ctx context.Context, userID uuid.UUID) (*models.SSOIdentity, error) {
+	query := `
+		SELECT id, user_id, domain_id, provider, provider_user_id, email,
+		       raw_attributes, created_at, updated_at, last_login_at
+		FROM sso_identities
+		WHERE user_id = $1
+		LIMIT 1
+	`
+	var identity models.SSOIdentity
+	err := r.pool.QueryRow(ctx, query, userID).Scan(
+		&identity.ID, &identity.UserID, &identity.DomainID, &identity.Provider,
+		&identity.ProviderUserID, &identity.Email, &identity.RawAttributes,
+		&identity.CreatedAt, &identity.UpdatedAt, &identity.LastLoginAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &identity, nil
 }
 
 // ============================================================
@@ -1336,6 +1420,22 @@ perms = append(perms, &p)
 }
 
 return perms, nil
+}
+
+// CreateUserDomainPermission creates a new user domain permission.
+func (r *Repository) CreateUserDomainPermission(ctx context.Context, perm *models.UserDomainPermission) error {
+	query := `
+		INSERT INTO user_domain_permissions (id, user_id, domain_id, can_send_as, can_manage, can_view_analytics, can_manage_users, granted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (user_id, domain_id) DO UPDATE SET
+			can_send_as = EXCLUDED.can_send_as,
+			can_manage = EXCLUDED.can_manage,
+			can_view_analytics = EXCLUDED.can_view_analytics,
+			can_manage_users = EXCLUDED.can_manage_users
+	`
+	_, err := r.pool.Exec(ctx, query, perm.ID, perm.UserID, perm.DomainID, perm.CanSendAs,
+		perm.CanManage, perm.CanViewAnalytics, perm.CanManageUsers, perm.GrantedAt)
+	return err
 }
 
 // UpdateUserDomainPermission updates a user's domain permissions.

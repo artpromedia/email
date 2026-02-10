@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -136,6 +136,12 @@ func (a *Authenticator) GetSupportedMechanisms() []string {
 		mechanisms = append(mechanisms, "XOAUTH2", "OAUTHBEARER")
 	}
 	return mechanisms
+}
+
+// AuthenticatePlainCredentials authenticates with username and password directly
+// This is a convenience method for use with SASL servers
+func (a *Authenticator) AuthenticatePlainCredentials(ctx context.Context, username, password string, clientIP net.IP, isTLS bool) (*AuthResult, error) {
+	return a.authenticate(ctx, username, password, clientIP)
 }
 
 // AuthenticatePlain handles PLAIN authentication mechanism (RFC 4616)

@@ -3,19 +3,19 @@ server:
   logLevel: "${LOG_LEVEL:-info}"
 
 database:
-  url: "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/oonrumail?sslmode=require}"
+  url: "${DATABASE_URL:-postgres://oonrumail:oonrumail@postgres:5432/oonrumail?sslmode=disable}"
   maxConns: 25
   minConns: 5
   maxConnLifetime: 1h
 
 redis:
-  addr: "${REDIS_ADDR:-localhost:6379}"
+  addr: "${REDIS_ADDR:-redis:6379}"
   password: "${REDIS_PASSWORD:-}"
   db: 3
 
 auth:
-  jwtSecret: "${JWT_SECRET}"
-  serviceUrl: "${AUTH_SERVICE_URL:-http://localhost:8080}"
+  jwtSecret: "${JWT_SECRET:-default_secret}"
+  serviceUrl: "${AUTH_SERVICE_URL:-http://auth:8082}"
 
 storage:
   endpoint: "${S3_ENDPOINT:-http://localhost:9000}"

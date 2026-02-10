@@ -10,8 +10,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"smtp-server/dkim"
-	"smtp-server/spf"
+	"github.com/oonrumail/smtp-server/dkim"
+	"github.com/oonrumail/smtp-server/spf"
 )
 
 // Policy represents the DMARC policy

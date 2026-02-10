@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 
 	"go.uber.org/zap"
 )

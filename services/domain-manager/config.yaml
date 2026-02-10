@@ -9,49 +9,52 @@ server:
     - "http://localhost:3000"
     - "http://localhost:3001"
     - "https://*.enterprise-email.com"
+    - "https://*.oonrumail.com"
+    - "https://oonrumail.com"
 
 database:
-  host: ${DB_HOST:localhost}
-  port: ${DB_PORT:5432}
-  database: ${DB_NAME:oonrumail}
-  username: ${DB_USER:postgres}
-  password: ${DB_PASSWORD:postgres}
-  ssl_mode: ${DB_SSL_MODE:disable}
-  max_connections: 25
-  min_connections: 5
-  max_lifetime: 1h
-  idle_timeout: 30m
+  host: ${DB_HOST:-postgres}
+  port: ${DB_PORT:-5432}
+  name: ${DB_NAME:-oonrumail}
+  user: ${DB_USER:-oonrumail}
+  password: ${DB_PASSWORD:-oonrumail}
+  ssl_mode: ${DB_SSL_MODE:-disable}
+  max_conns: 25
+  min_conns: 5
+  max_conn_lifetime: 1h
+  max_conn_idle_time: 30m
 
 redis:
-  host: ${REDIS_HOST:localhost}
-  port: ${REDIS_PORT:6379}
-  password: ${REDIS_PASSWORD:}
+  host: ${REDIS_HOST:-redis}
+  port: ${REDIS_PORT:-6379}
+  password: ${REDIS_PASSWORD:-}
   db: 1
   pool_size: 10
 
 dns:
   verification_prefix: "enterprise-email-verify"
-  mx_host: "mx.enterprise-email.com"
-  spf_include: "spf.enterprise-email.com"
-  dmarc_report_email: "dmarc-reports@enterprise-email.com"
+  mx_host: "${MX_HOST:-mail.oonrumail.com}"
+  spf_include: "${SPF_INCLUDE:-}"
+  spf_record: "${SPF_RECORD:-v=spf1 mx a ip4:138.201.37.187 -all}"
+  dmarc_report_email: "${DMARC_REPORT_EMAIL:-dmarc-reports@oonrumail.com}"
   default_dkim_selector: "mail"
 
 dkim:
-  key_size: 2048
-  algorithm: "rsa-sha256"
-  encryption_key: ${DKIM_ENCRYPTION_KEY:change-this-to-a-secure-32-byte-key!}
+  default_key_size: 2048
+  default_algorithm: "rsa-sha256"
+  encryption_key: ${DKIM_ENCRYPTION_KEY:-change-this-to-a-secure-32-byte-key!}
 
 branding:
   default_logo_url: "/assets/logo.svg"
   default_favicon_url: "/assets/favicon.ico"
-  default_primary_color: "#4f46e5"
+  default_color: "#4f46e5"
 
 monitor:
-  check_interval: "0 */30 * * * *"  # Every 30 minutes
-  alert_on_failure: true
-  alert_webhook_url: ${ALERT_WEBHOOK_URL:}
-  alert_email: ${ALERT_EMAIL:admin@enterprise-email.com}
+  enabled: true
+  check_interval: 30m
+  alert_webhook: ${ALERT_WEBHOOK_URL:-}
 
 metrics:
   enabled: true
-  port: 9090
+  addr: ":9090"
+  path: "/metrics"

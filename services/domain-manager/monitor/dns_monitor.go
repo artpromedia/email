@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -45,11 +46,18 @@ func NewDNSMonitor(
 
 // Start starts the DNS monitoring cron job
 func (m *DNSMonitor) Start() error {
-	// Run DNS check based on configured interval
-	schedule := m.config.CheckInterval
-	if schedule == "" {
-		schedule = "0 */30 * * * *" // Default: every 30 minutes
+	// Convert check interval to cron schedule
+	interval := m.config.CheckInterval
+	if interval == 0 {
+		interval = 30 * time.Minute // Default: every 30 minutes
 	}
+
+	// Build cron schedule from duration (simplified: just use minutes)
+	minutes := int(interval.Minutes())
+	if minutes < 1 {
+		minutes = 30
+	}
+	schedule := fmt.Sprintf("0 */%d * * * *", minutes)
 
 	_, err := m.cron.AddFunc(schedule, func() {
 		m.checkAllDomains()
@@ -119,7 +127,7 @@ func (m *DNSMonitor) checkDomain(ctx context.Context, d *domain.Domain) {
 	m.generateAlerts(d, result)
 
 	// Update domain DNS status
-	err = m.domainRepo.UpdateDNSStatus(ctx, d.ID, result.MXPassed, result.SPFPassed, result.DKIMPassed, result.DMARCPassed)
+	err = m.domainRepo.UpdateDNSStatus(ctx, d.ID, result.MXVerified, result.SPFVerified, result.DKIMVerified, result.DMARCVerified)
 	if err != nil {
 		m.logger.Error("Failed to update DNS status",
 			zap.String("domain_id", d.ID),
@@ -133,94 +141,78 @@ func (m *DNSMonitor) generateAlerts(d *domain.Domain, result *domain.DNSCheckRes
 	now := time.Now()
 
 	// Check MX record status change
-	if d.MXVerified && !result.MXPassed {
+	if d.MXVerified && !result.MXVerified {
 		alert := domain.DNSMonitorAlert{
 			ID:         generateAlertID(),
 			DomainID:   d.ID,
 			DomainName: d.DomainName,
 			AlertType:  "mx_failure",
+			RecordType: "MX",
 			Severity:   "critical",
 			Message:    "MX record check failed. Email delivery may be affected.",
-			DetectedAt: now,
+			CreatedAt:  now,
 		}
 		m.sendAlert(alert)
 	}
 
 	// Check SPF record status change
-	if d.SPFVerified && !result.SPFPassed {
+	if d.SPFVerified && !result.SPFVerified {
 		alert := domain.DNSMonitorAlert{
 			ID:         generateAlertID(),
 			DomainID:   d.ID,
 			DomainName: d.DomainName,
 			AlertType:  "spf_failure",
+			RecordType: "TXT",
 			Severity:   "high",
 			Message:    "SPF record check failed. Outgoing emails may be marked as spam.",
-			DetectedAt: now,
+			CreatedAt:  now,
 		}
 		m.sendAlert(alert)
 	}
 
 	// Check DKIM record status change
-	if d.DKIMVerified && !result.DKIMPassed {
+	if d.DKIMVerified && !result.DKIMVerified {
 		alert := domain.DNSMonitorAlert{
 			ID:         generateAlertID(),
 			DomainID:   d.ID,
 			DomainName: d.DomainName,
 			AlertType:  "dkim_failure",
+			RecordType: "TXT",
 			Severity:   "high",
 			Message:    "DKIM record check failed. Email authentication may fail.",
-			DetectedAt: now,
+			CreatedAt:  now,
 		}
 		m.sendAlert(alert)
 	}
 
 	// Check DMARC record status change
-	if d.DMARCVerified && !result.DMARCPassed {
+	if d.DMARCVerified && !result.DMARCVerified {
 		alert := domain.DNSMonitorAlert{
 			ID:         generateAlertID(),
 			DomainID:   d.ID,
 			DomainName: d.DomainName,
 			AlertType:  "dmarc_failure",
+			RecordType: "TXT",
 			Severity:   "medium",
 			Message:    "DMARC record check failed.",
-			DetectedAt: now,
+			CreatedAt:  now,
 		}
 		m.sendAlert(alert)
 	}
 
-	// Check verification TXT record
-	if d.Status == domain.StatusVerified && !result.VerificationPassed {
+	// Generate alerts for critical issues found
+	for _, issue := range result.Issues {
 		alert := domain.DNSMonitorAlert{
 			ID:         generateAlertID(),
 			DomainID:   d.ID,
 			DomainName: d.DomainName,
-			AlertType:  "verification_failure",
+			AlertType:  "dns_issue",
+			RecordType: issue.RecordType,
 			Severity:   "medium",
-			Message:    "Domain verification TXT record not found.",
-			DetectedAt: now,
+			Message:    issue.Message,
+			CreatedAt:  now,
 		}
 		m.sendAlert(alert)
-	}
-
-	// Generate alerts for issues found
-	for _, issue := range result.Issues {
-		if issue.Severity == "error" || issue.Severity == "critical" {
-			alert := domain.DNSMonitorAlert{
-				ID:         generateAlertID(),
-				DomainID:   d.ID,
-				DomainName: d.DomainName,
-				AlertType:  "dns_issue",
-				Severity:   issue.Severity,
-				Message:    issue.Message,
-				Details: map[string]string{
-					"record_type": issue.RecordType,
-					"expected":    issue.Expected,
-					"found":       issue.Found,
-				},
-				DetectedAt: now,
-			}
-			m.sendAlert(alert)
-		}
 	}
 }
 
@@ -269,7 +261,7 @@ func (m *DNSMonitor) CheckDomain(ctx context.Context, domainID string) (*domain.
 	result := m.dnsService.CheckDNS(ctx, d.DomainName, d.VerificationToken, dkimSelector, dkimPublicKey)
 
 	// Update domain DNS status
-	_ = m.domainRepo.UpdateDNSStatus(ctx, d.ID, result.MXPassed, result.SPFPassed, result.DKIMPassed, result.DMARCPassed)
+	_ = m.domainRepo.UpdateDNSStatus(ctx, d.ID, result.MXVerified, result.SPFVerified, result.DKIMVerified, result.DMARCVerified)
 
 	return result, nil
 }

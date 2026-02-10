@@ -224,10 +224,11 @@ func (h *CardDAVHandler) propfindAddressBook(ctx context.Context, userID uuid.UU
 		})
 
 		if depth != "0" {
-			contacts, _, _ := h.service.ListContacts(ctx, userID, &models.ListContactsRequest{
+			response, _ := h.service.ListContacts(ctx, userID, &models.ListContactsRequest{
 				AddressBookID: abID,
 				Limit:         10000,
 			})
+			contacts := response.Contacts
 
 			for _, c := range contacts {
 				responses = append(responses, Response{
@@ -250,7 +251,7 @@ func (h *CardDAVHandler) propfindAddressBook(ctx context.Context, userID uuid.UU
 }
 
 func (h *CardDAVHandler) handleReport(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	_ = r.Context()
 	userID := h.getUserID(r)
 	path := r.URL.Path
 
@@ -325,10 +326,12 @@ func (h *CardDAVHandler) handleQuery(w http.ResponseWriter, r *http.Request, use
 
 	abID, _ := uuid.Parse(parts[3])
 
-	contacts, _, _ := h.service.ListContacts(ctx, userID, &models.ListContactsRequest{
+	response, _ := h.service.ListContacts(ctx, userID, &models.ListContactsRequest{
 		AddressBookID: abID,
 		Limit:         10000,
 	})
+
+	contacts := response.Contacts
 
 	var responses []Response
 	for _, c := range contacts {

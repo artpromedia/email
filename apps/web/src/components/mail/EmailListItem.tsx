@@ -138,7 +138,7 @@ export interface EmailListItemProps {
 }
 
 export const EmailListItemComponent = memo(
-  forwardRef<HTMLDivElement, EmailListItemProps>(
+  forwardRef<HTMLLIElement, EmailListItemProps>(
     (
       {
         email,

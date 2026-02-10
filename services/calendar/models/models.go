@@ -26,6 +26,8 @@ type CalendarShare struct {
 	ID         uuid.UUID `json:"id" db:"id"`
 	CalendarID uuid.UUID `json:"calendar_id" db:"calendar_id"`
 	UserID     uuid.UUID `json:"user_id" db:"user_id"`
+	UserEmail  string    `json:"user_email" db:"user_email"`
+	UserName   string    `json:"user_name" db:"user_name"`
 	Permission string    `json:"permission" db:"permission"` // read, write, admin
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
@@ -48,12 +50,13 @@ type Event struct {
 	RecurrenceRule  string      `json:"recurrence_rule" db:"recurrence_rule"` // RRULE
 	RecurrenceID    *time.Time  `json:"recurrence_id" db:"recurrence_id"`
 	OriginalEventID *uuid.UUID  `json:"original_event_id" db:"original_event_id"`
-	Reminders       []Reminder  `json:"reminders" db:"-"`
+	Reminders       []*Reminder  `json:"reminders" db:"-"`
 	Attachments     []string    `json:"attachments" db:"attachments"`
 	Categories      []string    `json:"categories" db:"categories"`
 	Sequence        int         `json:"sequence" db:"sequence"` // For iTIP updates
 	ETag            string      `json:"etag" db:"etag"`
 	OrganizerID     uuid.UUID   `json:"organizer_id" db:"organizer_id"`
+	Attendees       []*Attendee  `json:"attendees" db:"-"`
 	CreatedAt       time.Time   `json:"created_at" db:"created_at"`
 	UpdatedAt       time.Time   `json:"updated_at" db:"updated_at"`
 }
@@ -68,11 +71,12 @@ const (
 
 // Reminder for an event
 type Reminder struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	EventID   uuid.UUID `json:"event_id" db:"event_id"`
-	Method    string    `json:"method" db:"method"` // email, display, audio
-	Minutes   int       `json:"minutes" db:"minutes"` // Minutes before event
-	Triggered bool      `json:"triggered" db:"triggered"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	EventID     uuid.UUID `json:"event_id" db:"event_id"`
+	Method      string    `json:"method" db:"method"` // email, display, audio
+	Minutes     int       `json:"minutes" db:"minutes"` // Minutes before event
+	TriggerTime time.Time `json:"trigger_time" db:"trigger_time"`
+	Triggered   bool      `json:"triggered" db:"triggered"`
 }
 
 // Attendee represents an event attendee
@@ -86,6 +90,7 @@ type Attendee struct {
 	Status     AttendeeStatus `json:"status" db:"status"`
 	RSVP       bool           `json:"rsvp" db:"rsvp"`
 	ResponseAt *time.Time     `json:"response_at" db:"response_at"`
+	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
 }
 
 type AttendeeRole string
@@ -112,6 +117,29 @@ type FreeBusy struct {
 	Start  time.Time `json:"start"`
 	End    time.Time `json:"end"`
 	Status string    `json:"status"` // free, busy, busy-tentative, busy-unavailable
+}
+
+// FreeBusyPeriod represents a period in a free/busy response
+type FreeBusyPeriod struct {
+	UserID uuid.UUID `json:"user_id"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+	Type   string    `json:"type"` // busy, busy-tentative, busy-unavailable
+	Status string    `json:"status"`
+}
+
+// EventWithReminder combines an event with its upcoming reminder for notification
+type EventWithReminder struct {
+	EventID     uuid.UUID `json:"event_id" db:"event_id"`
+	CalendarID  uuid.UUID `json:"calendar_id" db:"calendar_id"`
+	Title       string    `json:"title" db:"title"`
+	StartTime   time.Time `json:"start_time" db:"start_time"`
+	OrganizerID uuid.UUID `json:"organizer_id" db:"organizer_id"`
+	ReminderID  uuid.UUID `json:"reminder_id" db:"reminder_id"`
+	Method      string    `json:"method" db:"method"`
+	Minutes     int       `json:"minutes" db:"minutes"`
+	Email       string    `json:"email" db:"email"`
+	TriggerTime time.Time `json:"trigger_time" db:"trigger_time"`
 }
 
 // CreateCalendarRequest represents a request to create a calendar
@@ -143,10 +171,12 @@ type CreateEventRequest struct {
 	AllDay         bool                `json:"all_day"`
 	Timezone       string              `json:"timezone"`
 	Visibility     string              `json:"visibility"`
+	Transparency   string              `json:"transparency"`
 	RecurrenceRule string              `json:"recurrence_rule"`
 	Reminders      []CreateReminderRequest `json:"reminders"`
 	Attendees      []CreateAttendeeRequest `json:"attendees"`
 	Categories     []string            `json:"categories"`
+	Attachments    []string            `json:"attachments"`
 }
 
 type CreateReminderRequest struct {
@@ -172,6 +202,7 @@ type UpdateEventRequest struct {
 	Timezone       *string              `json:"timezone"`
 	Status         *EventStatus         `json:"status"`
 	Visibility     *string              `json:"visibility"`
+	Transparency   *string              `json:"transparency"`
 	RecurrenceRule *string              `json:"recurrence_rule"`
 	Reminders      []CreateReminderRequest `json:"reminders,omitempty"`
 }
@@ -180,6 +211,12 @@ type UpdateEventRequest struct {
 type RespondRequest struct {
 	Status  AttendeeStatus `json:"status" validate:"required,oneof=accepted declined tentative"`
 	Comment string         `json:"comment"`
+}
+
+// RSVPRequest is an alias for simple RSVP responses with string status
+type RSVPRequest struct {
+	Status  string `json:"status" validate:"required,oneof=accepted declined tentative"`
+	Comment string `json:"comment"`
 }
 
 // ShareCalendarRequest represents a request to share a calendar
@@ -196,6 +233,25 @@ type FreeBusyRequest struct {
 }
 
 type FreeBusyResponse struct {
-	UserID   uuid.UUID  `json:"user_id"`
-	FreeBusy []FreeBusy `json:"freebusy"`
+	UserID   uuid.UUID          `json:"user_id"`
+	Periods  []*FreeBusyPeriod  `json:"freebusy"`
+}
+
+// ListEventsRequest represents parameters for listing events
+type ListEventsRequest struct {
+	CalendarID uuid.UUID  `json:"calendar_id"`
+	Start      time.Time  `json:"start"`
+	End        time.Time  `json:"end"`
+	Limit      int        `json:"limit"`
+	Offset     int        `json:"offset"`
+}
+
+// EventListResponse represents a paginated list of events
+type EventListResponse struct {
+	Events     []*Event `json:"events"`
+	Total      int      `json:"total"`
+	Limit      int      `json:"limit"`
+	Offset     int      `json:"offset"`
+	TotalCount int      `json:"total_count"`
+	HasMore    bool     `json:"has_more"`
 }

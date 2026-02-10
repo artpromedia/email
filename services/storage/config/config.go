@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Config holds all configuration for the storage service

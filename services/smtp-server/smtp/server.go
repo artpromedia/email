@@ -5,23 +5,25 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"smtp-server/auth"
-	"smtp-server/config"
-	"smtp-server/dkim"
-	"smtp-server/dmarc"
-	"smtp-server/domain"
-	"smtp-server/queue"
-	"smtp-server/spf"
+	"github.com/oonrumail/smtp-server/auth"
+	"github.com/oonrumail/smtp-server/config"
+	"github.com/oonrumail/smtp-server/dkim"
+	"github.com/oonrumail/smtp-server/dmarc"
+	"github.com/oonrumail/smtp-server/domain"
+	"github.com/oonrumail/smtp-server/queue"
+	"github.com/oonrumail/smtp-server/spf"
 )
 
 // Server is the multi-domain SMTP server
@@ -158,10 +160,11 @@ func (s *Server) startSMTPServer(backend smtp.Backend) error {
 	s.smtpServer.Domain = s.config.Server.Hostname
 	s.smtpServer.ReadTimeout = s.config.Server.ReadTimeout
 	s.smtpServer.WriteTimeout = s.config.Server.WriteTimeout
-	s.smtpServer.MaxMessageBytes = int(s.config.Server.MaxMessageSize)
+	s.smtpServer.MaxMessageBytes = int64(s.config.Server.MaxMessageSize)
 	s.smtpServer.MaxRecipients = s.config.Server.MaxRecipients
 	s.smtpServer.AllowInsecureAuth = false
-	s.smtpServer.AuthDisabled = true // No auth on port 25
+	// Note: go-smtp v0.21+ uses EnableAuth = false to disable auth (opposite of AuthDisabled)
+	// For port 25 SMTP relay, we allow unauthenticated connections
 
 	if s.tlsConfig != nil {
 		s.smtpServer.TLSConfig = s.tlsConfig
@@ -184,10 +187,10 @@ func (s *Server) startSubmissionServer(backend smtp.Backend) error {
 	s.submissionServer.Domain = s.config.Server.Hostname
 	s.submissionServer.ReadTimeout = s.config.Server.ReadTimeout
 	s.submissionServer.WriteTimeout = s.config.Server.WriteTimeout
-	s.submissionServer.MaxMessageBytes = int(s.config.Server.MaxMessageSize)
+	s.submissionServer.MaxMessageBytes = int64(s.config.Server.MaxMessageSize)
 	s.submissionServer.MaxRecipients = s.config.Server.MaxRecipients
 	s.submissionServer.AllowInsecureAuth = false
-	s.submissionServer.AuthDisabled = false // Auth required on submission
+	// Note: go-smtp v0.21+ uses EnableAuth=true by default, auth is required on submission
 
 	if s.tlsConfig != nil {
 		s.submissionServer.TLSConfig = s.tlsConfig
@@ -251,13 +254,16 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		clientIP = tcpAddr.IP
 	}
 
+	// Check TLS state - TLSConnectionState returns (state, ok) in newer versions
+	_, isTLS := c.TLSConnectionState()
+
 	session := &Session{
 		backend:   b,
 		conn:      c,
 		clientIP:  clientIP,
 		logger:    b.server.logger.With(zap.String("client_ip", clientIP.String())),
 		startTime: time.Now(),
-		isTLS:     c.TLSConnectionState() != nil,
+		isTLS:     isTLS,
 	}
 
 	b.server.metrics.ConnectionsTotal.Inc()
@@ -301,6 +307,28 @@ func (s *Session) Reset() {
 	s.recipientDomains = make(map[string]bool)
 }
 
+// isTrustedNetwork checks if the client IP is from a trusted network for relay
+func (s *Session) isTrustedNetwork() bool {
+	if s.clientIP == nil {
+		return false
+	}
+
+	trustedNetworks := s.backend.server.config.Limits.TrustedNetworks
+	for _, cidr := range trustedNetworks {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+		if network.Contains(s.clientIP) {
+			s.logger.Debug("Client IP in trusted network",
+				zap.String("client_ip", s.clientIP.String()),
+				zap.String("network", cidr))
+			return true
+		}
+	}
+	return false
+}
+
 // Logout is called when the client logs out
 func (s *Session) Logout() error {
 	duration := time.Since(s.startTime)
@@ -323,8 +351,8 @@ func (s *Session) AuthMechanisms() []string {
 	return []string{"PLAIN", "LOGIN"}
 }
 
-// Auth handles SMTP authentication
-func (s *Session) Auth(mech string) (smtp.AuthSession, error) {
+// Auth handles SMTP authentication - returns a sasl.Server for the mechanism
+func (s *Session) Auth(mech string) (sasl.Server, error) {
 	// Reject authentication without TLS
 	if !s.isTLS {
 		s.logger.Warn("Authentication rejected: TLS not established",
@@ -337,94 +365,68 @@ func (s *Session) Auth(mech string) (smtp.AuthSession, error) {
 		}
 	}
 
-	return &AuthSession{
-		session:   s,
-		mechanism: mech,
-		loginState: &auth.LoginAuthState{
-			Step:     0,
-			ClientIP: s.clientIP,
-			IsTLS:    s.isTLS,
-		},
-	}, nil
-}
-
-// AuthSession handles authentication
-type AuthSession struct {
-	session    *Session
-	mechanism  string
-	loginState *auth.LoginAuthState
-}
-
-// Next processes authentication steps
-func (a *AuthSession) Next(response []byte, more bool) ([]byte, error) {
-	ctx := context.Background()
-	authenticator := a.session.backend.server.authenticator
-
-	switch a.mechanism {
+	switch mech {
 	case "PLAIN":
-		// PLAIN auth sends everything in one response
-		if more {
-			// Initial response not provided, send empty challenge
-			return nil, nil
-		}
-
-		result, err := authenticator.AuthenticatePlain(ctx, response, a.session.clientIP, a.session.isTLS)
-		if err != nil {
-			a.session.logger.Warn("PLAIN authentication failed",
-				zap.String("client_ip", a.session.clientIP.String()),
-				zap.Error(err))
-			return nil, authErrorToSMTP(err)
-		}
-
-		// Set session state
-		a.session.authenticated = true
-		a.session.userID = result.UserID
-		a.session.orgID = result.OrganizationID
-		a.session.userEmail = result.Email
-		a.session.logger.Info("User authenticated via PLAIN",
-			zap.String("user_id", result.UserID),
-			zap.String("email", maskEmailForLog(result.Email)))
-		return nil, nil
-
+		return sasl.NewPlainServer(func(identity, username, password string) error {
+			return s.authenticatePlain(identity, username, password)
+		}), nil
 	case "LOGIN":
-		// LOGIN auth is multi-step
-		if a.loginState.Step == 0 && len(response) == 0 {
-			// Initial request - send username prompt
-			a.loginState.Step = 0
-			return []byte("VXNlcm5hbWU6"), nil // "Username:" base64
-		}
-
-		result, challenge, err := authenticator.AuthenticateLoginStep(ctx, a.loginState, response)
-		if err != nil {
-			a.session.logger.Warn("LOGIN authentication failed",
-				zap.String("client_ip", a.session.clientIP.String()),
-				zap.Int("step", a.loginState.Step),
-				zap.Error(err))
-			return nil, authErrorToSMTP(err)
-		}
-
-		if challenge != nil {
-			// Need more data
-			return challenge, nil
-		}
-
-		// Authentication complete
-		a.session.authenticated = true
-		a.session.userID = result.UserID
-		a.session.orgID = result.OrganizationID
-		a.session.userEmail = result.Email
-		a.session.logger.Info("User authenticated via LOGIN",
-			zap.String("user_id", result.UserID),
-			zap.String("email", maskEmailForLog(result.Email)))
-		return nil, nil
-
+		return sasl.NewLoginServer(func(username, password string) error {
+			return s.authenticateLogin(username, password)
+		}), nil
 	default:
-		return nil, &smtp.SMTPError{
-			Code:         504,
-			EnhancedCode: smtp.EnhancedCode{5, 5, 4},
-			Message:      "Unrecognized authentication mechanism",
-		}
+		return nil, smtp.ErrAuthUnknownMechanism
 	}
+}
+
+// authenticatePlain handles PLAIN authentication
+func (s *Session) authenticatePlain(identity, username, password string) error {
+	ctx := context.Background()
+	authenticator := s.backend.server.authenticator
+
+	result, err := authenticator.AuthenticatePlainCredentials(ctx, username, password, s.clientIP, s.isTLS)
+	if err != nil {
+		s.logger.Warn("PLAIN authentication failed",
+			zap.String("client_ip", s.clientIP.String()),
+			zap.String("username", username),
+			zap.Error(err))
+		return smtp.ErrAuthFailed
+	}
+
+	// Set session state
+	s.authenticated = true
+	s.userID = result.UserID
+	s.orgID = result.OrganizationID
+	s.userEmail = result.Email
+	s.logger.Info("User authenticated via PLAIN",
+		zap.String("user_id", result.UserID),
+		zap.String("email", maskEmailForLog(result.Email)))
+	return nil
+}
+
+// authenticateLogin handles LOGIN authentication
+func (s *Session) authenticateLogin(username, password string) error {
+	ctx := context.Background()
+	authenticator := s.backend.server.authenticator
+
+	result, err := authenticator.AuthenticatePlainCredentials(ctx, username, password, s.clientIP, s.isTLS)
+	if err != nil {
+		s.logger.Warn("LOGIN authentication failed",
+			zap.String("client_ip", s.clientIP.String()),
+			zap.String("username", username),
+			zap.Error(err))
+		return smtp.ErrAuthFailed
+	}
+
+	// Set session state
+	s.authenticated = true
+	s.userID = result.UserID
+	s.orgID = result.OrganizationID
+	s.userEmail = result.Email
+	s.logger.Info("User authenticated via LOGIN",
+		zap.String("user_id", result.UserID),
+		zap.String("email", maskEmailForLog(result.Email)))
+	return nil
 }
 
 // authErrorToSMTP converts auth errors to SMTP errors
@@ -581,15 +583,15 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 			}
 		}
 
-		if !result.Exists && !result.CatchAll {
+		if !result.Found {
 			return &smtp.SMTPError{
 				Code:    550,
 				Message: fmt.Sprintf("Recipient %s not found", to),
 			}
 		}
 	} else {
-		// External delivery - only allowed for authenticated sessions
-		if !s.authenticated {
+		// External delivery - only allowed for authenticated sessions or trusted networks
+		if !s.authenticated && !s.isTrustedNetwork() {
 			return &smtp.SMTPError{
 				Code:    550,
 				Message: "Relay access denied",
@@ -616,10 +618,9 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	return nil
 }
 
-func (s *Session) lookupRecipient(ctx context.Context, email string, domain *domain.Domain) (*domain.RecipientLookupResult, error) {
+func (s *Session) lookupRecipient(ctx context.Context, email string, dom *domain.Domain) (*domain.RecipientLookupResult, error) {
 	result := &domain.RecipientLookupResult{
-		Email:    email,
-		DomainID: domain.ID,
+		Domain: dom,
 	}
 
 	// Check mailbox
@@ -628,9 +629,10 @@ func (s *Session) lookupRecipient(ctx context.Context, email string, domain *dom
 		return nil, err
 	}
 	if mailbox != nil {
-		result.Exists = true
+		result.Found = true
 		result.Type = "mailbox"
-		result.TargetID = mailbox.ID
+		result.Mailbox = mailbox
+		result.FinalRecipients = []string{email}
 		return result, nil
 	}
 
@@ -640,10 +642,13 @@ func (s *Session) lookupRecipient(ctx context.Context, email string, domain *dom
 		return nil, err
 	}
 	if len(aliases) > 0 {
-		result.Exists = true
+		result.Found = true
 		result.Type = "alias"
+		if len(aliases) > 0 {
+			result.Alias = aliases[0]
+		}
 		for _, a := range aliases {
-			result.Targets = append(result.Targets, a.TargetEmail)
+			result.FinalRecipients = append(result.FinalRecipients, a.TargetEmail)
 		}
 		return result, nil
 	}
@@ -654,17 +659,19 @@ func (s *Session) lookupRecipient(ctx context.Context, email string, domain *dom
 		return nil, err
 	}
 	if distList != nil {
-		result.Exists = true
+		result.Found = true
 		result.Type = "distribution_list"
-		result.TargetID = distList.ID
-		result.Targets = distList.Members
+		result.DistributionList = distList
+		result.FinalRecipients = distList.Members
 		return result, nil
 	}
 
 	// Check catch-all
-	if domain.Policies.CatchAllEnabled && domain.Policies.CatchAllAddress != "" {
-		result.CatchAll = true
-		result.Targets = []string{domain.Policies.CatchAllAddress}
+	if dom.Policies.CatchAllEnabled && dom.Policies.CatchAllAddress != "" {
+		result.Found = true
+		result.Type = "catch_all"
+		result.FinalRecipients = []string{dom.Policies.CatchAllAddress}
+		return result, nil
 	}
 
 	return result, nil

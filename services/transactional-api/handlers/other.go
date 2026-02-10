@@ -549,23 +549,25 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate scopes
-	validScopes := map[string]bool{
-		"send": true, "templates": true, "webhooks": true,
-		"analytics": true, "suppressions": true, "events": true,
+	validScopes := map[models.APIKeyScope]bool{
+		models.ScopeSend: true, models.ScopeTemplates: true, models.ScopeWebhooks: true,
+		models.ScopeAnalytics: true, models.ScopeSuppression: true, models.ScopeRead: true,
 	}
-	for _, scope := range req.Scopes {
+	scopeStrings := make([]string, len(req.Scopes))
+	for i, scope := range req.Scopes {
 		if !validScopes[scope] {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid scope: " + scope})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid scope: " + string(scope)})
 			return
 		}
+		scopeStrings[i] = string(scope)
 	}
 
 	rateLimit := 1000 // Default
-	if req.RateLimit != nil {
-		rateLimit = *req.RateLimit
+	if req.RateLimit > 0 {
+		rateLimit = req.RateLimit
 	}
 
-	key, rawKey, err := h.repo.Create(r.Context(), orgID, req.Name, req.Scopes, rateLimit, req.ExpiresAt)
+	key, rawKey, err := h.repo.Create(r.Context(), orgID, req.Name, scopeStrings, rateLimit, req.ExpiresAt)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return

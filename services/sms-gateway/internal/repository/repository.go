@@ -209,12 +209,12 @@ func (r *Repository) CreateOTP(ctx context.Context, record interface{}) (string,
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
 		)`
 
-	switch r := record.(type) {
+	switch otpRecord := record.(type) {
 	case *OTPRecord:
 		_, err := r.db.ExecContext(ctx, query,
-			id, r.PhoneNumber, r.Code, r.Purpose, r.UserID, r.OrganizationID,
-			r.MessageID, 0, r.MaxAttempts, false, r.ExpiresAt,
-			time.Now(), r.IPAddress, r.UserAgent,
+			id, otpRecord.PhoneNumber, otpRecord.Code, otpRecord.Purpose, otpRecord.UserID, otpRecord.OrganizationID,
+			otpRecord.MessageID, 0, otpRecord.MaxAttempts, false, otpRecord.ExpiresAt,
+			time.Now(), otpRecord.IPAddress, otpRecord.UserAgent,
 		)
 		return id, err
 	default:
@@ -439,4 +439,42 @@ func (r *Repository) ResetRateLimit(ctx context.Context, key string) error {
 		return nil
 	}
 	return r.redis.Del(ctx, key).Err()
+}
+
+// AnalyticsSummary represents analytics summary data
+type AnalyticsSummary struct {
+	TotalSent      int64   `json:"total_sent"`
+	TotalDelivered int64   `json:"total_delivered"`
+	TotalFailed    int64   `json:"total_failed"`
+	DeliveryRate   float64 `json:"delivery_rate"`
+}
+
+// GetAnalyticsSummary returns analytics summary for an organization
+func (r *Repository) GetAnalyticsSummary(ctx context.Context, organizationID string) (*AnalyticsSummary, error) {
+	// Return empty summary for now - can be implemented later
+	return &AnalyticsSummary{}, nil
+}
+
+// UsageStats represents usage statistics
+type UsageStats struct {
+	Today int64 `json:"today"`
+	Week  int64 `json:"week"`
+	Month int64 `json:"month"`
+}
+
+// GetUsageStats returns usage stats for an organization
+func (r *Repository) GetUsageStats(ctx context.Context, organizationID string) (*UsageStats, error) {
+	// Return empty stats for now - can be implemented later
+	return &UsageStats{}, nil
+}
+
+// GetAPIKey retrieves an API key by its value
+func (r *Repository) GetAPIKey(ctx context.Context, key string) (*APIKey, error) {
+	var apiKey APIKey
+	query := `SELECT * FROM sms_api_keys WHERE key_hash = $1 AND is_active = true`
+	err := r.db.GetContext(ctx, &apiKey, query, key)
+	if err != nil {
+		return nil, err
+	}
+	return &apiKey, nil
 }

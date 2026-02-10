@@ -19,7 +19,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"smtp-server/domain"
+	"github.com/oonrumail/smtp-server/domain"
 )
 
 // ChainValidation represents the result of ARC chain validation

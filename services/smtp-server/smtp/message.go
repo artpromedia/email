@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"smtp-server/dkim"
-	"smtp-server/dmarc"
-	"smtp-server/domain"
-	"smtp-server/spf"
+	"github.com/oonrumail/smtp-server/dkim"
+	"github.com/oonrumail/smtp-server/dmarc"
+	"github.com/oonrumail/smtp-server/domain"
+	"github.com/oonrumail/smtp-server/spf"
 )
 
 // processMessage handles the incoming message data
@@ -59,8 +59,11 @@ func (s *Session) processMessage(r io.Reader) error {
 		zap.String("subject", subject),
 		zap.Int64("size", size))
 
-	// For incoming messages (not authenticated), perform SPF/DKIM/DMARC checks
-	if !s.authenticated {
+	// Determine if this is an internal/trusted relay (skip inbound auth checks)
+	isTrustedRelay := s.authenticated || s.isTrustedNetwork()
+
+	// For incoming messages (not authenticated and not from trusted network), perform SPF/DKIM/DMARC checks
+	if !isTrustedRelay {
 		result, err := s.performAuthChecks(ctx, messageData)
 		if err != nil {
 			s.logger.Error("Auth checks failed", zap.Error(err))
@@ -87,8 +90,8 @@ func (s *Session) processMessage(r io.Reader) error {
 		messageData = prependHeader(messageData, "Authentication-Results", authResults)
 	}
 
-	// For outbound messages (authenticated), sign with DKIM
-	if s.authenticated {
+	// For outbound messages (authenticated or from trusted network), sign with DKIM
+	if isTrustedRelay {
 		fromDomain := s.backend.server.domainCache.GetDomain(s.fromDomain)
 		if fromDomain != nil && fromDomain.DKIMVerified {
 			signedData, err := s.backend.server.dkimSigner.SignMessage(s.fromDomain, messageData, nil)

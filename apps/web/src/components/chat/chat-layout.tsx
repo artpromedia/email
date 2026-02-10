@@ -648,7 +648,7 @@ function MessageInput() {
   const { currentChannel, sendMessage, sendTyping } = useChat();
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const handleSend = async () => {
     if (!content.trim() || isSending) return;

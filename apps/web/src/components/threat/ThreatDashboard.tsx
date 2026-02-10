@@ -180,27 +180,28 @@ export function ThreatDashboard({ orgId }: Readonly<ThreatDashboardProps>) {
 
   // Helper function to generate CSV from dashboard data
   const generateCSVReport = (data: typeof dashboardData, period: string): string => {
+    const totalThreats = data.spam_stats.spam_detected + data.phishing_stats.phishing_detected;
+    const blocked = data.spam_stats.blocked + data.reputation_stats.blocked_senders;
     const lines: string[] = [
       "Threat Intelligence Report",
       `Generated: ${new Date().toISOString()}`,
       `Period: ${period}`,
       "",
       "Summary Statistics",
-      `Total Threats Detected,${data.summary.totalThreats}`,
-      `Blocked Attempts,${data.summary.blocked}`,
-      `High Severity Threats,${data.summary.highSeverity}`,
-      `Active Investigations,${data.summary.investigations}`,
+      `Total Threats Detected,${totalThreats}`,
+      `Blocked Attempts,${blocked}`,
+      `High Severity Threats,${data.phishing_stats.high_severity}`,
+      `Spam Detected,${data.spam_stats.spam_detected}`,
       "",
       "Threat Types",
-      "Type,Count,Percentage",
-      ...data.threatTypes.map(
-        (t) => `${t.type},${t.count},${((t.count / data.summary.totalThreats) * 100).toFixed(1)}%`
-      ),
+      "Type,Count",
+      `Spam,${data.spam_stats.spam_detected}`,
+      `Phishing,${data.phishing_stats.phishing_detected}`,
       "",
       "Recent Threats",
-      "Time,Type,Severity,Source,Status",
-      ...data.recentThreats.map(
-        (t) => `${t.timestamp},${t.type},${t.severity},${t.source},${t.status}`
+      "Time,Type,Severity,Sender,Status",
+      ...data.recent_threats.map(
+        (t) => `${t.detected_at},${t.type},${t.severity},${t.sender_email},${t.action}`
       ),
     ];
 

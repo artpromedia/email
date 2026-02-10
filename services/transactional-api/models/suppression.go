@@ -28,18 +28,20 @@ const (
 
 // Suppression represents a suppressed email address
 type Suppression struct {
-	ID           uuid.UUID             `json:"id"`
-	DomainID     uuid.UUID             `json:"domain_id"`
-	Email        string                `json:"email"`
-	Reason       SuppressionReason     `json:"reason"`
-	BounceClass  BounceClassification  `json:"bounce_class,omitempty"`
-	Description  string                `json:"description,omitempty"`
-	OriginalError string               `json:"original_error,omitempty"`
-	Source       string                `json:"source,omitempty"` // api, webhook, smtp
-	MessageID    *uuid.UUID            `json:"message_id,omitempty"`
-	CreatedAt    time.Time             `json:"created_at"`
-	ExpiresAt    *time.Time            `json:"expires_at,omitempty"` // For soft bounces
-	CreatedBy    *uuid.UUID            `json:"created_by,omitempty"` // For manual suppressions
+	ID             uuid.UUID             `json:"id"`
+	DomainID       uuid.UUID             `json:"domain_id"`
+	OrganizationID uuid.UUID             `json:"organization_id"`
+	Email          string                `json:"email"`
+	Reason         SuppressionReason     `json:"reason"`
+	Type           SuppressionType       `json:"type"`
+	BounceClass    BounceClassification  `json:"bounce_class,omitempty"`
+	Description    string                `json:"description,omitempty"`
+	OriginalError  string                `json:"original_error,omitempty"`
+	Source         string                `json:"source,omitempty"` // api, webhook, smtp
+	MessageID      *uuid.UUID            `json:"message_id,omitempty"`
+	CreatedAt      time.Time             `json:"created_at"`
+	ExpiresAt      *time.Time            `json:"expires_at,omitempty"` // For soft bounces
+	CreatedBy      *uuid.UUID            `json:"created_by,omitempty"` // For manual suppressions
 }
 
 // CreateSuppressionRequest is the request to add an email to the suppression list
@@ -167,3 +169,13 @@ type ExportSuppressionRequest struct {
 	EndDate   *time.Time         `json:"end_date,omitempty"`
 	Format    string             `json:"format" validate:"oneof=csv json"` // csv or json
 }
+
+// SuppressionType is an alias for SuppressionReason for backward compatibility
+type SuppressionType = SuppressionReason
+
+const (
+	SuppressionBounce      SuppressionType = "bounce"
+	SuppressionUnsubscribe SuppressionType = "unsubscribe"
+	SuppressionSpamReport  SuppressionType = "spam_report"
+	SuppressionManual      SuppressionType = "manual"
+)

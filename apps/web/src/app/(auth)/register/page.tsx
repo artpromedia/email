@@ -12,7 +12,7 @@
  * - Redirect to login if registration disabled for domain
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -172,7 +172,27 @@ function RegistrationUnavailable({
   );
 }
 
-export default function RegisterPage() {
+// Loading fallback component
+function RegisterLoadingFallback() {
+  return (
+    <Card className="border-0 shadow-lg">
+      <CardHeader className="space-y-4 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+          <Mail className="h-6 w-6 text-primary-foreground" />
+        </div>
+        <div>
+          <CardTitle className="text-2xl">Loading...</CardTitle>
+          <CardDescription className="mt-2">Please wait</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledEmail = searchParams.get("email") ?? "";
@@ -516,5 +536,14 @@ export default function RegisterPage() {
         </p>
       </CardFooter>
     </Card>
+  );
+}
+
+// Export wrapped in Suspense for Next.js static generation
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterLoadingFallback />}>
+      <RegisterContent />
+    </Suspense>
   );
 }

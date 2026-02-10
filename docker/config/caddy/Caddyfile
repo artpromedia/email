@@ -1,0 +1,105 @@
+# Caddyfile for OONRUMAIL
+# Automatic HTTPS with Let's Encrypt
+
+{
+    email admin@oonrumail.com
+}
+
+# Main web app - serve at app.oonrumail.com (primary) and mail.oonrumail.com (alias)
+app.oonrumail.com, mail.oonrumail.com {
+    reverse_proxy web:3000
+    encode gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Admin panel
+admin.oonrumail.com {
+    reverse_proxy admin:3001
+    encode gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+    }
+}
+
+# API endpoints
+api.oonrumail.com {
+    # Auth service
+    handle /auth/* {
+        uri strip_prefix /auth
+        reverse_proxy auth:8080
+    }
+
+    # Storage service
+    handle /storage/* {
+        uri strip_prefix /storage
+        reverse_proxy storage:8085
+    }
+
+    # Contacts service
+    handle /contacts/* {
+        uri strip_prefix /contacts
+        reverse_proxy contacts:8083
+    }
+
+    # Calendar service
+    handle /calendar/* {
+        uri strip_prefix /calendar
+        reverse_proxy calendar:8082
+    }
+
+    # Chat service
+    handle /chat/* {
+        uri strip_prefix /chat
+        reverse_proxy chat:8086
+    }
+
+    # Transactional email API
+    handle /v1/* {
+        reverse_proxy transactional-api:8085
+    }
+
+    # Domain manager
+    handle /domains/* {
+        uri strip_prefix /domains
+        reverse_proxy domain-manager:8083
+    }
+
+    # SMS Gateway
+    handle /sms/* {
+        uri strip_prefix /sms
+        reverse_proxy sms-gateway:8087
+    }
+
+    # AI Assistant
+    handle /ai/* {
+        uri strip_prefix /ai
+        reverse_proxy ai-assistant:8090
+    }
+
+    # Default - auth service for login/register
+    handle {
+        reverse_proxy auth:8080
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Authorization, Content-Type, X-API-Key, X-Request-ID"
+    }
+}
+
+# NOTE: oonrumail.com and www.oonrumail.com are handled by Cloudflare
+# They cannot use Caddy for SSL as they are proxied through Cloudflare

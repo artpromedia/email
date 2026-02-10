@@ -54,6 +54,7 @@ var (
 	ErrMemberNotFound         = errors.New("member not found")
 	ErrCannotRemoveOwner      = errors.New("cannot remove organization owner")
 	ErrInvalidRole            = errors.New("invalid role")
+	ErrUserNotFound           = errors.New("user not found")
 	ErrDomainVerificationFailed = errors.New("domain verification failed")
 )
 
@@ -987,7 +988,7 @@ func (s *AdminService) CompletePasswordReset(ctx context.Context, token, newPass
 	}
 
 	// Update password
-	user.PasswordHash = hashedPassword
+	user.PasswordHash = sql.NullString{String: hashedPassword, Valid: true}
 	user.UpdatedAt = time.Now()
 	user.PasswordChangedAt = sql.NullTime{Time: time.Now(), Valid: true}
 
@@ -1145,3 +1146,5 @@ func getDNSInstructions(domain, token, method string) string {
 		return txtInstructions
 	default:
 		return txtInstructions
+	}
+}

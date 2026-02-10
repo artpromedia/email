@@ -30,8 +30,8 @@ func (c *Connection) handleGetQuota(tag, args string) error {
 	}
 
 	// Convert to KB for IMAP
-	usedKB := quota.StorageUsed / 1024
-	limitKB := quota.StorageLimit / 1024
+	usedKB := quota.Usage / 1024
+	limitKB := quota.Limit / 1024
 
 	c.sendUntagged("QUOTA \"%s\" (STORAGE %d %d)", quotaRoot, usedKB, limitKB)
 	c.sendTagged(tag, "OK GETQUOTA completed")
@@ -213,7 +213,7 @@ func (c *Connection) checkQuotaWarnings() []QuotaWarning {
 			if percent >= 90 {
 				warnings = append(warnings, QuotaWarning{
 					MailboxID:    mb.ID,
-					MailboxName:  mb.EmailAddress,
+					MailboxName:  mb.Email,
 					ResourceType: "STORAGE",
 					UsagePercent: percent,
 					Used:         quota.StorageUsed,
@@ -228,7 +228,7 @@ func (c *Connection) checkQuotaWarnings() []QuotaWarning {
 			if percent >= 90 {
 				warnings = append(warnings, QuotaWarning{
 					MailboxID:    mb.ID,
-					MailboxName:  mb.EmailAddress,
+					MailboxName:  mb.Email,
 					ResourceType: "MESSAGE",
 					UsagePercent: percent,
 					Used:         quota.MessageCount,

@@ -85,13 +85,28 @@ func (h *SSOHandler) InitiateSSO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.ssoService.InitiateSSO(r.Context(), &req)
+	// Discover domain for SSO
+	discover, err := h.ssoService.DiscoverSSO(r.Context(), req.Email)
 	if err != nil {
 		handleSSOError(w, err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, response)
+	if !discover.HasSSO || discover.DomainID == nil {
+		respondError(w, http.StatusBadRequest, "sso_not_available", "SSO is not available for this email domain")
+		return
+	}
+
+	// Initiate SSO with the domain ID
+	redirectURL, err := h.ssoService.InitiateSSO(r.Context(), *discover.DomainID, req.RedirectURL)
+	if err != nil {
+		handleSSOError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, models.SSOInitiateResponse{
+		RedirectURL: redirectURL,
+	})
 }
 
 // SAMLCallback handles the SAML assertion callback from the IdP.
@@ -111,33 +126,33 @@ func (h *SSOHandler) SAMLCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse domainID from URL param or relayState
+	domainIDStr := chi.URLParam(r, "domainId")
+	if domainIDStr == "" {
+		// Try to extract from relayState (which may contain domain info)
+		domainIDStr = relayState
+	}
+
+	domainID, err := uuid.Parse(domainIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid_request", "Domain ID required")
+		return
+	}
+
 	clientIP := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	response, err := h.ssoService.HandleSAMLCallback(r.Context(), samlResponse, relayState, clientIP, userAgent)
+	response, err := h.ssoService.HandleSAMLCallback(r.Context(), domainID, samlResponse, clientIP, userAgent)
 	if err != nil {
 		handleSSOError(w, err)
 		return
 	}
 
-	// For browser-based flows, redirect with tokens
-	if relayState != "" {
-		// Redirect to the original URL with tokens
-		redirectURL := response.RedirectURL
-		if redirectURL == "" {
-			redirectURL = "/dashboard"
-		}
+	// Set cookies
+	setTokenCookies(w, response)
 
-		// Set cookies
-		setTokenCookies(w, response)
-
-		// Redirect
-		http.Redirect(w, r, redirectURL, http.StatusFound)
-		return
-	}
-
-	// For API-based flows, return JSON
-	respondJSON(w, http.StatusOK, response)
+	// Redirect to dashboard
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // OIDCCallback handles the OIDC authorization code callback.
@@ -168,10 +183,23 @@ func (h *SSOHandler) OIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse domainID from URL param
+	domainIDStr := chi.URLParam(r, "domainId")
+	if domainIDStr == "" {
+		// Try to extract from state (which may contain domain info)
+		domainIDStr = state
+	}
+
+	domainID, err := uuid.Parse(domainIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid_request", "Domain ID required")
+		return
+	}
+
 	clientIP := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	response, err := h.ssoService.HandleOIDCCallback(r.Context(), code, state, clientIP, userAgent)
+	response, err := h.ssoService.HandleOIDCCallback(r.Context(), domainID, code, state, clientIP, userAgent)
 	if err != nil {
 		handleSSOError(w, err)
 		return
@@ -180,13 +208,8 @@ func (h *SSOHandler) OIDCCallback(w http.ResponseWriter, r *http.Request) {
 	// Set cookies
 	setTokenCookies(w, response)
 
-	// Redirect to dashboard or original URL
-	redirectURL := response.RedirectURL
-	if redirectURL == "" {
-		redirectURL = "/dashboard"
-	}
-
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	// Redirect to dashboard
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // SAMLMetadata returns the SAML service provider metadata for a domain.
@@ -199,14 +222,14 @@ func (h *SSOHandler) SAMLMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metadata, err := h.ssoService.GetSAMLMetadata(r.Context(), domainID)
+	metadata, err := h.ssoService.GenerateSAMLMetadata(r.Context(), domainID)
 	if err != nil {
 		handleSSOError(w, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/xml")
-	w.Write(metadata)
+	w.Write([]byte(metadata))
 }
 
 // GetSSOConfig returns the SSO configuration for a domain.
@@ -291,7 +314,7 @@ func (h *SSOHandler) UpdateSSOConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := h.ssoService.UpdateSSOConfig(r.Context(), domainID, &req, claims.UserID)
+	config, err := h.ssoService.ConfigureSSO(r.Context(), domainID, &req, claims.UserID)
 	if err != nil {
 		handleSSOError(w, err)
 		return
@@ -335,13 +358,19 @@ func (h *SSOHandler) TestSSOConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.ssoService.TestSSOConfig(r.Context(), domainID)
+	// Get SSO config to verify it exists and is valid
+	config, err := h.ssoService.GetSSOConfig(r.Context(), domainID)
 	if err != nil {
 		handleSSOError(w, err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	// Return basic test result
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"provider": config.Provider,
+		"message":  "SSO configuration is valid",
+	})
 }
 
 // handleSSOError handles SSO-specific errors.

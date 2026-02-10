@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/artpromedia/email/services/transactional-api/service"
+	"transactional-api/service"
 	"github.com/go-chi/chi/v5"
 )
 

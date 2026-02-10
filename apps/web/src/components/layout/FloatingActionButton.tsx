@@ -243,7 +243,7 @@ export function FloatingActionButton({
   };
 
   // Long press detection
-  const pressTimer = React.useRef<ReturnType<typeof setTimeout>>();
+  const pressTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleTouchStart = () => {
     pressTimer.current = setTimeout(handleLongPress, 500);

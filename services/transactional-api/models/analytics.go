@@ -145,6 +145,7 @@ type MailClientStats struct {
 // LinkStats represents click statistics for a specific link
 type LinkStats struct {
 	URL           string  `json:"url"`
+	Clicks        int64   `json:"clicks"`
 	TotalClicks   int64   `json:"total_clicks"`
 	UniqueClicks  int64   `json:"unique_clicks"`
 	Percentage    float64 `json:"percentage"`
@@ -156,6 +157,10 @@ type EngagementStats struct {
 	OverallScore     float64          `json:"overall_score"` // 0-100
 	OpenRate         float64          `json:"open_rate"`
 	ClickRate        float64          `json:"click_rate"`
+	Opens            []TimeSeriesData `json:"opens,omitempty"`
+	Clicks           []TimeSeriesData `json:"clicks,omitempty"`
+	UniqueOpens      int64            `json:"unique_opens"`
+	UniqueClicks     int64            `json:"unique_clicks"`
 	TopCategories    []CategoryStats  `json:"top_categories"`
 	TopDomains       []DomainStats    `json:"top_domains"`
 	TopLinks         []LinkStats      `json:"top_links"`
@@ -218,4 +223,39 @@ type ComparisonStats struct {
 		ClickRateChange    float64 `json:"click_rate_change"`
 		BounceRateChange   float64 `json:"bounce_rate_change"`
 	} `json:"changes"`
+}
+
+// AnalyticsOverview represents high-level analytics summary
+type AnalyticsOverview struct {
+	Period         string  `json:"period"`
+	TotalSent      int64   `json:"total_sent"`
+	TotalDelivered int64   `json:"total_delivered"`
+	TotalBounced   int64   `json:"total_bounced"`
+	TotalOpened    int64   `json:"total_opened"`
+	TotalClicked   int64   `json:"total_clicked"`
+	DeliveryRate   float64 `json:"delivery_rate"`
+	OpenRate       float64 `json:"open_rate"`
+	ClickRate      float64 `json:"click_rate"`
+	BounceRate     float64 `json:"bounce_rate"`
+}
+
+// TimeSeriesData represents a time-stamped value
+type TimeSeriesData struct {
+	Timestamp time.Time `json:"timestamp"`
+	Value     int64     `json:"value"`
+}
+
+// BounceReason represents a bounce reason with count
+type BounceReason struct {
+	Reason string `json:"reason"`
+	Count  int64  `json:"count"`
+}
+
+// DeliveryStats represents delivery time-series statistics
+type DeliveryStats struct {
+	Period    string           `json:"period"`
+	Delivered []TimeSeriesData `json:"delivered"`
+	Bounced   []TimeSeriesData `json:"bounced"`
+	Deferred  []TimeSeriesData `json:"deferred"`
+	Dropped   []TimeSeriesData `json:"dropped"`
 }

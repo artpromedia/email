@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/artpromedia/email/services/transactional-api/models"
+	"transactional-api/models"
 )
 
 func TestHandler_ParseInt(t *testing.T) {

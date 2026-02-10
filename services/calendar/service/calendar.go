@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"calendar-service/models"
@@ -38,6 +37,37 @@ func NewCalendarService(
 		notification: notification,
 		logger:       logger,
 	}
+}
+
+// Helper functions to convert request types to model types
+
+func convertRemindersToModels(eventID uuid.UUID, reqs []models.CreateReminderRequest) []*models.Reminder {
+	reminders := make([]*models.Reminder, len(reqs))
+	for i, req := range reqs {
+		reminders[i] = &models.Reminder{
+			ID:      uuid.New(),
+			EventID: eventID,
+			Method:  req.Method,
+			Minutes: req.Minutes,
+		}
+	}
+	return reminders
+}
+
+func convertAttendeesToModels(eventID uuid.UUID, reqs []models.CreateAttendeeRequest) []*models.Attendee {
+	attendees := make([]*models.Attendee, len(reqs))
+	for i, req := range reqs {
+		attendees[i] = &models.Attendee{
+			ID:      uuid.New(),
+			EventID: eventID,
+			Email:   req.Email,
+			Name:    req.Name,
+			Role:    req.Role,
+			RSVP:    req.RSVP,
+			Status:  models.StatusNeedsAction,
+		}
+	}
+	return attendees
 }
 
 // Calendar operations
@@ -114,17 +144,17 @@ func (s *CalendarService) UpdateCalendar(ctx context.Context, userID, calendarID
 	}
 
 	// Apply updates
-	if req.Name != "" {
-		calendar.Name = req.Name
+	if req.Name != nil && *req.Name != "" {
+		calendar.Name = *req.Name
 	}
 	if req.Description != nil {
 		calendar.Description = *req.Description
 	}
-	if req.Color != "" {
-		calendar.Color = req.Color
+	if req.Color != nil && *req.Color != "" {
+		calendar.Color = *req.Color
 	}
-	if req.Timezone != "" {
-		calendar.Timezone = req.Timezone
+	if req.Timezone != nil && *req.Timezone != "" {
+		calendar.Timezone = *req.Timezone
 	}
 	if req.IsPublic != nil {
 		calendar.IsPublic = *req.IsPublic
@@ -246,14 +276,14 @@ func (s *CalendarService) CreateEvent(ctx context.Context, userID uuid.UUID, req
 
 	// Add reminders
 	if len(req.Reminders) > 0 {
-		if err := s.reminderRepo.BulkCreate(ctx, event.ID, req.Reminders); err != nil {
+		if err := s.reminderRepo.BulkCreate(ctx, event.ID, convertRemindersToModels(event.ID, req.Reminders)); err != nil {
 			s.logger.Error("Failed to create reminders", zap.Error(err))
 		}
 	}
 
 	// Add attendees and send invitations
 	if len(req.Attendees) > 0 {
-		if err := s.attendeeRepo.BulkCreate(ctx, event.ID, req.Attendees); err != nil {
+		if err := s.attendeeRepo.BulkCreate(ctx, event.ID, convertAttendeesToModels(event.ID, req.Attendees)); err != nil {
 			s.logger.Error("Failed to add attendees", zap.Error(err))
 		} else {
 			// Send invitation emails
@@ -372,8 +402,8 @@ func (s *CalendarService) UpdateEvent(ctx context.Context, userID, eventID uuid.
 	oldAttendees, _ := s.attendeeRepo.GetByEventID(ctx, eventID)
 
 	// Apply updates
-	if req.Title != "" && req.Title != event.Title {
-		event.Title = req.Title
+	if req.Title != nil && *req.Title != "" && *req.Title != event.Title {
+		event.Title = *req.Title
 		needsUpdate = true
 	}
 	if req.Description != nil {
@@ -384,29 +414,29 @@ func (s *CalendarService) UpdateEvent(ctx context.Context, userID, eventID uuid.
 		event.Location = *req.Location
 		needsUpdate = true
 	}
-	if !req.StartTime.IsZero() && !req.StartTime.Equal(event.StartTime) {
-		event.StartTime = req.StartTime
+	if req.StartTime != nil && !req.StartTime.IsZero() && !req.StartTime.Equal(event.StartTime) {
+		event.StartTime = *req.StartTime
 		needsUpdate = true
 	}
-	if !req.EndTime.IsZero() && !req.EndTime.Equal(event.EndTime) {
-		event.EndTime = req.EndTime
+	if req.EndTime != nil && !req.EndTime.IsZero() && !req.EndTime.Equal(event.EndTime) {
+		event.EndTime = *req.EndTime
 		needsUpdate = true
 	}
 	if req.AllDay != nil {
 		event.AllDay = *req.AllDay
 	}
-	if req.Timezone != "" {
-		event.Timezone = req.Timezone
+	if req.Timezone != nil && *req.Timezone != "" {
+		event.Timezone = *req.Timezone
 	}
-	if req.Status != "" {
-		event.Status = req.Status
+	if req.Status != nil && *req.Status != "" {
+		event.Status = *req.Status
 		needsUpdate = true
 	}
-	if req.Visibility != "" {
-		event.Visibility = req.Visibility
+	if req.Visibility != nil && *req.Visibility != "" {
+		event.Visibility = *req.Visibility
 	}
-	if req.Transparency != "" {
-		event.Transparency = req.Transparency
+	if req.Transparency != nil && *req.Transparency != "" {
+		event.Transparency = *req.Transparency
 	}
 	if req.RecurrenceRule != nil {
 		event.RecurrenceRule = *req.RecurrenceRule
@@ -419,7 +449,7 @@ func (s *CalendarService) UpdateEvent(ctx context.Context, userID, eventID uuid.
 
 	// Update reminders if provided
 	if req.Reminders != nil {
-		if err := s.reminderRepo.ReplaceForEvent(ctx, eventID, req.Reminders); err != nil {
+		if err := s.reminderRepo.ReplaceForEvent(ctx, eventID, convertRemindersToModels(eventID, req.Reminders)); err != nil {
 			s.logger.Error("Failed to update reminders", zap.Error(err))
 		}
 	}

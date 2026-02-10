@@ -143,11 +143,17 @@ func (s *AnalyticsService) GetBounceStats(ctx context.Context, orgID uuid.UUID, 
 		return nil, err
 	}
 
+	var total int64
+	for _, d := range bounced {
+		total += d.Value
+	}
+
 	return &models.BounceStats{
-		Period:     formatPeriod(from, to),
-		HardBounce: bounced, // Simplified - in production, filter by bounce_type
-		SoftBounce: []models.TimeSeriesData{},
-		TopReasons: topReasons,
+		Total:       total,
+		HardBounces: total, // Simplified - in production, filter by bounce_type
+		SoftBounces: 0,
+		BounceRate:  0,
+		ByReason:    convertBounceReasons(topReasons),
 	}, nil
 }
 
@@ -159,4 +165,15 @@ func (s *AnalyticsService) GetDomainStats(ctx context.Context, orgID uuid.UUID, 
 
 func formatPeriod(from, to time.Time) string {
 	return from.Format("2006-01-02") + " to " + to.Format("2006-01-02")
+}
+
+func convertBounceReasons(reasons []models.BounceReason) []models.BounceReasonStats {
+	result := make([]models.BounceReasonStats, len(reasons))
+	for i, r := range reasons {
+		result[i] = models.BounceReasonStats{
+			Reason: r.Reason,
+			Count:  r.Count,
+		}
+	}
+	return result
 }

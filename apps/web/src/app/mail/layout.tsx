@@ -5,10 +5,10 @@
  * Provides the main structure for the mail application with sidebar
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Loader2 } from "lucide-react";
 import { cn } from "@email/ui";
 
 import { MailSidebar, useDomains, useMailStore, useMailWebSocket } from "@/lib/mail";
@@ -139,10 +139,21 @@ function MailLayoutInner({ children }: MailLayoutInnerProps) {
 // MAIN LAYOUT EXPORT
 // ============================================================
 
+// Loading fallback for Suspense
+function MailLayoutLoading() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
 export default function MailLayout({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <MailLayoutInner>{children}</MailLayoutInner>
+      <Suspense fallback={<MailLayoutLoading />}>
+        <MailLayoutInner>{children}</MailLayoutInner>
+      </Suspense>
     </QueryClientProvider>
   );
 }

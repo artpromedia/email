@@ -99,14 +99,16 @@ type AuthResponse struct {
 type UserResponse struct {
 	ID             uuid.UUID             `json:"id"`
 	OrganizationID uuid.UUID             `json:"organization_id"`
+	Email          string                `json:"email,omitempty"`
 	DisplayName    string                `json:"display_name"`
 	Role           string                `json:"role"`
 	Status         string                `json:"status"`
 	AvatarURL      *string               `json:"avatar_url,omitempty"`
 	MFAEnabled     bool                  `json:"mfa_enabled"`
-	EmailAddresses []EmailAddressResponse `json:"email_addresses"`
-	Domains        []DomainAccessResponse `json:"domains"`
-	CreatedAt      string                `json:"created_at"`
+	EmailAddresses []EmailAddressResponse `json:"email_addresses,omitempty"`
+	Domains        []DomainAccessResponse `json:"domains,omitempty"`
+	CreatedAt      interface{}           `json:"created_at"`
+	UpdatedAt      interface{}           `json:"updated_at,omitempty"`
 }
 
 // EmailAddressResponse represents an email address in responses.

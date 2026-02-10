@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"go.uber.org/zap"
@@ -1251,7 +1252,10 @@ func (s *Server) validateToken(tokenString string) (*UserClaims, error) {
 		return nil, err
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, err
+	}
 	userID, _ := uuid.Parse(claims["user_id"].(string))
 	orgID, _ := uuid.Parse(claims["organization_id"].(string))
 
