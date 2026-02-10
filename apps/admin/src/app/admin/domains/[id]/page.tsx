@@ -5,14 +5,13 @@
  * Manage individual domain settings, DNS, DKIM, etc.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Globe,
   Key,
-  Shield,
   Copy,
   CheckCircle,
   XCircle,
@@ -67,7 +66,7 @@ interface DkimKey {
   createdAt: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
 
 export default function DomainDetailPage() {
   const params = useParams();
@@ -75,21 +74,21 @@ export default function DomainDetailPage() {
   const domainId = params.id as string;
 
   const [domain, setDomain] = useState<DomainDetail | null>(null);
-  const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
+  const [_dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
   const [dkimKeys, setDkimKeys] = useState<DkimKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const fetchDomain = async () => {
+  const fetchDomain = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}`);
       if (!res.ok) throw new Error("Failed to fetch domain");
-      const data = await res.json();
+      const data = (await res.json()) as DomainDetail;
       setDomain(data);
 
       // Fetch DNS records
@@ -97,26 +96,26 @@ export default function DomainDetailPage() {
         method: "POST",
       });
       if (dnsRes.ok) {
-        const dnsData = await dnsRes.json();
-        setDnsRecords(dnsData.records || []);
+        const dnsData = (await dnsRes.json()) as { records?: DnsRecord[] };
+        setDnsRecords(dnsData.records ?? []);
       }
 
       // Fetch DKIM keys
       const dkimRes = await fetch(`${API_BASE}/api/admin/domains/${domainId}/dkim`);
       if (dkimRes.ok) {
-        const dkimData = await dkimRes.json();
-        setDkimKeys(dkimData.keys || []);
+        const dkimData = (await dkimRes.json()) as { keys?: DkimKey[] };
+        setDkimKeys(dkimData.keys ?? []);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch domain");
     } finally {
       setLoading(false);
     }
-  };
+  }, [domainId]);
 
   useEffect(() => {
-    if (domainId) fetchDomain();
-  }, [domainId]);
+    if (domainId) void fetchDomain();
+  }, [domainId, fetchDomain]);
 
   const handleSave = async () => {
     if (!domain) return;
@@ -132,7 +131,7 @@ export default function DomainDetailPage() {
         }),
       });
       if (!res.ok) throw new Error("Failed to save");
-      fetchDomain();
+      void fetchDomain();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -146,7 +145,7 @@ export default function DomainDetailPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Verification failed");
-      fetchDomain();
+      void fetchDomain();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
     }
@@ -158,7 +157,7 @@ export default function DomainDetailPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to generate DKIM key");
-      fetchDomain();
+      void fetchDomain();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate DKIM key");
     }
@@ -179,7 +178,7 @@ export default function DomainDetailPage() {
   };
 
   const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
@@ -419,7 +418,7 @@ export default function DomainDetailPage() {
                       <div className="mt-2">
                         <Label className="text-sm text-gray-500">DNS Record Value (TXT)</Label>
                         <div className="mt-1 break-all rounded bg-gray-100 p-2 font-mono text-xs dark:bg-gray-800">
-                          v=DKIM1; k=rsa; p={key.publicKey?.substring(0, 100)}...
+                          v=DKIM1; k=rsa; p={key.publicKey.substring(0, 100)}...
                         </div>
                       </div>
                     </div>
@@ -446,7 +445,9 @@ export default function DomainDetailPage() {
                 </div>
                 <Switch
                   checked={domain.catchAllEnabled}
-                  onCheckedChange={(checked) => setDomain({ ...domain, catchAllEnabled: checked })}
+                  onCheckedChange={(checked: boolean) =>
+                    setDomain({ ...domain, catchAllEnabled: checked })
+                  }
                 />
               </div>
 
@@ -455,7 +456,7 @@ export default function DomainDetailPage() {
                   <Label htmlFor="catch-all">Catch-All Address</Label>
                   <Input
                     id="catch-all"
-                    value={domain.catchAllAddress || ""}
+                    value={domain.catchAllAddress}
                     onChange={(e) => setDomain({ ...domain, catchAllAddress: e.target.value })}
                     placeholder={`admin@${domain.name}`}
                     className="mt-2"

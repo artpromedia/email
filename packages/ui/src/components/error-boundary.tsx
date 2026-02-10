@@ -7,6 +7,7 @@ import { Component, type ReactNode } from "react";
 let Sentry: any = null;
 try {
   // Dynamic require to avoid build errors when @sentry/nextjs is not installed
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
   Sentry = require("@sentry/nextjs");
 } catch {
   // Sentry not available
@@ -54,6 +55,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     // Report to Sentry in production
     if (process.env["NODE_ENV"] === "production" && Sentry) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       Sentry.captureException(error, {
         contexts: {
           react: {

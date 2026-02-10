@@ -18,16 +18,16 @@ export async function GET(request: NextRequest) {
         headers: {
           "Content-Type": "application/json",
           ...(request.headers.get("Authorization") && {
-            Authorization: request.headers.get("Authorization")!,
+            Authorization: request.headers.get("Authorization") ?? "",
           }),
           ...(request.headers.get("X-API-Key") && {
-            "X-API-Key": request.headers.get("X-API-Key")!,
+            "X-API-Key": request.headers.get("X-API-Key") ?? "",
           }),
         },
       }
     );
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to fetch email logs:", error);

@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Bell, Mail, Smartphone, MessageSquare, Calendar, Users } from "lucide-react";
+import { Bell, Mail, Smartphone, MessageSquare, Calendar } from "lucide-react";
 
 import {
   Card,
@@ -69,13 +69,13 @@ export default function NotificationsSettingsPage() {
       changes: false,
     },
   });
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const response = await fetch("/api/v1/user/settings/notifications");
-        const data = await response.json();
+        const data = (await response.json()) as { settings?: NotificationSettings };
         if (data.settings) {
           setSettings(data.settings);
         }
@@ -85,10 +85,10 @@ export default function NotificationsSettingsPage() {
         setLoading(false);
       }
     };
-    fetchSettings();
+    void fetchSettings();
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     // TODO: Implement save settings API call
     alert("Notification settings saved");
   };
@@ -125,7 +125,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.email.newMessages}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   email: { ...settings.email, newMessages: checked },
@@ -142,7 +142,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.email.mentions}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   email: { ...settings.email, mentions: checked },
@@ -159,7 +159,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.email.replies}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   email: { ...settings.email, replies: checked },
@@ -207,7 +207,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.push.enabled}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   push: { ...settings.push, enabled: checked },
@@ -224,7 +224,7 @@ export default function NotificationsSettingsPage() {
                 </div>
                 <Switch
                   checked={settings.push.newMessages}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       push: { ...settings.push, newMessages: checked },
@@ -239,7 +239,7 @@ export default function NotificationsSettingsPage() {
                 </div>
                 <Switch
                   checked={settings.push.mentions}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       push: { ...settings.push, mentions: checked },
@@ -256,7 +256,7 @@ export default function NotificationsSettingsPage() {
                 </div>
                 <Switch
                   checked={settings.push.calendarReminders}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       push: { ...settings.push, calendarReminders: checked },
@@ -286,7 +286,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.chat.directMessages}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   chat: { ...settings.chat, directMessages: checked },
@@ -301,7 +301,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.chat.groupMentions}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   chat: { ...settings.chat, groupMentions: checked },
@@ -316,7 +316,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.chat.channelUpdates}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   chat: { ...settings.chat, channelUpdates: checked },
@@ -344,7 +344,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.calendar.eventReminders}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   calendar: { ...settings.calendar, eventReminders: checked },
@@ -359,7 +359,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.calendar.invitations}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   calendar: { ...settings.calendar, invitations: checked },
@@ -376,7 +376,7 @@ export default function NotificationsSettingsPage() {
             </div>
             <Switch
               checked={settings.calendar.changes}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setSettings({
                   ...settings,
                   calendar: { ...settings.calendar, changes: checked },

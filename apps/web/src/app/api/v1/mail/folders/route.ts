@@ -27,20 +27,17 @@ export async function GET(request: Request) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching folders:", error);
-    return NextResponse.json(
-      { error: "Folder service unavailable", folders: [] },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "Folder service unavailable", folders: [] }, { status: 503 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
     const authHeader = request.headers.get("Authorization");
 
     const response = await fetch(`${IMAP_API_URL}/api/v1/folders`, {
@@ -55,19 +52,13 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Create folder error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to create folder" },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: "Failed to create folder" }, { status: response.status });
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error creating folder:", error);
-    return NextResponse.json(
-      { error: "Folder service unavailable" },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "Folder service unavailable" }, { status: 503 });
   }
 }

@@ -46,10 +46,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@email/ui";
 
 interface Contact {
@@ -75,8 +71,8 @@ interface ContactGroup {
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<ContactGroup[]>([
     { id: "all", name: "All Contacts", count: 0 },
     { id: "favorites", name: "Favorites", count: 0 },
@@ -88,16 +84,14 @@ export default function ContactsPage() {
       try {
         setLoading(true);
         const response = await fetch("/api/v1/contacts");
-        const data = await response.json();
-        if (data.contacts) {
-          setContacts(data.contacts);
-          // Update group counts
-          const favorites = data.contacts.filter((c: Contact) => c.favorite).length;
-          setGroups([
-            { id: "all", name: "All Contacts", count: data.contacts.length },
-            { id: "favorites", name: "Favorites", count: favorites },
-          ]);
-        }
+        const data = (await response.json()) as { contacts: Contact[] };
+        setContacts(data.contacts);
+        // Update group counts
+        const favorites = data.contacts.filter((c: Contact) => c.favorite).length;
+        setGroups([
+          { id: "all", name: "All Contacts", count: data.contacts.length },
+          { id: "favorites", name: "Favorites", count: favorites },
+        ]);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch contacts:", err);
@@ -106,7 +100,7 @@ export default function ContactsPage() {
         setLoading(false);
       }
     };
-    fetchContacts();
+    void fetchContacts();
   }, []);
 
   const [selectedGroup, setSelectedGroup] = useState("all");
@@ -152,7 +146,7 @@ export default function ContactsPage() {
         }),
       });
       if (response.ok) {
-        const result = await response.json();
+        const result = (await response.json()) as { contact: Contact };
         setContacts([...contacts, result.contact]);
         setAddDialogOpen(false);
         setNewContact({
@@ -346,10 +340,15 @@ export default function ContactsPage() {
                 {filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
+                    role="button"
+                    tabIndex={0}
                     className={`flex cursor-pointer items-center gap-4 p-4 hover:bg-muted ${
                       selectedContact?.id === contact.id ? "bg-muted" : ""
                     }`}
                     onClick={() => setSelectedContact(contact)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") setSelectedContact(contact);
+                    }}
                   >
                     <Avatar>
                       <AvatarImage src={contact.avatar} />

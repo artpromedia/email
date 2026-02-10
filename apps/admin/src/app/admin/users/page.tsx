@@ -5,10 +5,8 @@
  * List, search, and manage users across all domains
  */
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Users,
   Search,
   Plus,
   MoreHorizontal,
@@ -69,8 +67,8 @@ interface Domain {
   name: string;
 }
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:8082";
-const DOMAIN_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084";
+const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8082";
+const DOMAIN_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -83,7 +81,7 @@ export default function UsersPage() {
   const [newUser, setNewUser] = useState({ email: "", name: "", domainId: "", role: "user" });
   const [addingUser, setAddingUser] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -91,15 +89,15 @@ export default function UsersPage() {
       // Fetch domains
       const domainsRes = await fetch(`${DOMAIN_API}/api/admin/domains`);
       if (domainsRes.ok) {
-        const domainsData = await domainsRes.json();
-        setDomains(domainsData.domains || []);
+        const domainsData = (await domainsRes.json()) as { domains?: Domain[] };
+        setDomains(domainsData.domains ?? []);
       }
 
       // Fetch users from auth service
       const usersRes = await fetch(`${AUTH_API}/api/v1/admin/users`);
       if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData.users || []);
+        const usersData = (await usersRes.json()) as { users?: User[] };
+        setUsers(usersData.users ?? []);
       } else {
         // No mock data - return empty array if API not available
         setUsers([]);
@@ -109,11 +107,11 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const handleAddUser = async () => {
     if (!newUser.email || !newUser.domainId) return;
@@ -127,13 +125,13 @@ export default function UsersPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to add user");
+        const data = (await res.json()) as { message?: string };
+        throw new Error(data.message ?? "Failed to add user");
       }
 
       setNewUser({ email: "", name: "", domainId: "", role: "user" });
       setShowAddDialog(false);
-      fetchData();
+      void fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add user");
     } finally {
@@ -149,7 +147,7 @@ export default function UsersPage() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete user");
-      fetchData();
+      void fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete user");
     }
@@ -161,7 +159,7 @@ export default function UsersPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to suspend user");
-      fetchData();
+      void fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to suspend user");
     }
@@ -232,7 +230,7 @@ export default function UsersPage() {
                 <Label htmlFor="user-domain">Domain</Label>
                 <Select
                   value={newUser.domainId}
-                  onValueChange={(value) => setNewUser({ ...newUser, domainId: value })}
+                  onValueChange={(value: string) => setNewUser({ ...newUser, domainId: value })}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Select domain" />
@@ -250,7 +248,7 @@ export default function UsersPage() {
                 <Label htmlFor="user-role">Role</Label>
                 <Select
                   value={newUser.role}
-                  onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+                  onValueChange={(value: string) => setNewUser({ ...newUser, role: value })}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue />

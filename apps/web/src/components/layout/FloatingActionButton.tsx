@@ -179,10 +179,13 @@ export function FloatingActionButton({
 
   // Support both controlled and uncontrolled modes
   const expanded = controlledExpanded ?? internalExpanded;
-  const setExpanded = (value: boolean) => {
-    setInternalExpanded(value);
-    onExpandedChange?.(value);
-  };
+  const setExpanded = React.useCallback(
+    (value: boolean) => {
+      setInternalExpanded(value);
+      onExpandedChange?.(value);
+    },
+    [onExpandedChange]
+  );
 
   // Default primary action is compose
   const primary = primaryAction ?? {
@@ -250,7 +253,6 @@ export function FloatingActionButton({
   };
 
   const handleTouchEnd = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- ref.current can be undefined at runtime
     if (pressTimer.current) {
       clearTimeout(pressTimer.current);
     }

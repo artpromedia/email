@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (response.ok) {
-      const branding = await response.json();
+      const branding: unknown = await response.json();
       return NextResponse.json(branding);
     }
 

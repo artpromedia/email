@@ -15,12 +15,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to fetch DKIM keys:", error);
@@ -31,20 +31,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body: unknown = await request.json();
 
     const response = await fetch(`${DOMAIN_MANAGER_URL}/api/admin/domains/${id}/dkim/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to generate DKIM key:", error);

@@ -416,73 +416,103 @@ export function ChatProvider({
   }, [token]);
 
   // Channel operations
-  const createChannel = async (name: string, description: string, isPrivate: boolean) => {
-    const channel = await api<Channel>("/channels", {
-      method: "POST",
-      body: JSON.stringify({ name, description, is_private: isPrivate }),
-    });
-    setChannels((prev) => [...prev, channel]);
-    return channel;
-  };
+  const createChannel = useCallback(
+    async (name: string, description: string, isPrivate: boolean) => {
+      const channel = await api<Channel>("/channels", {
+        method: "POST",
+        body: JSON.stringify({ name, description, is_private: isPrivate }),
+      });
+      setChannels((prev) => [...prev, channel]);
+      return channel;
+    },
+    [api]
+  );
 
-  const joinChannel = async (channelId: string) => {
-    await api(`/channels/${channelId}/join`, { method: "POST" });
-    const channel = await api<Channel>(`/channels/${channelId}`);
-    setChannels((prev) => [...prev, channel]);
-  };
+  const joinChannel = useCallback(
+    async (channelId: string) => {
+      await api(`/channels/${channelId}/join`, { method: "POST" });
+      const channel = await api<Channel>(`/channels/${channelId}`);
+      setChannels((prev) => [...prev, channel]);
+    },
+    [api]
+  );
 
-  const leaveChannel = async (channelId: string) => {
-    await api(`/channels/${channelId}/leave`, { method: "POST" });
-    setChannels((prev) => prev.filter((ch) => ch.id !== channelId));
-    if (currentChannel?.id === channelId) {
-      setCurrentChannel(null);
-    }
-  };
+  const leaveChannel = useCallback(
+    async (channelId: string) => {
+      await api(`/channels/${channelId}/leave`, { method: "POST" });
+      setChannels((prev) => prev.filter((ch) => ch.id !== channelId));
+      if (currentChannel?.id === channelId) {
+        setCurrentChannel(null);
+      }
+    },
+    [api, currentChannel]
+  );
 
   // Message operations
-  const sendMessage = async (content: string, parentId?: string) => {
-    if (!currentChannel) throw new Error("No channel selected");
+  const sendMessage = useCallback(
+    async (content: string, parentId?: string) => {
+      if (!currentChannel) throw new Error("No channel selected");
 
-    const message = await api<Message>(`/channels/${currentChannel.id}/messages`, {
-      method: "POST",
-      body: JSON.stringify({ content, parent_id: parentId }),
-    });
+      const message = await api<Message>(`/channels/${currentChannel.id}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ content, parent_id: parentId }),
+      });
 
-    return message;
-  };
+      return message;
+    },
+    [api, currentChannel]
+  );
 
-  const editMessage = async (messageId: string, content: string) => {
-    await api(`/messages/${messageId}`, {
-      method: "PUT",
-      body: JSON.stringify({ content }),
-    });
-  };
+  const editMessage = useCallback(
+    async (messageId: string, content: string) => {
+      await api(`/messages/${messageId}`, {
+        method: "PUT",
+        body: JSON.stringify({ content }),
+      });
+    },
+    [api]
+  );
 
-  const deleteMessage = async (messageId: string) => {
-    await api(`/messages/${messageId}`, { method: "DELETE" });
-  };
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      await api(`/messages/${messageId}`, { method: "DELETE" });
+    },
+    [api]
+  );
 
-  const pinMessage = async (messageId: string) => {
-    await api(`/messages/${messageId}/pin`, { method: "POST" });
-  };
+  const pinMessage = useCallback(
+    async (messageId: string) => {
+      await api(`/messages/${messageId}/pin`, { method: "POST" });
+    },
+    [api]
+  );
 
-  const unpinMessage = async (messageId: string) => {
-    await api(`/messages/${messageId}/pin`, { method: "DELETE" });
-  };
+  const unpinMessage = useCallback(
+    async (messageId: string) => {
+      await api(`/messages/${messageId}/pin`, { method: "DELETE" });
+    },
+    [api]
+  );
 
   // Reactions
-  const addReaction = async (messageId: string, emoji: string) => {
-    await api(`/messages/${messageId}/reactions`, {
-      method: "POST",
-      body: JSON.stringify({ emoji }),
-    });
-  };
+  const addReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      await api(`/messages/${messageId}/reactions`, {
+        method: "POST",
+        body: JSON.stringify({ emoji }),
+      });
+    },
+    [api]
+  );
 
-  const removeReaction = async (messageId: string, emoji: string) => {
-    await api(`/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
-      method: "DELETE",
-    });
-  };
+  const removeReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      await api(`/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+        method: "DELETE",
+      });
+    },
+    [api]
+  );
 
   // Typing indicator
   const sendTyping = useCallback(
@@ -501,23 +531,29 @@ export function ChatProvider({
   );
 
   // Direct messages
-  const startDirectMessage = async (userId: string) => {
-    const channel = await api<Channel>("/dm", {
-      method: "POST",
-      body: JSON.stringify({ user_id: userId }),
-    });
-    setChannels((prev) => {
-      if (prev.some((ch) => ch.id === channel.id)) return prev;
-      return [...prev, channel];
-    });
-    return channel;
-  };
+  const startDirectMessage = useCallback(
+    async (userId: string) => {
+      const channel = await api<Channel>("/dm", {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      });
+      setChannels((prev) => {
+        if (prev.some((ch) => ch.id === channel.id)) return prev;
+        return [...prev, channel];
+      });
+      return channel;
+    },
+    [api]
+  );
 
   // Search
-  const searchMessages = async (query: string) => {
-    const response = await api<{ messages: Message[] }>(`/search?q=${encodeURIComponent(query)}`);
-    return response.messages;
-  };
+  const searchMessages = useCallback(
+    async (query: string) => {
+      const response = await api<{ messages: Message[] }>(`/search?q=${encodeURIComponent(query)}`);
+      return response.messages;
+    },
+    [api]
+  );
 
   const contextValue = useMemo(
     () => ({

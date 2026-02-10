@@ -16,12 +16,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to check DNS:", error);

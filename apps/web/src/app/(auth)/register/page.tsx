@@ -118,18 +118,18 @@ function RegistrationUnavailable({
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="space-y-4 text-center">
-        {branding?.logo ? (
+        {branding.logo ? (
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding?.displayName || "Organization"}
+              alt={branding.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>
         ) : (
           <div
             className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-            style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
+            style={{ backgroundColor: branding.primaryColor || "var(--primary)" }}
           >
             <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
@@ -218,6 +218,7 @@ function RegisterContent() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is intentionally used
   const email = watch("email");
   const password = watch("password");
   const debouncedEmail = useDebounce(email, 500);
@@ -276,18 +277,18 @@ function RegisterContent() {
     <Card className="border-0 shadow-lg">
       <CardHeader className="space-y-4 text-center">
         {/* Domain Logo */}
-        {branding?.logo ? (
+        {branding.logo ? (
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding?.displayName || "Organization"}
+              alt={branding.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>
         ) : (
           <div
             className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-            style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
+            style={{ backgroundColor: branding.primaryColor || "var(--primary)" }}
           >
             <User className="h-6 w-6 text-primary-foreground" />
           </div>
@@ -295,7 +296,7 @@ function RegisterContent() {
 
         <div>
           <CardTitle className="text-2xl">
-            {branding?.displayName ? `Join ${branding?.displayName}` : "Create an account"}
+            {branding.displayName ? `Join ${branding.displayName}` : "Create an account"}
           </CardTitle>
           <CardDescription className="mt-2">Enter your details to get started</CardDescription>
         </div>
@@ -334,12 +335,12 @@ function RegisterContent() {
             <div
               className="flex items-center gap-2 rounded-lg p-3 text-sm"
               style={{
-                backgroundColor: branding?.primaryColor
+                backgroundColor: branding.primaryColor
                   ? `${branding.primaryColor}15`
                   : "var(--muted)",
               }}
             >
-              <Building2 className="h-4 w-4" style={{ color: branding?.primaryColor }} />
+              <Building2 className="h-4 w-4" style={{ color: branding.primaryColor }} />
               <span>
                 You&apos;re joining <strong>{detectedDomain.organizationName}</strong>
               </span>
@@ -507,7 +508,7 @@ function RegisterContent() {
             type="submit"
             className="w-full"
             disabled={isSubmitting || registerMutation.isPending || !allRequirementsMet}
-            style={branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined}
+            style={branding.primaryColor ? { backgroundColor: branding.primaryColor } : undefined}
           >
             {registerMutation.isPending ? (
               <>

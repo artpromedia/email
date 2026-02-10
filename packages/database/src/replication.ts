@@ -88,7 +88,7 @@ interface ReplicaConnection {
 
 class ReplicaPool {
   private replicas: ReplicaConnection[] = [];
-  private currentIndex: number = 0;
+  private currentIndex = 0;
   private healthCheckTimer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -99,7 +99,7 @@ class ReplicaPool {
   /**
    * Initialize the replica pool
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     for (const replicaConfig of this.config.replicas) {
       try {
         const connection = postgres(replicaConfig.connectionUrl, {
@@ -155,11 +155,11 @@ class ReplicaPool {
           replica.config.healthy = true;
           replica.consecutiveFailures = 0;
           this.onHealthChange?.(replica.config.name, true);
-          console.log(`Replica ${replica.config.name} is now healthy (latency: ${latency}ms)`);
+          console.info(`Replica ${replica.config.name} is now healthy (latency: ${latency}ms)`);
         }
 
         replica.lastHealthCheck = new Date();
-      } catch (error) {
+      } catch (_error) {
         replica.consecutiveFailures++;
 
         if (replica.consecutiveFailures >= 3 && replica.config.healthy) {
@@ -200,7 +200,7 @@ class ReplicaPool {
     }
 
     // Fallback to first healthy replica
-    return healthyReplicas[0]!.db;
+    return healthyReplicas[0]?.db ?? null;
   }
 
   /**
@@ -259,7 +259,7 @@ export class ReplicationClient {
   /**
    * Initialize the replication client
    */
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
     // Initialize primary connection
     this.primaryConnection = postgres(this.config.primaryUrl, {
       max: this.config.primaryMaxConnections,
@@ -274,10 +274,12 @@ export class ReplicationClient {
     // Initialize replica pool if replicas are configured
     if (this.config.replicas.length > 0) {
       this.replicaPool = new ReplicaPool(this.config, (replica, healthy) => {
-        console.log(`Replica ${replica} health changed to ${healthy}`);
+        console.info(`Replica ${replica} health changed to ${healthy}`);
       });
-      await this.replicaPool.initialize();
+      this.replicaPool.initialize();
     }
+
+    return Promise.resolve();
   }
 
   /**
@@ -461,7 +463,7 @@ export async function getReplicationLag(
 export async function isReplicationHealthy(
   primaryConnection: postgres.Sql,
   maxLagBytes: number = 1024 * 1024 * 10, // 10MB default
-  maxLagSeconds: number = 30 // 30 seconds default
+  maxLagSeconds = 30 // 30 seconds default
 ): Promise<boolean> {
   const lags = await getReplicationLag(primaryConnection);
 

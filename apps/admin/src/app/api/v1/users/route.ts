@@ -18,13 +18,13 @@ export async function GET(request: NextRequest) {
         headers: {
           "Content-Type": "application/json",
           ...(request.headers.get("Authorization") && {
-            Authorization: request.headers.get("Authorization")!,
+            Authorization: request.headers.get("Authorization") ?? "",
           }),
         },
       }
     );
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to fetch users:", error);
@@ -34,20 +34,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
 
     const response = await fetch(`${AUTH_URL}/api/v1/admin/users`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to create user:", error);

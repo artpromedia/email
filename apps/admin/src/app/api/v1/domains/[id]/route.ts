@@ -15,12 +15,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to fetch domain:", error);
@@ -31,20 +31,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body: unknown = await request.json();
 
     const response = await fetch(`${DOMAIN_MANAGER_URL}/api/admin/domains/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to update domain:", error);
@@ -64,7 +64,7 @@ export async function DELETE(
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
     });
@@ -73,7 +73,7 @@ export async function DELETE(
       return new NextResponse(null, { status: 204 });
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to delete domain:", error);

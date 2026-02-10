@@ -94,7 +94,7 @@ export function Header({ className }: HeaderProps) {
         <div className="flex items-center gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            {activeDomainBranding?.logo ? (
+            {activeDomainBranding.logo ? (
               <img
                 src={activeDomainBranding.logo}
                 alt={activeDomainBranding.displayName || "Email"}
@@ -104,14 +104,14 @@ export function Header({ className }: HeaderProps) {
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-lg"
                 style={{
-                  backgroundColor: activeDomainBranding?.primaryColor || "var(--primary)",
+                  backgroundColor: activeDomainBranding.primaryColor || "var(--primary)",
                 }}
               >
                 <Mail className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
             <span className="hidden font-semibold sm:inline-block">
-              {activeDomainBranding?.displayName || "Enterprise Email"}
+              {activeDomainBranding.displayName || "Enterprise Email"}
             </span>
           </Link>
 
@@ -124,7 +124,7 @@ export function Header({ className }: HeaderProps) {
                 onClick={() => setShowDomainMenu(!showDomainMenu)}
                 className="gap-2 px-3"
               >
-                <DomainAvatar name={activeDomain ?? ""} domain={activeDomain ?? ""} size="sm" />
+                <DomainAvatar name={activeDomain} domain={activeDomain} size="sm" />
                 <span className="hidden max-w-[150px] truncate md:inline-block">
                   {activeDomain}
                 </span>

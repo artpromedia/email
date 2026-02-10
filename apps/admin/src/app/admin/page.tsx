@@ -4,7 +4,7 @@
  * Admin Dashboard - Real-time overview of email platform
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -61,7 +61,7 @@ interface ServiceHealth {
   responseTime: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -71,7 +71,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -79,19 +79,18 @@ export default function AdminDashboard() {
       // Fetch domains from domain-manager
       const domainsRes = await fetch(`${API_BASE}/api/admin/domains`);
       if (domainsRes.ok) {
-        const domainsData = await domainsRes.json();
-        setDomains(domainsData.domains || []);
+        const domainsData = (await domainsRes.json()) as { domains?: Domain[] };
+        setDomains(domainsData.domains ?? []);
 
         // Calculate stats from domains
         const activeDomains =
-          domainsData.domains?.filter((d: Domain) => d.status === "active").length || 0;
+          domainsData.domains?.filter((d: Domain) => d.status === "active").length ?? 0;
         const pendingDomains =
-          domainsData.domains?.filter((d: Domain) => d.status === "pending").length || 0;
+          domainsData.domains?.filter((d: Domain) => d.status === "pending").length ?? 0;
         const totalUsers =
-          domainsData.domains?.reduce((sum: number, d: Domain) => sum + (d.userCount || 0), 0) || 0;
+          domainsData.domains?.reduce((sum: number, d: Domain) => sum + d.userCount, 0) ?? 0;
         const totalEmails =
-          domainsData.domains?.reduce((sum: number, d: Domain) => sum + (d.emailCount || 0), 0) ||
-          0;
+          domainsData.domains?.reduce((sum: number, d: Domain) => sum + d.emailCount, 0) ?? 0;
 
         setStats({
           totalEmails,
@@ -142,13 +141,13 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 60000); // Refresh every minute
+    void fetchDashboardData();
+    const interval = setInterval(() => void fetchDashboardData(), 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchDashboardData]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -201,10 +200,10 @@ export default function AdminDashboard() {
             <Mail className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalEmails.toLocaleString() || "0"}</div>
+            <div className="text-2xl font-bold">{stats?.totalEmails.toLocaleString() ?? "0"}</div>
             <p className="flex items-center text-xs text-gray-500">
               <TrendingUp className="mr-1 h-3 w-3 text-green-500" />+
-              {stats?.emailsToday.toLocaleString() || "0"} today
+              {stats?.emailsToday.toLocaleString() ?? "0"} today
             </p>
           </CardContent>
         </Card>
@@ -215,7 +214,7 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeUsers.toLocaleString() || "0"}</div>
+            <div className="text-2xl font-bold">{stats?.activeUsers.toLocaleString() ?? "0"}</div>
             <p className="text-xs text-gray-500">Across all domains</p>
           </CardContent>
         </Card>
@@ -226,14 +225,14 @@ export default function AdminDashboard() {
             <Activity className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.deliveryRate || 0}%</div>
+            <div className="text-2xl font-bold">{stats?.deliveryRate ?? 0}%</div>
             <p className="flex items-center text-xs text-gray-500">
               {stats && stats.bounceRate > 1 ? (
                 <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
               ) : (
                 <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
               )}
-              Bounce rate: {stats?.bounceRate || 0}%
+              Bounce rate: {stats?.bounceRate ?? 0}%
             </p>
           </CardContent>
         </Card>
@@ -244,9 +243,9 @@ export default function AdminDashboard() {
             <Globe className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeDomains || 0}</div>
+            <div className="text-2xl font-bold">{stats?.activeDomains ?? 0}</div>
             <p className="text-xs text-gray-500">
-              {stats?.pendingDomains || 0} pending verification
+              {stats?.pendingDomains ?? 0} pending verification
             </p>
           </CardContent>
         </Card>
@@ -294,8 +293,7 @@ export default function AdminDashboard() {
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-500">
-                        {domain.emailCount?.toLocaleString() || 0} emails • {domain.userCount || 0}{" "}
-                        users
+                        {domain.emailCount.toLocaleString()} emails • {domain.userCount} users
                       </p>
                     </div>
                     <Link href={`/admin/domains/${domain.id}`}>

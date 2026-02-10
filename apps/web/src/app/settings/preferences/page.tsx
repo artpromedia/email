@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Settings2, Palette, Globe, Mail, Type, Layout, Moon, Sun, Monitor } from "lucide-react";
+import { Settings2, Palette, Globe, Mail, Type, Moon, Sun, Monitor } from "lucide-react";
 
 import {
   Card,
@@ -80,35 +80,27 @@ export default function PreferencesSettingsPage() {
       signatureEnabled: false,
     },
   });
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPreferences = async () => {
       try {
         const response = await fetch("/api/v1/user/settings/preferences");
-        const data = await response.json();
-        if (data.preferences) {
-          setPreferences(data.preferences);
-        }
+        const data = (await response.json()) as { preferences: Preferences };
+        setPreferences(data.preferences);
       } catch (err) {
         console.error("Failed to fetch preferences:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchPreferences();
+    void fetchPreferences();
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     // TODO: Implement save preferences API call
     alert("Preferences saved");
   };
-
-  const ThemeIcon = {
-    light: Sun,
-    dark: Moon,
-    system: Monitor,
-  }[preferences.display.theme];
 
   return (
     <div className="space-y-6">
@@ -216,7 +208,7 @@ export default function PreferencesSettingsPage() {
               <Label>Language</Label>
               <Select
                 value={preferences.language.locale}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setPreferences({
                     ...preferences,
                     language: { ...preferences.language, locale: value },
@@ -240,7 +232,7 @@ export default function PreferencesSettingsPage() {
               <Label>Timezone</Label>
               <Select
                 value={preferences.language.timezone}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setPreferences({
                     ...preferences,
                     language: { ...preferences.language, timezone: value },
@@ -265,7 +257,7 @@ export default function PreferencesSettingsPage() {
               <Label>Date Format</Label>
               <Select
                 value={preferences.language.dateFormat}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setPreferences({
                     ...preferences,
                     language: { ...preferences.language, dateFormat: value },
@@ -323,7 +315,7 @@ export default function PreferencesSettingsPage() {
             </div>
             <Switch
               checked={preferences.email.conversationView}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setPreferences({
                   ...preferences,
                   email: { ...preferences.email, conversationView: checked },
@@ -338,7 +330,7 @@ export default function PreferencesSettingsPage() {
             </div>
             <Switch
               checked={preferences.email.showImages}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setPreferences({
                   ...preferences,
                   email: { ...preferences.email, showImages: checked },
@@ -355,7 +347,7 @@ export default function PreferencesSettingsPage() {
             </div>
             <Switch
               checked={preferences.email.confirmDelete}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setPreferences({
                   ...preferences,
                   email: { ...preferences.email, confirmDelete: checked },
@@ -403,7 +395,7 @@ export default function PreferencesSettingsPage() {
             </div>
             <Switch
               checked={preferences.email.defaultReplyAll}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setPreferences({
                   ...preferences,
                   email: { ...preferences.email, defaultReplyAll: checked },
@@ -418,7 +410,7 @@ export default function PreferencesSettingsPage() {
             </div>
             <Switch
               checked={preferences.compose.includeOriginal}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setPreferences({
                   ...preferences,
                   compose: { ...preferences.compose, includeOriginal: checked },
@@ -433,7 +425,7 @@ export default function PreferencesSettingsPage() {
             </div>
             <Switch
               checked={preferences.compose.signatureEnabled}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setPreferences({
                   ...preferences,
                   compose: { ...preferences.compose, signatureEnabled: checked },

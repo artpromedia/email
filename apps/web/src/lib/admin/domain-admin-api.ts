@@ -42,8 +42,10 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error((error as { message?: string }).message ?? `HTTP ${response.status}`);
+    const error = (await response.json().catch(() => ({ message: "Request failed" }))) as {
+      message?: string;
+    };
+    throw new Error(error.message ?? `HTTP ${response.status}`);
   }
 
   return response.json() as Promise<T>;

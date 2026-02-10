@@ -199,7 +199,7 @@ export function groupEmailsIntoThreads(
         email: email.from.address,
         name: email.from.name,
       },
-      to: email.to?.map((r) => ({ email: r.address, name: r.name })) ?? [],
+      to: email.to.map((r) => ({ email: r.address, name: r.name })),
       subject: email.subject,
       body: email.snippet,
       snippet: email.snippet,

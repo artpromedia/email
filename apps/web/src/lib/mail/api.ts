@@ -25,11 +25,13 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const error = (await response.json().catch(() => ({ message: "Request failed" }))) as {
+      message?: string;
+    };
+    throw new Error(error.message ?? `HTTP ${response.status}`);
   }
 
-  return response.json();
+  return (await response.json()) as T;
 }
 
 // ============================================================
@@ -108,12 +110,10 @@ export function useInfiniteEmails(query: Omit<EmailListQuery, "page">) {
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
       Object.entries({ ...query, page: pageParam }).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (value instanceof Date) {
-            params.set(key, value.toISOString());
-          } else {
-            params.set(key, String(value));
-          }
+        if (value instanceof Date) {
+          params.set(key, value.toISOString());
+        } else {
+          params.set(key, String(value));
         }
       });
       return fetchJson<EmailListResponse>(`/mail/emails?${params}`);

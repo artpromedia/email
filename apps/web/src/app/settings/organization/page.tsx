@@ -5,8 +5,8 @@
  * Manage organization profile and settings
  */
 
-import { useState, useEffect } from "react";
-import { Building2, Upload, Users, Globe, Shield, Save } from "lucide-react";
+import { useState, useEffect, type ChangeEvent } from "react";
+import { Building2, Upload, Users, Shield, Save } from "lucide-react";
 
 import {
   Card,
@@ -60,13 +60,13 @@ export default function OrganizationSettingsPage() {
   });
 
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrganization = async () => {
       try {
         const response = await fetch("/api/v1/organization");
-        const data = await response.json();
+        const data = (await response.json()) as { organization?: Organization };
         if (data.organization) {
           setOrganization(data.organization);
         }
@@ -76,7 +76,7 @@ export default function OrganizationSettingsPage() {
         setLoading(false);
       }
     };
-    fetchOrganization();
+    void fetchOrganization();
   }, []);
 
   const handleSave = async () => {
@@ -170,7 +170,9 @@ export default function OrganizationSettingsPage() {
             <Textarea
               id="description"
               value={organization.description}
-              onChange={(e) => setOrganization({ ...organization, description: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                setOrganization({ ...organization, description: e.target.value })
+              }
               rows={3}
             />
           </div>
@@ -216,7 +218,7 @@ export default function OrganizationSettingsPage() {
             </div>
             <Switch
               checked={organization.settings.requireEmailVerification}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setOrganization({
                   ...organization,
                   settings: {
@@ -234,7 +236,7 @@ export default function OrganizationSettingsPage() {
             </div>
             <Switch
               checked={organization.settings.enforceTwoFactor}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setOrganization({
                   ...organization,
                   settings: {
@@ -254,7 +256,7 @@ export default function OrganizationSettingsPage() {
             </div>
             <Switch
               checked={organization.settings.allowExternalSharing}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setOrganization({
                   ...organization,
                   settings: {
@@ -274,7 +276,7 @@ export default function OrganizationSettingsPage() {
             </div>
             <Switch
               checked={organization.settings.allowPublicSignup}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 setOrganization({
                   ...organization,
                   settings: {

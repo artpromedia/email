@@ -1,5 +1,5 @@
-import { DomainDetailPage } from "@/components/admin/domains/DomainDetailPage";
 import { use } from "react";
+import { DomainDetailPage } from "@/components/admin/domains/DomainDetailPage";
 
 interface DomainDetailRouteProps {
   params: Promise<{

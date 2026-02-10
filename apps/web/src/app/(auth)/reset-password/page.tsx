@@ -107,6 +107,7 @@ function ResetPasswordContent() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is intentionally used
   const password = watch("password");
 
   // Check password requirements

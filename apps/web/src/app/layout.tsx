@@ -1,9 +1,9 @@
 import { Inter, JetBrains_Mono } from "next/font/google";
-import type { Metadata, Viewport } from "next";
 
 import "@email/ui/styles.css";
 import "./globals.css";
 import { Providers } from "./providers";
+import type { Metadata, Viewport } from "next";
 
 const inter = Inter({
   subsets: ["latin"],

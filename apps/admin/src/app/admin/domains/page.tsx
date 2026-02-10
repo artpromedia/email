@@ -5,7 +5,7 @@
  * List, create, and manage email domains
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Globe,
@@ -57,7 +57,7 @@ interface Domain {
   createdAt: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
 
 export default function DomainsPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -68,24 +68,24 @@ export default function DomainsPage() {
   const [newDomainName, setNewDomainName] = useState("");
   const [addingDomain, setAddingDomain] = useState(false);
 
-  const fetchDomains = async () => {
+  const fetchDomains = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await fetch(`${API_BASE}/api/admin/domains`);
       if (!res.ok) throw new Error("Failed to fetch domains");
-      const data = await res.json();
-      setDomains(data.domains || []);
+      const data = (await res.json()) as { domains?: Domain[] };
+      setDomains(data.domains ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch domains");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDomains();
-  }, []);
+    void fetchDomains();
+  }, [fetchDomains]);
 
   const handleAddDomain = async () => {
     if (!newDomainName.trim()) return;
@@ -99,13 +99,13 @@ export default function DomainsPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to add domain");
+        const data = (await res.json()) as { message?: string };
+        throw new Error(data.message ?? "Failed to add domain");
       }
 
       setNewDomainName("");
       setShowAddDialog(false);
-      fetchDomains();
+      void fetchDomains();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add domain");
     } finally {
@@ -121,7 +121,7 @@ export default function DomainsPage() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete domain");
-      fetchDomains();
+      void fetchDomains();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete domain");
     }
@@ -133,7 +133,7 @@ export default function DomainsPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Verification failed");
-      fetchDomains();
+      void fetchDomains();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
     }
@@ -282,7 +282,7 @@ export default function DomainsPage() {
                       </div>
                       <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
                         <span>{domain.userCount || 0} users</span>
-                        <span>{domain.emailCount?.toLocaleString() || 0} emails</span>
+                        <span>{domain.emailCount.toLocaleString()} emails</span>
                         <span>Created {new Date(domain.createdAt).toLocaleDateString()}</span>
                       </div>
                       <div className="mt-2 flex items-center gap-2">

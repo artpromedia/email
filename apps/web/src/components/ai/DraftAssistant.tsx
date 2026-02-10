@@ -126,7 +126,7 @@ export function useInlineSuggestion({
       });
 
       if (response.ok) {
-        const data: InlineSuggestion = await response.json();
+        const data = (await response.json()) as InlineSuggestion;
         if (data.suggestion) {
           setSuggestion(data);
         } else {
@@ -138,7 +138,17 @@ export function useInlineSuggestion({
     } finally {
       setIsLoading(false);
     }
-  }, [currentText, cursorPosition, subject, recipients, userId, orgId, enabled]);
+  }, [
+    currentText,
+    cursorPosition,
+    subject,
+    recipients,
+    userId,
+    orgId,
+    userName,
+    userEmail,
+    enabled,
+  ]);
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -279,7 +289,7 @@ export function HelpMeWriteButton({
 
       if (!response.ok) throw new Error("Generation failed");
 
-      const data: HelpMeWriteResponse = await response.json();
+      const data = (await response.json()) as HelpMeWriteResponse;
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate");
@@ -505,7 +515,7 @@ export function ToneAdjustmentMenu({
       });
 
       if (response.ok) {
-        const data: ToneAdjustResponse = await response.json();
+        const data = (await response.json()) as ToneAdjustResponse;
         setPreview(data);
       }
     } catch {
@@ -652,7 +662,7 @@ export function GrammarCheckButton({
       });
 
       if (response.ok) {
-        const data: GrammarCheckResponse = await response.json();
+        const data = (await response.json()) as GrammarCheckResponse;
         setResult(data);
         setIsOpen(true);
       }

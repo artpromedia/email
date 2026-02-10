@@ -37,8 +37,7 @@ interface CSPEnvConfig {
 }
 
 function getCSPConfig(): CSPEnvConfig {
-  const isDevelopment =
-    process.env["NODE_ENV"] === "development" || process.env["NODE_ENV"] === "test";
+  const isDevelopment = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
 
   const parseDomainsEnv = (envVar: string | undefined): string[] => {
     if (!envVar) return [];

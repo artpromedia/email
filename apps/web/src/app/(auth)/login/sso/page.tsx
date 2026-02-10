@@ -184,18 +184,18 @@ function SSOLoginContent() {
     return (
       <Card className="border-0 shadow-lg">
         <CardHeader className="space-y-4 text-center">
-          {branding?.logo ? (
+          {branding.logo ? (
             <div className="flex justify-center">
               <img
                 src={branding.logo}
-                alt={branding?.displayName || "Organization"}
+                alt={branding.displayName || "Organization"}
                 className="h-12 w-auto object-contain"
               />
             </div>
           ) : (
             <div
               className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
+              style={{ backgroundColor: branding.primaryColor || "var(--primary)" }}
             >
               <Building2 className="h-6 w-6 text-primary-foreground" />
             </div>
@@ -232,18 +232,18 @@ function SSOLoginContent() {
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="space-y-4 text-center">
-        {branding?.logo ? (
+        {branding.logo ? (
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding?.displayName || "Organization"}
+              alt={branding.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>
         ) : (
           <div
             className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-            style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
+            style={{ backgroundColor: branding.primaryColor || "var(--primary)" }}
           >
             <KeyRound className="h-6 w-6 text-primary-foreground" />
           </div>
@@ -254,7 +254,7 @@ function SSOLoginContent() {
             {isLoadingDomain ? "Loading..." : "Redirecting to SSO"}
           </CardTitle>
           <CardDescription className="mt-2">
-            {domainInfo?.organizationName
+            {domainInfo.organizationName
               ? `Signing in to ${domainInfo.organizationName}`
               : "Please wait while we redirect you"}
           </CardDescription>
@@ -264,7 +264,7 @@ function SSOLoginContent() {
       <CardContent className="space-y-6">
         {/* Loading Animation */}
         <div className="flex flex-col items-center gap-4 py-8">
-          <Loader2 className="h-8 w-8 animate-spin" style={{ color: branding?.primaryColor }} />
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: branding.primaryColor }} />
           <p className="animate-pulse text-sm text-muted-foreground">
             {getLoadingMessage(ssoMutation.isPending, isLoadingDomain)}
           </p>

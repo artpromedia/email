@@ -5,7 +5,7 @@
  * TL;DR, thread summaries, and action items
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FileText,
   ListTodo,
@@ -97,7 +97,7 @@ export function EmailSummary({
   // Check if TL;DR should be shown
   const shouldShowTldr = showTldr && body.length > 500;
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     if (!shouldShowTldr && !isExpanded) return;
 
     setIsLoading(true);
@@ -121,20 +121,31 @@ export function EmailSummary({
 
       if (!response.ok) throw new Error("Failed to generate summary");
 
-      const result: EmailSummaryData = await response.json();
+      const result = (await response.json()) as EmailSummaryData;
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Summary failed");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    shouldShowTldr,
+    isExpanded,
+    emailId,
+    subject,
+    body,
+    fromAddress,
+    fromName,
+    date,
+    userId,
+    orgId,
+  ]);
 
   useEffect(() => {
     if (shouldShowTldr || isExpanded) {
       void fetchSummary();
     }
-  }, [emailId, isExpanded]);
+  }, [emailId, isExpanded, fetchSummary, shouldShowTldr]);
 
   if (!shouldShowTldr && !isExpanded) {
     return null;
@@ -269,7 +280,7 @@ export function ThreadSummary({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"summary" | "timeline" | "actions">("summary");
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -295,20 +306,20 @@ export function ThreadSummary({
 
       if (!response.ok) throw new Error("Failed to summarize thread");
 
-      const result: ThreadSummaryData = await response.json();
+      const result = (await response.json()) as ThreadSummaryData;
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Thread summary failed");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [threadId, subject, messages, userId, orgId]);
 
   useEffect(() => {
     if (messages.length > 2) {
       void fetchSummary();
     }
-  }, [threadId]);
+  }, [threadId, fetchSummary, messages.length]);
 
   if (messages.length <= 2) {
     return null; // Don't show for short threads

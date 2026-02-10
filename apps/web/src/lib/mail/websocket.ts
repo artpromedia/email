@@ -63,7 +63,7 @@ export function useMailWebSocket(enabled = true) {
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       try {
-        const message = JSON.parse(event.data) as WebSocketMessage;
+        const message = JSON.parse(event.data as string) as WebSocketMessage;
 
         switch (message.type) {
           case "mail_event": {

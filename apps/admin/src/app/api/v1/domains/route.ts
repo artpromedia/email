@@ -19,13 +19,13 @@ export async function GET(request: NextRequest) {
           "Content-Type": "application/json",
           // Forward auth headers
           ...(request.headers.get("Authorization") && {
-            Authorization: request.headers.get("Authorization")!,
+            Authorization: request.headers.get("Authorization") ?? "",
           }),
         },
       }
     );
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to fetch domains:", error);
@@ -35,20 +35,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
 
     const response = await fetch(`${DOMAIN_MANAGER_URL}/api/admin/domains`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
-          Authorization: request.headers.get("Authorization")!,
+          Authorization: request.headers.get("Authorization") ?? "",
         }),
       },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Failed to create domain:", error);

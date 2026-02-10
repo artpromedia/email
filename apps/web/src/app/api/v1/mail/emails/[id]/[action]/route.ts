@@ -9,11 +9,11 @@ const IMAP_API_URL = process.env.IMAP_API_URL || "http://imap-server:8084";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string; action: string } }
+  { params }: { params: Promise<{ id: string; action: string }> }
 ) {
   try {
     const { id, action } = await params;
-    const body = await request.json().catch(() => ({}));
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const authHeader = request.headers.get("Authorization");
 
     // Validate action
@@ -43,7 +43,7 @@ export async function POST(
     });
 
     if (response.ok) {
-      const data = await response.json();
+      const data: unknown = await response.json();
       return NextResponse.json(data);
     }
 

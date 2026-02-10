@@ -37,11 +37,6 @@ import {
   Input,
   Label,
   Textarea,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -83,23 +78,21 @@ export default function CalendarPage() {
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         const response = await fetch("/api/v1/calendar");
-        const data = await response.json();
-        if (data.events) {
-          setEvents(
-            data.events.map((e: CalendarEvent) => ({
-              ...e,
-              start: new Date(e.start),
-              end: new Date(e.end),
-            }))
-          );
-        }
+        const data = (await response.json()) as { events: CalendarEvent[] };
+        setEvents(
+          data.events.map((e: CalendarEvent) => ({
+            ...e,
+            start: new Date(e.start),
+            end: new Date(e.end),
+          }))
+        );
       } catch (err) {
         setError("Failed to load calendar events");
         console.error("Failed to fetch events:", err);
@@ -107,7 +100,7 @@ export default function CalendarPage() {
         setLoading(false);
       }
     };
-    fetchEvents();
+    void fetchEvents();
   }, []);
 
   const [newEvent, setNewEvent] = useState({
@@ -335,7 +328,9 @@ export default function CalendarPage() {
                     <Textarea
                       id="description"
                       value={newEvent.description}
-                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        setNewEvent({ ...newEvent, description: e.target.value })
+                      }
                       placeholder="Add event details..."
                       rows={3}
                     />
@@ -385,10 +380,15 @@ export default function CalendarPage() {
             {days.map((day, index) => (
               <div
                 key={index}
+                role="button"
+                tabIndex={0}
                 className={`min-h-[100px] cursor-pointer border-b border-r p-1 hover:bg-muted/50 ${
                   !day.isCurrentMonth ? "bg-muted/30" : ""
                 } ${selectedDate?.getTime() === day.date.getTime() ? "bg-primary/10" : ""}`}
                 onClick={() => setSelectedDate(day.date)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setSelectedDate(day.date);
+                }}
               >
                 <div
                   className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${

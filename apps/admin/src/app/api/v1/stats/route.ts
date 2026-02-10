@@ -71,29 +71,39 @@ export async function GET(request: NextRequest) {
     });
 
     if (domainsResponse.ok) {
-      const domainsData = await domainsResponse.json();
-      const domains = domainsData.domains || domainsData || [];
-
-      stats.activeDomains = domains.filter((d: { status: string }) => d.status === "active").length;
-      stats.domains = domains.map(
-        (d: {
+      const domainsData = (await domainsResponse.json()) as {
+        domains?: {
           id: string;
           name: string;
           status: string;
           email_count?: number;
           user_count?: number;
-        }) => ({
-          id: d.id,
-          name: d.name,
-          status: d.status,
-          emailCount: d.email_count || 0,
-          userCount: d.user_count || 0,
-        })
-      );
+        }[];
+      } & { id: string; name: string; status: string; email_count?: number; user_count?: number }[];
+      const domains = domainsData.domains ?? domainsData;
+
+      stats.activeDomains = (domains as { status: string }[]).filter(
+        (d) => d.status === "active"
+      ).length;
+      stats.domains = (
+        domains as {
+          id: string;
+          name: string;
+          status: string;
+          email_count?: number;
+          user_count?: number;
+        }[]
+      ).map((d) => ({
+        id: d.id,
+        name: d.name,
+        status: d.status,
+        emailCount: d.email_count ?? 0,
+        userCount: d.user_count ?? 0,
+      }));
 
       // Check for pending domains
-      const pendingDomains = domains.filter(
-        (d: { status: string }) => d.status === "pending_verification"
+      const pendingDomains = (domains as { status: string }[]).filter(
+        (d) => d.status === "pending_verification"
       );
       if (pendingDomains.length > 0) {
         stats.recentAlerts.push({
@@ -122,11 +132,16 @@ export async function GET(request: NextRequest) {
     );
 
     if (analyticsResponse.ok) {
-      const analytics = await analyticsResponse.json();
-      stats.totalEmails = analytics.total_sent || 0;
-      stats.emailsToday = analytics.sent_today || 0;
-      stats.deliveryRate = analytics.delivery_rate || 99.5;
-      stats.bounceRate = analytics.bounce_rate || 0.5;
+      const analytics = (await analyticsResponse.json()) as {
+        total_sent?: number;
+        sent_today?: number;
+        delivery_rate?: number;
+        bounce_rate?: number;
+      };
+      stats.totalEmails = analytics.total_sent ?? 0;
+      stats.emailsToday = analytics.sent_today ?? 0;
+      stats.deliveryRate = analytics.delivery_rate ?? 99.5;
+      stats.bounceRate = analytics.bounce_rate ?? 0.5;
 
       // Add alerts based on metrics
       if (stats.bounceRate > 5) {
@@ -149,8 +164,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (usersResponse.ok) {
-      const usersData = await usersResponse.json();
-      stats.activeUsers = usersData.count || usersData.total || 0;
+      const usersData = (await usersResponse.json()) as { count?: number; total?: number };
+      stats.activeUsers = usersData.count ?? usersData.total ?? 0;
     }
   } catch (error) {
     console.error("Failed to fetch user count:", error);

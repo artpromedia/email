@@ -44,7 +44,7 @@ export default function SecuritySettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -55,7 +55,7 @@ export default function SecuritySettingsPage() {
     const fetchSessions = async () => {
       try {
         const response = await fetch("/api/v1/auth/sessions");
-        const data = await response.json();
+        const data = (await response.json()) as { sessions?: Session[] };
         if (data.sessions) {
           setSessions(data.sessions);
         }
@@ -65,10 +65,10 @@ export default function SecuritySettingsPage() {
         setLoading(false);
       }
     };
-    fetchSessions();
+    void fetchSessions();
   }, []);
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert("Passwords do not match");
       return;
@@ -78,12 +78,12 @@ export default function SecuritySettingsPage() {
     setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
   };
 
-  const handleRevokeSession = async (sessionId: string) => {
+  const handleRevokeSession = (sessionId: string) => {
     // TODO: Implement session revocation API call
     alert(`Session ${sessionId} revoked`);
   };
 
-  const handleRevokeAllSessions = async () => {
+  const handleRevokeAllSessions = () => {
     // TODO: Implement revoke all sessions API call
     alert("All other sessions revoked");
   };

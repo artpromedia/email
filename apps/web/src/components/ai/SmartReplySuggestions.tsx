@@ -5,7 +5,7 @@
  * Displays AI-generated reply suggestions as interactive chips
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sparkles, Check, Edit2, RefreshCw, ThumbsUp, ThumbsDown } from "lucide-react";
 import { cn } from "@email/ui";
 
@@ -113,7 +113,7 @@ export function SmartReplySuggestions({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Fetch suggestions
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -142,21 +142,33 @@ export function SmartReplySuggestions({
         throw new Error("Failed to generate suggestions");
       }
 
-      const data: SmartReplyResponse = await response.json();
+      const data = (await response.json()) as SmartReplyResponse;
       setSuggestions(data.suggestions);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load suggestions");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    emailId,
+    subject,
+    body,
+    fromAddress,
+    fromName,
+    userEmail,
+    userId,
+    orgId,
+    userName,
+    userSignature,
+    quickReplyMode,
+  ]);
 
   // Auto-fetch on mount
   useEffect(() => {
     if (emailId && body) {
       void fetchSuggestions();
     }
-  }, [emailId]);
+  }, [emailId, body, fetchSuggestions]);
 
   // Handle suggestion selection
   const handleSelect = (suggestion: ReplySuggestion) => {
@@ -248,7 +260,7 @@ export function SmartReplySuggestions({
       {/* Suggestion Chips */}
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion) => {
-          const config = toneConfig[suggestion.tone] || toneConfig.professional;
+          const config = toneConfig[suggestion.tone];
           const isSelected = selectedId === suggestion.id;
           const isExpanded = expandedId === suggestion.id;
 

@@ -5,15 +5,13 @@
  * Configure Single Sign-On for the organization
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import {
   Shield,
   Key,
   Plus,
   Settings,
   Trash2,
-  CheckCircle2,
-  XCircle,
   ExternalLink,
   Copy,
   AlertTriangle,
@@ -62,29 +60,27 @@ export default function SSOSettingsPage() {
   const [ssoEnabled, setSsoEnabled] = useState(false);
   const [enforceSSO, setEnforceSSO] = useState(false);
   const [providers, setProviders] = useState<SSOProvider[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSSOProviders = async () => {
       try {
         const response = await fetch("/api/v1/organization/sso");
-        const data = await response.json();
-        if (data.providers) {
-          setProviders(data.providers);
-        }
-        if (data.ssoEnabled !== undefined) {
-          setSsoEnabled(data.ssoEnabled);
-        }
-        if (data.enforceSSO !== undefined) {
-          setEnforceSSO(data.enforceSSO);
-        }
+        const data = (await response.json()) as {
+          providers: SSOProvider[];
+          ssoEnabled: boolean;
+          enforceSSO: boolean;
+        };
+        setProviders(data.providers);
+        setSsoEnabled(data.ssoEnabled);
+        setEnforceSSO(data.enforceSSO);
       } catch (err) {
         console.error("Failed to fetch SSO providers:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchSSOProviders();
+    void fetchSSOProviders();
   }, []);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -113,7 +109,7 @@ export default function SSOSettingsPage() {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     alert("Copied to clipboard");
   };
 
@@ -406,7 +402,7 @@ export default function SSOSettingsPage() {
                             id="certificate"
                             placeholder="-----BEGIN CERTIFICATE-----"
                             value={newProvider.certificate}
-                            onChange={(e) =>
+                            onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
                               setNewProvider({ ...newProvider, certificate: e.target.value })
                             }
                             rows={4}
@@ -507,7 +503,9 @@ export default function SSOSettingsPage() {
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={provider.enabled}
-                          onCheckedChange={(checked) => handleToggleProvider(provider.id, checked)}
+                          onCheckedChange={(checked: boolean) =>
+                            handleToggleProvider(provider.id, checked)
+                          }
                         />
                         <Button size="sm" variant="ghost">
                           <Settings className="h-4 w-4" />

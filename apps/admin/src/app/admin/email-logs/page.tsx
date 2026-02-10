@@ -5,7 +5,7 @@
  * View and search email delivery logs
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Mail,
   Search,
@@ -48,7 +48,7 @@ interface EmailLog {
   smtpResponse?: string;
 }
 
-const TRANSACTIONAL_API = process.env.NEXT_PUBLIC_TRANSACTIONAL_API_URL || "http://localhost:8095";
+const TRANSACTIONAL_API = process.env.NEXT_PUBLIC_TRANSACTIONAL_API_URL ?? "http://localhost:8095";
 
 export default function EmailLogsPage() {
   const [logs, setLogs] = useState<EmailLog[]>([]);
@@ -59,7 +59,7 @@ export default function EmailLogsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -73,9 +73,9 @@ export default function EmailLogsPage() {
 
       const res = await fetch(`${TRANSACTIONAL_API}/v1/events?${params}`);
       if (res.ok) {
-        const data = await res.json();
-        setLogs(data.events || []);
-        setTotalPages(Math.ceil((data.total || 0) / 50));
+        const data = (await res.json()) as { events?: EmailLog[]; total?: number };
+        setLogs(data.events ?? []);
+        setTotalPages(Math.ceil((data.total ?? 0) / 50));
       } else {
         // No mock data - return empty array if API not available
         setLogs([]);
@@ -86,16 +86,15 @@ export default function EmailLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter, searchQuery]);
 
   useEffect(() => {
-    fetchLogs();
-  }, [page, statusFilter]);
+    void fetchLogs();
+  }, [fetchLogs]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchLogs();
   };
 
   const getStatusIcon = (status: string) => {

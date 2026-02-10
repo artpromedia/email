@@ -26,7 +26,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...options?.headers,
+      ...(options?.headers as Record<string, string>),
     },
   });
 

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching calendar events:", error);
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
     const authHeader = request.headers.get("Authorization");
 
     const response = await fetch(`${CALENDAR_API_URL}/api/v1/events`, {
@@ -64,19 +64,13 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Create event error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to create event" },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: "Failed to create event" }, { status: response.status });
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error creating calendar event:", error);
-    return NextResponse.json(
-      { error: "Calendar service unavailable" },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "Calendar service unavailable" }, { status: 503 });
   }
 }

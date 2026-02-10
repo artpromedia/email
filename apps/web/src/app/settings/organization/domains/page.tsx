@@ -56,30 +56,28 @@ interface DNSRecord {
 
 export default function DomainsSettingsPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDomains = async () => {
       try {
         const response = await fetch("/api/v1/organization/domains");
-        const data = await response.json();
-        if (data.domains) {
-          setDomains(data.domains);
-        }
+        const data = (await response.json()) as { domains: Domain[] };
+        setDomains(data.domains);
       } catch (err) {
         console.error("Failed to fetch domains:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchDomains();
+    void fetchDomains();
   }, []);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newDomain, setNewDomain] = useState("");
   const [verifying, setVerifying] = useState<string | null>(null);
 
-  const handleAddDomain = async () => {
+  const handleAddDomain = () => {
     if (!newDomain) return;
 
     // TODO: API call to add domain
@@ -131,14 +129,14 @@ export default function DomainsSettingsPage() {
     }
   };
 
-  const handleDeleteDomain = async (domainId: string) => {
+  const handleDeleteDomain = (domainId: string) => {
     if (confirm("Are you sure you want to remove this domain?")) {
       // TODO: API call to delete domain
       setDomains(domains.filter((d) => d.id !== domainId));
     }
   };
 
-  const handleSetPrimary = async (domainId: string) => {
+  const handleSetPrimary = (domainId: string) => {
     // TODO: API call to set primary domain
     setDomains(
       domains.map((d) => ({
@@ -149,7 +147,7 @@ export default function DomainsSettingsPage() {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     alert("Copied to clipboard");
   };
 

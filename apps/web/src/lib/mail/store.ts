@@ -242,7 +242,7 @@ export const useMailStore = create<MailState & MailActions>()(
           if (index !== -1) {
             const email = state.emails[index];
             // Use Object.keys to iterate and assign each property
-            (Object.keys(updates) as Array<keyof typeof updates>).forEach((key) => {
+            (Object.keys(updates) as (keyof typeof updates)[]).forEach((key) => {
               if (updates[key] !== undefined) {
                 // @ts-expect-error - Immer draft typing limitation
                 email[key] = updates[key];
@@ -473,7 +473,7 @@ export const useMailStore = create<MailState & MailActions>()(
         return {
           ...current,
           viewPreferences: persistedState.viewPreferences ?? current.viewPreferences,
-          expandedDomains: new Set((persistedState.expandedDomains as unknown as string[]) ?? []),
+          expandedDomains: new Set((persistedState.expandedDomains ?? []) as unknown as string[]),
           sidebarCollapsed: persistedState.sidebarCollapsed ?? current.sidebarCollapsed,
           activeDomain: persistedState.activeDomain ?? current.activeDomain,
         };

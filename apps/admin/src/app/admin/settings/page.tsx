@@ -167,7 +167,7 @@ export default function SettingsPage() {
               <Switch
                 id="requireTls"
                 checked={settings.smtp.requireTls}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     smtp: { ...settings.smtp, requireTls: checked },
@@ -193,7 +193,7 @@ export default function SettingsPage() {
               <Switch
                 id="enforceSpf"
                 checked={settings.security.enforceSpf}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     security: { ...settings.security, enforceSpf: checked },
@@ -206,7 +206,7 @@ export default function SettingsPage() {
               <Switch
                 id="enforceDkim"
                 checked={settings.security.enforceDkim}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     security: { ...settings.security, enforceDkim: checked },
@@ -219,7 +219,7 @@ export default function SettingsPage() {
               <Switch
                 id="enforceDmarc"
                 checked={settings.security.enforceDmarc}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     security: { ...settings.security, enforceDmarc: checked },
@@ -298,7 +298,7 @@ export default function SettingsPage() {
               <Switch
                 id="backupEnabled"
                 checked={settings.retention.backupEnabled}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     retention: { ...settings.retention, backupEnabled: checked },
@@ -324,7 +324,7 @@ export default function SettingsPage() {
               <Switch
                 id="adminAlerts"
                 checked={settings.notifications.adminAlerts}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     notifications: { ...settings.notifications, adminAlerts: checked },
@@ -337,7 +337,7 @@ export default function SettingsPage() {
               <Switch
                 id="bounceNotifications"
                 checked={settings.notifications.bounceNotifications}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     notifications: { ...settings.notifications, bounceNotifications: checked },
@@ -350,7 +350,7 @@ export default function SettingsPage() {
               <Switch
                 id="quotaWarnings"
                 checked={settings.notifications.quotaWarnings}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({
                     ...settings,
                     notifications: { ...settings.notifications, quotaWarnings: checked },

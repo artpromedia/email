@@ -109,10 +109,10 @@ function DomainIndicator({
     <div
       className="flex items-center gap-2 rounded-lg p-3 text-sm"
       style={{
-        backgroundColor: branding?.primaryColor ? `${branding.primaryColor}15` : "var(--muted)",
+        backgroundColor: branding.primaryColor ? `${branding.primaryColor}15` : "var(--muted)",
       }}
     >
-      <Building2 className="h-4 w-4" style={{ color: branding?.primaryColor }} />
+      <Building2 className="h-4 w-4" style={{ color: branding.primaryColor }} />
       <span>
         Signing in to <strong>{domain.organizationName}</strong>
       </span>
@@ -169,6 +169,7 @@ function LoginContent() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch() is intentionally used
   const email = watch("email");
   const debouncedEmail = useDebounce(email, 500);
 
@@ -232,18 +233,18 @@ function LoginContent() {
     <Card className="border-0 shadow-lg">
       <CardHeader className="space-y-4 text-center">
         {/* Domain Logo */}
-        {branding?.logo ? (
+        {branding.logo ? (
           <div className="flex justify-center">
             <img
               src={branding.logo}
-              alt={branding?.displayName || "Organization"}
+              alt={branding.displayName || "Organization"}
               className="h-12 w-auto object-contain"
             />
           </div>
         ) : (
           <div
             className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-            style={{ backgroundColor: branding?.primaryColor || "var(--primary)" }}
+            style={{ backgroundColor: branding.primaryColor || "var(--primary)" }}
           >
             <Mail className="h-6 w-6 text-primary-foreground" />
           </div>
@@ -251,7 +252,7 @@ function LoginContent() {
 
         <div>
           <CardTitle className="text-2xl">
-            {branding?.displayName ? `Sign in to ${branding?.displayName}` : "Sign in"}
+            {branding.displayName ? `Sign in to ${branding.displayName}` : "Sign in"}
           </CardTitle>
           <CardDescription className="mt-2">
             Enter your credentials to access your account
@@ -382,9 +383,7 @@ function LoginContent() {
               type="submit"
               className="w-full"
               disabled={isSubmitting || loginMutation.isPending}
-              style={
-                branding?.primaryColor ? { backgroundColor: branding.primaryColor } : undefined
-              }
+              style={branding.primaryColor ? { backgroundColor: branding.primaryColor } : undefined}
             >
               {getLoginButtonContent(loginMutation.isPending, requiresTwoFactor)}
             </Button>
@@ -411,7 +410,7 @@ function LoginContent() {
               onClick={handleSSOLogin}
               disabled={ssoMutation.isPending}
               style={
-                ssoOnly && branding?.primaryColor
+                ssoOnly && branding.primaryColor
                   ? { backgroundColor: branding.primaryColor }
                   : undefined
               }
@@ -424,13 +423,13 @@ function LoginContent() {
               ) : (
                 <>
                   <KeyRound className="mr-2 h-4 w-4" />
-                  {detectedDomain?.ssoProvider === "google" && "Continue with Google"}
-                  {detectedDomain?.ssoProvider === "microsoft" && "Continue with Microsoft"}
-                  {detectedDomain?.ssoProvider === "okta" && "Continue with Okta"}
-                  {(detectedDomain?.ssoProvider === "saml" ||
-                    detectedDomain?.ssoProvider === "oidc") &&
+                  {detectedDomain.ssoProvider === "google" && "Continue with Google"}
+                  {detectedDomain.ssoProvider === "microsoft" && "Continue with Microsoft"}
+                  {detectedDomain.ssoProvider === "okta" && "Continue with Okta"}
+                  {(detectedDomain.ssoProvider === "saml" ||
+                    detectedDomain.ssoProvider === "oidc") &&
                     `Continue with ${detectedDomain.organizationName} SSO`}
-                  {!detectedDomain?.ssoProvider && "Continue with SSO"}
+                  {!detectedDomain.ssoProvider && "Continue with SSO"}
                 </>
               )}
             </Button>

@@ -52,10 +52,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as {
+        addresses?: unknown[];
+        defaultAddressId?: string | null;
+      };
       return NextResponse.json({
-        addresses: data.addresses || [],
-        defaultAddressId: data.defaultAddressId || null,
+        addresses: data.addresses ?? [],
+        defaultAddressId: data.defaultAddressId ?? null,
       });
     }
 

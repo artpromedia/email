@@ -27,13 +27,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching mail domains:", error);
-    return NextResponse.json(
-      { error: "Domain service unavailable", domains: [] },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "Domain service unavailable", domains: [] }, { status: 503 });
   }
 }

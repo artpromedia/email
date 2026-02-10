@@ -5,21 +5,8 @@
  * Security settings, audit logs, and threat monitoring
  */
 
-import { useEffect, useState } from "react";
-import {
-  Shield,
-  Key,
-  Lock,
-  AlertTriangle,
-  Activity,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  EyeOff,
-  Copy,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Shield, Key, Lock, Activity, RefreshCw, Copy } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -72,7 +59,7 @@ interface ApiKey {
   expiresAt: string | null;
 }
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:8082";
+const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8082";
 
 export default function SecurityPage() {
   const [settings, setSettings] = useState<SecuritySettings>({
@@ -95,7 +82,7 @@ export default function SecurityPage() {
   const [newKeyName, setNewKeyName] = useState("");
   const [showNewKey, setShowNewKey] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -103,15 +90,15 @@ export default function SecurityPage() {
       // Fetch security settings
       const settingsRes = await fetch(`${AUTH_API}/api/v1/admin/security/settings`);
       if (settingsRes.ok) {
-        const data = await settingsRes.json();
+        const data = (await settingsRes.json()) as SecuritySettings;
         setSettings(data);
       }
 
       // Fetch audit logs
       const logsRes = await fetch(`${AUTH_API}/api/v1/admin/audit?limit=50`);
       if (logsRes.ok) {
-        const data = await logsRes.json();
-        setAuditLogs(data.logs || []);
+        const data = (await logsRes.json()) as { logs?: AuditLog[] };
+        setAuditLogs(data.logs ?? []);
       } else {
         // Sample audit logs
         setAuditLogs([
@@ -141,19 +128,19 @@ export default function SecurityPage() {
       // Fetch API keys
       const keysRes = await fetch(`${AUTH_API}/api/v1/admin/api-keys`);
       if (keysRes.ok) {
-        const data = await keysRes.json();
-        setApiKeys(data.keys || []);
+        const data = (await keysRes.json()) as { keys?: ApiKey[] };
+        setApiKeys(data.keys ?? []);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch data");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const handleSaveSettings = async () => {
     try {
@@ -181,10 +168,10 @@ export default function SecurityPage() {
         body: JSON.stringify({ name: newKeyName }),
       });
       if (!res.ok) throw new Error("Failed to create API key");
-      const data = await res.json();
+      const data = (await res.json()) as { key: string };
       setShowNewKey(data.key);
       setNewKeyName("");
-      fetchData();
+      void fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create API key");
     }
@@ -198,7 +185,7 @@ export default function SecurityPage() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete API key");
-      fetchData();
+      void fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete API key");
     }
@@ -248,7 +235,7 @@ export default function SecurityPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                navigator.clipboard.writeText(showNewKey);
+                void navigator.clipboard.writeText(showNewKey);
               }}
             >
               <Copy className="mr-2 h-4 w-4" />
@@ -289,7 +276,7 @@ export default function SecurityPage() {
                   </div>
                   <Switch
                     checked={settings.mfaRequired}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setSettings({ ...settings, mfaRequired: checked })
                     }
                   />
@@ -356,7 +343,7 @@ export default function SecurityPage() {
                   <Label>Require uppercase letters</Label>
                   <Switch
                     checked={settings.passwordRequireUppercase}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setSettings({ ...settings, passwordRequireUppercase: checked })
                     }
                   />
@@ -366,7 +353,7 @@ export default function SecurityPage() {
                   <Label>Require numbers</Label>
                   <Switch
                     checked={settings.passwordRequireNumbers}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setSettings({ ...settings, passwordRequireNumbers: checked })
                     }
                   />
@@ -376,7 +363,7 @@ export default function SecurityPage() {
                   <Label>Require symbols</Label>
                   <Switch
                     checked={settings.passwordRequireSymbols}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setSettings({ ...settings, passwordRequireSymbols: checked })
                     }
                   />
