@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 )
 
@@ -594,7 +594,7 @@ func (s *Service) runMLLayer(ctx context.Context, req *SpamCheckRequest) LayerRe
 	text := prepareTextForML(req.Subject, req.Body)
 
 	// Get classification
-	score, confidence, err := s.mlClassifier.Classify(ctx, text)
+	score, _, err := s.mlClassifier.Classify(ctx, text)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("ML classification failed")
 		return LayerResult{

@@ -2,7 +2,6 @@ package autoreply
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"

@@ -89,6 +89,14 @@ type EmbeddingError struct {
 	Code    string `json:"code"`
 }
 
+// embeddingItem is an internal type for batch processing
+type embeddingItem struct {
+	index       int
+	request     EmbeddingRequest
+	contentHash string
+	cacheKey    string
+}
+
 // Generate generates an embedding for a single text
 func (s *Service) Generate(ctx context.Context, req *EmbeddingRequest) (*EmbeddingResponse, error) {
 	start := time.Now()
@@ -153,13 +161,6 @@ func (s *Service) GenerateBatch(ctx context.Context, req *BatchEmbeddingRequest)
 	cachedCount := 0
 
 	// Process items that need embedding
-	type embeddingItem struct {
-		index       int
-		request     EmbeddingRequest
-		contentHash string
-		cacheKey    string
-	}
-
 	toEmbed := make([]embeddingItem, 0)
 
 	// First pass: check cache

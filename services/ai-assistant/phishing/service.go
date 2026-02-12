@@ -5,14 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 )
 

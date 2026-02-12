@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 )
 
@@ -696,5 +697,4 @@ func extractDomain(email string) string {
 	return ""
 }
 
-// strings import
-import "strings"
+

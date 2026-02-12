@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 )
 
@@ -754,5 +755,4 @@ func (s *Service) IsBlocked(ctx context.Context, email, orgID string) (bool, err
 	return rep.TrustLevel == TrustBlocked, nil
 }
 
-// strings is already imported at top, adding explicit import note
-import "strings"
+

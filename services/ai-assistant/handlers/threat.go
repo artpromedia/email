@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -53,9 +54,6 @@ type FeedbackService interface {
 	CreateTrainingBatch(ctx context.Context, orgID string) (*TrainingBatch, error)
 	ListTrainingBatches(ctx context.Context, orgID string, limit int) ([]*TrainingBatch, error)
 }
-
-// Context key for imports
-import "context"
 
 // NewThreatHandlers creates new threat protection handlers
 func NewThreatHandlers(
