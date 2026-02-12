@@ -5,7 +5,28 @@
     email admin@oonrumail.com
 }
 
-# Main web app - serve at app.oonrumail.com (primary) and mail.oonrumail.com (alias)
+# Marketing / landing page - served at www.oonrumail.com
+# The Next.js middleware restricts this domain to marketing & auth pages only
+www.oonrumail.com {
+    reverse_proxy web:3000
+    encode gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Bare domain redirects to www (marketing page)
+oonrumail.com {
+    redir https://www.oonrumail.com{uri} permanent
+}
+
+# Mail application - served at mail.oonrumail.com (primary) and app.oonrumail.com (alias)
+# The Next.js middleware redirects to mail.oonrumail.com from www when accessing app routes
 app.oonrumail.com, mail.oonrumail.com {
     reverse_proxy web:3000
     encode gzip
@@ -101,5 +122,6 @@ api.oonrumail.com {
     }
 }
 
-# NOTE: oonrumail.com and www.oonrumail.com are handled by Cloudflare
-# They cannot use Caddy for SSL as they are proxied through Cloudflare
+# NOTE: If using Cloudflare proxy for oonrumail.com and www.oonrumail.com,
+# set Cloudflare SSL mode to "Full (strict)" so Caddy can still issue
+# its own certificates and Cloudflare forwards traffic to Caddy correctly.

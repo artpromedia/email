@@ -54,7 +54,7 @@ Examples:
 Environment Variables:
     BACKUP_DIR          Backup directory (default: /backups/postgres)
     NAMESPACE           Kubernetes namespace (default: email-production)
-    ALERT_WEBHOOK       Slack/Teams webhook URL for alerts
+    ALERT_WEBHOOK       Webhook URL for alerts
     STATUS_PAGE_API     Status page API endpoint
 
 EOF

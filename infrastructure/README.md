@@ -563,7 +563,6 @@ psql -c "SELECT * FROM domains WHERE name = 'example.com';"
 For issues or questions:
 
 - Email: support@oonrumail.com
-- Slack: #email-infrastructure
 - Docs: https://docs.oonrumail.com
 
 ## License

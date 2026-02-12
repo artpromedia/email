@@ -43,7 +43,7 @@ AUTH LOGIN
 # Provide base64 credentials
 ```
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -72,7 +72,7 @@ AUTH LOGIN
 dig selector._domainkey.yourdomain.com TXT
 ```
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -99,7 +99,7 @@ dig selector._domainkey.yourdomain.com TXT
 dig _dmarc.yourdomain.com TXT
 ```
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -128,7 +128,7 @@ dig _dmarc.yourdomain.com TXT
 - OneLogin
 - Generic SAML 2.0
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -161,7 +161,7 @@ DEFAULT: { limit: 300, windowMs: 60_000 }        // 300/min
 - `apps/web/src/middleware.ts`
 - `apps/admin/src/middleware.ts`
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -197,7 +197,7 @@ clamav:
 
 **Gap Timeline:** 1-2 weeks to implement
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -223,7 +223,7 @@ clamav:
 - Integrate AWS Secrets Manager OR HashiCorp Vault
 - Implement automatic secret rotation
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -252,7 +252,7 @@ clamav:
 **Endpoints:** | Port | Purpose | |------|---------| | 5000 | Primary (R/W) | | 5001 | Replicas
 (R/O) | | 7000 | HAProxy Stats |
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -279,7 +279,7 @@ clamav:
 - `email_logs` - By `timestamp` (monthly)
 - `audit_logs` - By `created_at` (monthly)
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -309,7 +309,7 @@ sha256sum -c /backups/postgres/daily/latest.sql.gz.sha256
 ./scripts/backups/restore-postgres.sh /backups/postgres/daily/latest.sql.gz --target-db=test_restore
 ```
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -338,7 +338,7 @@ sha256sum -c /backups/postgres/daily/latest.sql.gz.sha256
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3030
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -350,7 +350,7 @@ sha256sum -c /backups/postgres/daily/latest.sql.gz.sha256
 | --------------------- | ------ | ------------------------------------------------------ |
 | Alert Rules           | ✅     | `infrastructure/monitoring/alert-rules.yml`            |
 | PostgreSQL Alerts     | ✅     | `infrastructure/monitoring/postgresql-alert-rules.yml` |
-| Notification Channels | ✅     | Slack, PagerDuty, Email configured                     |
+| Notification Channels | ✅     | PagerDuty, Email configured                            |
 | Escalation Policies   | ✅     | Documented in runbook                                  |
 
 **Alert Categories:**
@@ -359,7 +359,7 @@ sha256sum -c /backups/postgres/daily/latest.sql.gz.sha256
 - Warning: High latency, queue backlog
 - Info: Deployments, configuration changes
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -375,7 +375,7 @@ sha256sum -c /backups/postgres/daily/latest.sql.gz.sha256
 | Log Levels             | ✅     | Configurable per environment       |
 | Error Tracking         | ✅     | Sentry integration ready           |
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -403,7 +403,7 @@ sha256sum -c /backups/postgres/daily/latest.sql.gz.sha256
 
 **Gap:** Need ~10-15% more coverage before GA
 
-**Sign-off:** [ ] Engineering Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Engineering Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -426,7 +426,7 @@ cd tests/integration
 ./run-tests.sh
 ```
 
-**Sign-off:** [ ] Engineering Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Engineering Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -456,7 +456,7 @@ cd apps/web
 pnpm test:e2e
 ```
 
-**Sign-off:** [ ] Engineering Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Engineering Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -486,7 +486,7 @@ cd tests/load
 ./run-load-tests.sh
 ```
 
-**Sign-off:** [ ] Engineering Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Engineering Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -509,7 +509,7 @@ cd tests/security
 ./run-security-tests.sh
 ```
 
-**Sign-off:** [ ] Security Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Security Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -527,7 +527,7 @@ cd tests/security
 | Transactional API | ✅     | `docs/api/transactional-api-openapi.yaml` |
 | README            | ✅     | `docs/api/README.md`                      |
 
-**Sign-off:** [ ] Engineering Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Engineering Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -543,7 +543,7 @@ cd tests/security
 | Infrastructure         | ✅     | `infrastructure/README.md`                                     |
 | Quick Reference        | ✅     | `infrastructure/QUICK-REFERENCE.md`                            |
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -558,7 +558,7 @@ cd tests/security
 | Database HA               | ✅     | `infrastructure/postgresql/README.md` |
 | Email Flow                | ✅     | `docs/MULTI_DOMAIN_COMPOSE.md`        |
 
-**Sign-off:** [ ] Engineering Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Engineering Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -574,7 +574,7 @@ cd tests/security
 | Escalation Matrix    | ✅     | Documented in runbook                           |
 | Post-Mortem Template | ✅     | Available                                       |
 
-**Sign-off:** [ ] Operations Lead ******\_\_\_****** Date: ****\_\_\_****
+**Sign-off:** [ ] Operations Lead **\*\***\_\_\_**\*\*** Date: \***\*\_\_\_\*\***
 
 ---
 
@@ -589,8 +589,8 @@ cd tests/security
 | E2E Tests         | ✅     | All passing                          |
 | API Documentation | ✅     | Complete                             |
 
-**Engineering Lead:** ******\_\_\_****** **Date:** ****\_\_\_**** **Approved for Staged Rollout:** [
-] Yes [ ] No
+**Engineering Lead:** **\*\***\_\_\_**\*\*** **Date:** \***\*\_\_\_\*\*** **Approved for Staged
+Rollout:** [ ] Yes [ ] No
 
 ---
 
@@ -604,8 +604,8 @@ cd tests/security
 | Virus Scanning     | ⚠️     | Requires ClamAV integration     |
 | Secrets Management | ⚠️     | Recommend AWS Secrets Manager   |
 
-**Security Lead:** ******\_\_\_****** **Date:** ****\_\_\_**** **Approved for Staged Rollout:** [ ]
-Yes [ ] No
+**Security Lead:** **\*\***\_\_\_**\*\*** **Date:** \***\*\_\_\_\*\*** **Approved for Staged
+Rollout:** [ ] Yes [ ] No
 
 ---
 
@@ -619,8 +619,8 @@ Yes [ ] No
 | Alerting    | ✅     | Rules configured                 |
 | Runbooks    | ✅     | Comprehensive documentation      |
 
-**Operations Lead:** ******\_\_\_****** **Date:** ****\_\_\_**** **Approved for Staged Rollout:** [
-] Yes [ ] No
+**Operations Lead:** **\*\***\_\_\_**\*\*** **Date:** \***\*\_\_\_\*\*** **Approved for Staged
+Rollout:** [ ] Yes [ ] No
 
 ---
 

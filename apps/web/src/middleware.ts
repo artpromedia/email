@@ -415,13 +415,55 @@ async function checkRateLimit(identifier: string, pathname: string): Promise<Rat
   return rateLimiter.checkMultiple(identifier, configs);
 }
 
+// ============================================================
+// Domain-based routing configuration
+// www.oonrumail.com  → Marketing / landing page only
+// mail.oonrumail.com → Full mail application
+// ============================================================
+
+const MARKETING_DOMAIN = process.env["MARKETING_DOMAIN"] || "www.oonrumail.com";
+const MAIL_DOMAIN = process.env["MAIL_DOMAIN"] || "mail.oonrumail.com";
+
+/** Routes that are exclusively app routes (not available on www) */
+const APP_ROUTE_PREFIXES = ["/mail", "/calendar", "/chat", "/contacts", "/settings", "/admin"];
+
+function isAppRoute(pathname: string): boolean {
+  return APP_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get("host")?.split(":")[0] || "";
 
   // Skip CSP report endpoint to avoid circular issues
   if (pathname === "/api/csp-report") {
     return response;
+  }
+
+  // --- Domain-based routing ---
+
+  // On the MARKETING domain (www.oonrumail.com):
+  //   - Allow marketing pages, auth pages, and API routes
+  //   - Redirect app routes (/mail, /calendar, etc.) to mail.oonrumail.com
+  if (hostname === MARKETING_DOMAIN) {
+    if (isAppRoute(pathname)) {
+      const mailUrl = request.nextUrl.clone();
+      mailUrl.hostname = MAIL_DOMAIN;
+      mailUrl.host = MAIL_DOMAIN;
+      mailUrl.port = "";
+      return NextResponse.redirect(mailUrl);
+    }
+  }
+
+  // On the MAIL domain (mail.oonrumail.com):
+  //   - Redirect root "/" to "/mail/inbox" (users expect the mail app here)
+  if (hostname === MAIL_DOMAIN && pathname === "/") {
+    const inboxUrl = request.nextUrl.clone();
+    inboxUrl.pathname = "/mail/inbox";
+    return NextResponse.redirect(inboxUrl);
   }
 
   // Get client identifier (IP address or user ID)

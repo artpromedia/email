@@ -6,8 +6,8 @@
 
 ## Executive Summary
 
-This document defines the staged rollout execution plan for deploying the OONRUMAIL Platform
-to production. The rollout consists of four phases with clear success criteria, monitoring
+This document defines the staged rollout execution plan for deploying the OONRUMAIL Platform to
+production. The rollout consists of four phases with clear success criteria, monitoring
 requirements, and rollback procedures.
 
 **Rollout Timeline:** 4 weeks (estimated)
@@ -44,8 +44,8 @@ Validate production infrastructure with internal team before external users.
 
 ### Timeline
 
-- **Start Date:** ******\_******
-- **End Date:** ******\_******
+- **Start Date:** **\*\***\_**\*\***
+- **End Date:** **\*\***\_**\*\***
 - **Duration:** 3-5 business days
 
 ### Target Audience
@@ -86,7 +86,7 @@ monitoring:
 | Backup production database   | Ops   | [ ]    | Full backup before deploy |
 | Verify DNS records           | Ops   | [ ]    | DKIM, DMARC, SPF          |
 | Deploy monitoring dashboards | Ops   | [ ]    | Phase 1 dashboard active  |
-| Configure alerting           | Ops   | [ ]    | Team Slack channel        |
+| Configure alerting           | Ops   | [ ]    | Email alerts configured   |
 | Test SMTP authentication     | QA    | [ ]    | All auth methods          |
 | Test DKIM signing            | QA    | [ ]    | Send test emails          |
 | Test SSO integration         | QA    | [ ]    | Test IdP                  |
@@ -197,7 +197,7 @@ sum(smtp_active_connections) + sum(imap_active_connections)
 - [ ] **GO** - Proceed to Phase 2
 - [ ] **NO-GO** - Address issues and re-evaluate
 
-**Approved by:** ******\_\_\_****** **Date:** ******\_\_\_******
+**Approved by:** **\*\***\_\_\_**\*\*** **Date:** **\*\***\_\_\_**\*\***
 
 ---
 
@@ -209,8 +209,8 @@ Validate platform with limited external users in controlled environment.
 
 ### Timeline
 
-- **Start Date:** ******\_******
-- **End Date:** ******\_******
+- **Start Date:** **\*\***\_**\*\***
+- **End Date:** **\*\***\_**\*\***
 - **Duration:** 5-7 business days
 
 ### Target Audience
@@ -259,7 +259,7 @@ monitoring:
 | --------------------------- | -------- | ------ | ----------------------- |
 | Phase 1 sign-off complete   | Team     | [ ]    | All criteria met        |
 | Beta user accounts created  | Support  | [ ]    | 100 accounts max        |
-| Support channels configured | Support  | [ ]    | Dedicated Slack/email   |
+| Support channels configured | Support  | [ ]    | Dedicated email         |
 | Feedback collection setup   | PM       | [ ]    | Survey forms ready      |
 | Scale infrastructure        | Ops      | [ ]    | 2x replica count        |
 | Enable additional features  | Dev      | [ ]    | AI assistant, analytics |
@@ -367,7 +367,7 @@ echo "Monitor: https://grafana.internal/d/phase2-beta"
 - [ ] **GO** - Proceed to Phase 3
 - [ ] **NO-GO** - Address issues and re-evaluate
 
-**Approved by:** ******\_\_\_****** **Date:** ******\_\_\_******
+**Approved by:** **\*\***\_\_\_**\*\*** **Date:** **\*\***\_\_\_**\*\***
 
 ---
 
@@ -379,8 +379,8 @@ Production deployment with gradual traffic increase and comprehensive monitoring
 
 ### Timeline
 
-- **Start Date:** ******\_******
-- **End Date:** ******\_******
+- **Start Date:** **\*\***\_**\*\***
+- **End Date:** **\*\***\_**\*\***
 - **Duration:** 7-10 business days
 
 ### Target Audience
@@ -571,7 +571,7 @@ echo "Successfully ramped to ${TARGET_WEIGHT}%"
 - [ ] **GO** - Proceed to General Availability
 - [ ] **NO-GO** - Address issues and re-evaluate
 
-**Approved by:** ******\_\_\_****** **Date:** ******\_\_\_******
+**Approved by:** **\*\***\_\_\_**\*\*** **Date:** **\*\***\_\_\_**\*\***
 
 ---
 
@@ -583,7 +583,7 @@ Full production deployment with public availability and SLA commitments.
 
 ### Timeline
 
-- **Start Date:** ******\_******
+- **Start Date:** **\*\***\_**\*\***
 - **Ongoing operation**
 
 ### Target Audience
@@ -860,18 +860,18 @@ echo "Incident response engaged. Follow incident procedure."
 
 ### Internal Communications
 
-| Phase   | Channel              | Frequency | Content         |
-| ------- | -------------------- | --------- | --------------- |
-| Alpha   | Slack #alpha-rollout | Real-time | All updates     |
-| Beta    | Slack #beta-rollout  | Daily     | Metrics, issues |
-| Limited | Slack #prod-rollout  | 4x daily  | Status updates  |
-| GA      | Slack #production    | As needed | Major updates   |
+| Phase   | Channel          | Frequency | Content         |
+| ------- | ---------------- | --------- | --------------- |
+| Alpha   | Email (ops team) | Real-time | All updates     |
+| Beta    | Email (ops team) | Daily     | Metrics, issues |
+| Limited | Email (ops team) | 4x daily  | Status updates  |
+| GA      | Email (ops team) | As needed | Major updates   |
 
 ### External Communications
 
 | Phase    | Audience        | Channel            | Content                    |
 | -------- | --------------- | ------------------ | -------------------------- |
-| Beta     | Beta users      | Email, Slack       | Welcome, feedback requests |
+| Beta     | Beta users      | Email              | Welcome, feedback requests |
 | Limited  | Early customers | Email              | Migration status           |
 | GA       | All customers   | Email, Blog        | GA announcement            |
 | Incident | Affected users  | Status page, Email | Incident updates           |

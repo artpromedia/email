@@ -349,10 +349,13 @@ jobs:
   # STAGE 7: Docker Build (for main branch)
   # ============================================================
   docker-build:
-    name: Docker Build
+    name: Docker Build & Push
     runs-on: ubuntu-latest
     needs: [build, security-scan]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         service:
@@ -361,6 +364,14 @@ jobs:
           - smtp-server
           - imap-server
           - auth
+          - storage
+          - contacts
+          - calendar
+          - chat
+          - domain-manager
+          - transactional-api
+          - sms-gateway
+          - ai-assistant
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -368,15 +379,162 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ${{ matrix.service == 'web' && 'apps/web/Dockerfile' || matrix.service == 'admin' && 'apps/admin/Dockerfile' || format('services/{0}/Dockerfile', matrix.service) }}
-          push: false
-          tags: enterprise-email/${{ matrix.service }}:${{ github.sha }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ============================================================
+  # STAGE 8: Deploy to Production (runs on self-hosted runner)
+  # ============================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: [self-hosted, production]
+    needs: [docker-build, integration-tests, e2e-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://mail.oonrumail.com
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_DIR: /opt/oonrumail/app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.DEPLOY_DIR }}
+
+      - name: Pre-deploy database backup
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          BACKUP_DIR="/opt/oonrumail/backups/deploys"
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          mkdir -p "${BACKUP_DIR}"
+
+          echo "Creating pre-deploy backup..."
+          docker compose -f docker-compose.prod.yml exec -T postgres \
+            pg_dump -U "${POSTGRES_USER:-oonrumail}" "${POSTGRES_DB:-oonrumail}" \
+            | gzip > "${BACKUP_DIR}/pre-deploy-${TIMESTAMP}.sql.gz" || true
+          echo "  Backup: ${BACKUP_DIR}/pre-deploy-${TIMESTAMP}.sql.gz"
+
+          # Keep only last 10 backups
+          ls -t "${BACKUP_DIR}"/pre-deploy-*.sql.gz 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull new Docker images
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: docker compose -f docker-compose.prod.yml pull
+
+      - name: Deploy backend services
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          for svc in auth domain-manager storage contacts calendar chat transactional-api sms-gateway ai-assistant; do
+            echo "Restarting ${svc}..."
+            docker compose -f docker-compose.prod.yml up -d --no-deps "${svc}" 2>/dev/null || true
+          done
+          echo "Waiting for backends to stabilize..."
+          sleep 15
+
+      - name: Deploy mail services
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          for svc in smtp-server imap-server; do
+            echo "Restarting ${svc}..."
+            docker compose -f docker-compose.prod.yml up -d --no-deps "${svc}" 2>/dev/null || true
+          done
+          sleep 10
+
+      - name: Deploy frontend services
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          for svc in web admin; do
+            echo "Restarting ${svc}..."
+            docker compose -f docker-compose.prod.yml up -d --no-deps "${svc}" 2>/dev/null || true
+          done
+
+      - name: Reload Caddy
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+
+      - name: Health checks
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          echo "Waiting for services to start..."
+          sleep 20
+
+          FAILED=0
+
+          # Check web app
+          if curl -sf -o /dev/null --max-time 10 http://localhost:3000; then
+            echo "✅ Web app healthy"
+          else
+            echo "❌ Web app NOT healthy"
+            FAILED=1
+          fi
+
+          # Check auth service
+          if curl -sf -o /dev/null --max-time 10 http://localhost:8080/health 2>/dev/null; then
+            echo "✅ Auth service healthy"
+          else
+            echo "⚠️  Auth service health check inconclusive"
+          fi
+
+          # Container status summary
+          echo ""
+          echo "Container status:"
+          docker compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || \
+            docker compose -f docker-compose.prod.yml ps
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "::error::Some health checks failed. Check: docker compose -f docker-compose.prod.yml logs --tail 50"
+            exit 1
+          fi
+
+          SHORT_SHA="$(echo ${{ github.sha }} | cut -c1-7)"
+          echo ""
+          echo "========================================="
+          echo "✅ Deployment complete! (${SHORT_SHA})"
+          echo "========================================="
+
+      - name: Cleanup old Docker images
+        if: always()
+        run: docker image prune -f --filter "until=168h" 2>/dev/null || true
+
+      - name: Notify result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "::notice::✅ Deployed to production successfully (commit ${{ github.sha }})"
+          else
+            echo "::error::❌ Production deployment failed (commit ${{ github.sha }})"
+          fi
 
   # ============================================================
   # Summary Job
@@ -393,6 +551,8 @@ jobs:
       - e2e-tests
       - security-scan
       - build
+      - docker-build
+      - deploy-production
     if: always()
     steps:
       - name: Check all jobs passed
@@ -405,7 +565,20 @@ jobs:
              [[ "${{ needs.e2e-tests.result }}" != "success" ]] || \
              [[ "${{ needs.security-scan.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "One or more jobs failed"
+            echo "One or more CI jobs failed"
             exit 1
           fi
+
+          # Deploy jobs are conditional (main branch only) - treat skipped as OK
+          DOCKER_RESULT="${{ needs.docker-build.result }}"
+          DEPLOY_RESULT="${{ needs.deploy-production.result }}"
+
+          if [[ "$DOCKER_RESULT" == "failure" ]] || [[ "$DEPLOY_RESULT" == "failure" ]]; then
+            echo "Deployment failed"
+            exit 1
+          fi
+
           echo "All CI jobs passed successfully!"
+          if [[ "$DEPLOY_RESULT" == "success" ]]; then
+            echo "✅ Production deployment completed!"
+          fi

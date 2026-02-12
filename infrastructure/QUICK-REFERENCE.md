@@ -354,17 +354,9 @@ receivers:
       - to: "ops@oonrumail.com"
         from: "alerts@oonrumail.com"
         smarthost: "smtp.oonrumail.com:587"
-  - name: "slack"
-    slack_configs:
-      - api_url: "$SLACK_WEBHOOK_URL"
-        channel: "#email-alerts"
 
 route:
   receiver: "email"
-  routes:
-    - match:
-        severity: critical
-      receiver: "slack"
 ```
 
 Apply:
@@ -385,9 +377,8 @@ kubectl create secret generic alertmanager-config \
 
 ## 🆘 Support
 
-- **Emergency**: Slack #email-ops-emergency
-- **General**: Slack #email-infrastructure
-- **Email**: ops@oonrumail.com
+- **Emergency**: ops@oonrumail.com (urgent)
+- **General**: ops@oonrumail.com
 - **On-Call**: PagerDuty rotation
 
 ## ⚡ Performance Tips

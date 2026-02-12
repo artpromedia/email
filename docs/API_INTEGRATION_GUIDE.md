@@ -862,8 +862,7 @@ SMTP_PASS=your-app-password
 ## Support
 
 - 📧 Email: support@yourdomain.com
-- 💬 Slack: [Join our community](https://slack.yourdomain.com)
-- 📖 Documentation: https://docs.yourdomain.com
+- Documentation: https://docs.yourdomain.com
 - 🐛 Issues: https://github.com/artpromedia/email/issues
 
 ---

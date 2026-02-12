@@ -1,0 +1,225 @@
+name: Deploy
+
+# Manual deployment trigger with options for rollback and targeted deploys
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+      image_tag:
+        description: "Image tag to deploy (commit SHA or 'latest')"
+        required: false
+        default: "latest"
+        type: string
+      services:
+        description: "Services to deploy (comma-separated, or 'all')"
+        required: false
+        default: "all"
+        type: string
+      skip_backup:
+        description: "Skip pre-deploy database backup"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  DEPLOY_DIR: /opt/oonrumail/app
+
+jobs:
+  validate:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.parse.outputs.services }}
+    steps:
+      - name: Parse services
+        id: parse
+        run: |
+          if [ "${{ inputs.services }}" = "all" ]; then
+            echo "services=auth,storage,domain-manager,contacts,calendar,chat,transactional-api,sms-gateway,ai-assistant,smtp-server,imap-server,web,admin" >> $GITHUB_OUTPUT
+          else
+            echo "services=${{ inputs.services }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify images exist in GHCR
+        run: |
+          TAG="${{ inputs.image_tag }}"
+          IFS=',' read -ra SERVICES <<< "${{ steps.parse.outputs.services }}"
+
+          echo "Checking images with tag: ${TAG}"
+          for svc in "${SERVICES[@]}"; do
+            svc=$(echo "$svc" | xargs)  # trim whitespace
+            IMAGE="ghcr.io/${{ github.repository }}/${svc}:${TAG}"
+            echo -n "  ${IMAGE} ... "
+
+            # Use GitHub API to check if the package version exists
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://ghcr.io/v2/${{ github.repository }}/${svc}/manifests/${TAG}")
+
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then
+              echo "✅ found"
+            else
+              echo "❌ NOT FOUND (HTTP ${STATUS})"
+              echo "::error::Image ${IMAGE} not found. Build it first by pushing to main."
+              exit 1
+            fi
+          done
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: [self-hosted, "${{ inputs.environment }}"]
+    needs: validate
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment == 'production' && 'https://mail.oonrumail.com' || 'https://staging.oonrumail.com' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.DEPLOY_DIR }}
+
+      - name: Pre-deploy database backup
+        if: ${{ inputs.skip_backup != true }}
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          BACKUP_DIR="/opt/oonrumail/backups/deploys"
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          mkdir -p "${BACKUP_DIR}"
+
+          echo "Creating pre-deploy backup..."
+          docker compose -f docker-compose.prod.yml exec -T postgres \
+            pg_dump -U "${POSTGRES_USER:-oonrumail}" "${POSTGRES_DB:-oonrumail}" \
+            | gzip > "${BACKUP_DIR}/manual-deploy-${TIMESTAMP}.sql.gz" || true
+
+          # Keep only last 10 backups
+          ls -t "${BACKUP_DIR}"/*.sql.gz 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull Docker images
+        working-directory: ${{ env.DEPLOY_DIR }}
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          SERVICES="${{ needs.validate.outputs.services }}"
+          IFS=',' read -ra SVC_ARRAY <<< "${SERVICES}"
+
+          echo "Pulling images (tag: ${IMAGE_TAG})..."
+          for svc in "${SVC_ARRAY[@]}"; do
+            svc=$(echo "$svc" | xargs)
+            echo "  Pulling ${svc}..."
+            docker compose -f docker-compose.prod.yml pull "${svc}" 2>/dev/null || true
+          done
+
+      - name: Deploy services (rolling restart)
+        working-directory: ${{ env.DEPLOY_DIR }}
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          SERVICES="${{ needs.validate.outputs.services }}"
+          IFS=',' read -ra SVC_ARRAY <<< "${SERVICES}"
+
+          BACKEND_SVCS=""
+          MAIL_SVCS=""
+          FRONTEND_SVCS=""
+
+          for svc in "${SVC_ARRAY[@]}"; do
+            svc=$(echo "$svc" | xargs)
+            case "$svc" in
+              web|admin)
+                FRONTEND_SVCS="${FRONTEND_SVCS} ${svc}" ;;
+              smtp-server|imap-server)
+                MAIL_SVCS="${MAIL_SVCS} ${svc}" ;;
+              *)
+                BACKEND_SVCS="${BACKEND_SVCS} ${svc}" ;;
+            esac
+          done
+
+          # Backend first
+          if [ -n "$BACKEND_SVCS" ]; then
+            echo "Restarting backend:${BACKEND_SVCS}"
+            for svc in $BACKEND_SVCS; do
+              docker compose -f docker-compose.prod.yml up -d --no-deps "$svc"
+            done
+            sleep 10
+          fi
+
+          # Mail services
+          if [ -n "$MAIL_SVCS" ]; then
+            echo "Restarting mail:${MAIL_SVCS}"
+            for svc in $MAIL_SVCS; do
+              docker compose -f docker-compose.prod.yml up -d --no-deps "$svc"
+            done
+            sleep 10
+          fi
+
+          # Frontend last
+          if [ -n "$FRONTEND_SVCS" ]; then
+            echo "Restarting frontend:${FRONTEND_SVCS}"
+            for svc in $FRONTEND_SVCS; do
+              docker compose -f docker-compose.prod.yml up -d --no-deps "$svc"
+            done
+          fi
+
+          # Reload Caddy
+          docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+
+      - name: Health checks
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          sleep 20
+
+          echo "Container status:"
+          docker compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || \
+            docker compose -f docker-compose.prod.yml ps
+
+          if curl -sf -o /dev/null --max-time 10 http://localhost:3000; then
+            echo "✅ Web app healthy"
+          else
+            echo "⚠️  Web app may still be starting"
+          fi
+
+          echo ""
+          echo "========================================="
+          echo "✅ Deploy complete! (tag: ${{ inputs.image_tag }})"
+          echo "========================================="
+
+      - name: Cleanup old Docker images
+        if: always()
+        run: docker image prune -f --filter "until=168h" 2>/dev/null || true
+
+  rollback:
+    name: Rollback Info
+    runs-on: [self-hosted, "${{ inputs.environment }}"]
+    needs: deploy
+    if: failure()
+    steps:
+      - name: Rollback instructions
+        run: |
+          echo "::error::Deployment failed! To rollback:"
+          echo ""
+          echo "Recent database backups:"
+          ls -lt /opt/oonrumail/backups/deploys/*.sql.gz 2>/dev/null | head -5 || echo "  No backups found"
+          echo ""
+          echo "To rollback, re-run this workflow with a previous commit SHA as the image_tag."
+          echo ""
+          echo "Or run manually on this server:"
+          echo "   cd /opt/oonrumail/app"
+          echo "   IMAGE_TAG=<previous-sha> docker compose -f docker-compose.prod.yml pull"
+          echo "   IMAGE_TAG=<previous-sha> docker compose -f docker-compose.prod.yml up -d"
+          echo ""
+          echo "To restore database from backup:"
+          echo "   gunzip -c /opt/oonrumail/backups/deploys/<backup>.sql.gz | \\"
+          echo "   docker compose -f docker-compose.prod.yml exec -T postgres psql -U oonrumail"

@@ -729,7 +729,7 @@ curl -X PATCH http://localhost:8008/config -d '{"pause": false}'
 | Role          | Contact                | Escalation      |
 | ------------- | ---------------------- | --------------- |
 | DBA On-Call   | dba-oncall@company.com | PagerDuty       |
-| Platform Team | platform@company.com   | Slack #platform |
+| Platform Team | platform@company.com   | Email           |
 | Security Team | security@company.com   | For data breach |
 
 ---

@@ -487,8 +487,7 @@ curl -X POST https://api.yourdomain.com/v1/alerts \
       "failed_auth_attempts_gt": 10
     },
     "actions": {
-      "email": "security@yourdomain.com",
-      "slack": "https://hooks.slack.com/..."
+      "email": "security@yourdomain.com"
     }
   }'
 ```

@@ -27,7 +27,7 @@
 - [ ] SSL/TLS certificates valid and not expiring within 30 days
 - [ ] DNS records configured (MX, SPF, DKIM, DMARC)
 - [ ] Monitoring dashboards accessible
-- [ ] Alert channels configured (Slack, PagerDuty, Email)
+- [ ] Alert channels configured (PagerDuty, Email)
 - [ ] On-call rotation scheduled
 - [ ] Rollback plan reviewed with team
 
@@ -247,8 +247,7 @@ kubectl get pods -n email-platform
 ./scripts/health-check-all.sh
 
 # 4. Notify team
-echo "Deployment rolled back due to critical issue" | \
-    ./scripts/notify-slack.sh --channel=#incidents
+echo "Deployment rolled back due to critical issue"
 ```
 
 ### Database Rollback
@@ -366,7 +365,7 @@ Monitor for 1 hour post-deployment:
 - Disk usage > 90%
 - SSL certificate expires < 7 days
 
-### Warning Alerts (Notify Slack)
+### Warning Alerts
 
 - API response time p95 > 500ms
 - Email queue depth > 1,000

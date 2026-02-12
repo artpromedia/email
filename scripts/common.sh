@@ -80,28 +80,6 @@ get_service_endpoint() {
     kubectl get service "$service" -n "$namespace" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null
 }
 
-# Send Slack notification
-send_slack_notification() {
-    local webhook_url=$1
-    local message=$2
-    local color=${3:-good}
-
-    if [ -z "$webhook_url" ]; then
-        log_debug "Slack webhook URL not configured"
-        return 0
-    fi
-
-    curl -s -X POST "$webhook_url" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"attachments\": [{
-                \"color\": \"$color\",
-                \"text\": \"$message\",
-                \"ts\": $(date +%s)
-            }]
-        }" > /dev/null 2>&1 || true
-}
-
 # Create timestamped backup tag
 create_backup_tag() {
     local prefix=${1:-backup}
@@ -188,5 +166,5 @@ confirm_action() {
 export -f log_timestamp log_info log_warn log_error log_debug
 export -f command_exists require_command
 export -f check_kubernetes wait_for_deployment check_pod_health get_service_endpoint
-export -f send_slack_notification create_backup_tag verify_checksum
+export -f create_backup_tag verify_checksum
 export -f retry_with_backoff check_http_endpoint yaml_get confirm_action
