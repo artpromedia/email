@@ -18,10 +18,8 @@ import {
   generateDmarcRecord,
   generateDkimRecordName,
   createDefaultDomainConfig,
-  type DkimConfig,
   type SpfConfig,
   type DmarcConfig,
-  type DnsRecord,
 } from "./domains.js";
 
 describe("DomainStatus", () => {

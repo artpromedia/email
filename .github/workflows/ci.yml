@@ -13,7 +13,7 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  GO_VERSION: "1.22"
+  GO_VERSION: "1.23"
   PNPM_VERSION: "9"
 
 jobs:
@@ -70,6 +70,7 @@ jobs:
             if [ -f "$dir/go.mod" ]; then
               echo "Linting $dir"
               cd "$dir"
+              go mod tidy
               golangci-lint run --timeout 5m ./...
               cd - > /dev/null
             fi
