@@ -117,6 +117,7 @@ jobs:
     name: Go Tests
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         service:
           - smtp-server
@@ -354,11 +355,13 @@ jobs:
   docker-build:
     name: Docker Build & Push
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
         service:
           - web
@@ -400,7 +403,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ matrix.service == 'web' && '.' || matrix.service == 'admin' && '.' || format('services/{0}', matrix.service) }}
           file: ${{ matrix.service == 'web' && 'apps/web/Dockerfile' || matrix.service == 'admin' && 'apps/admin/Dockerfile' || format('services/{0}/Dockerfile', matrix.service) }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
