@@ -91,6 +91,7 @@ jobs:
         run: |
           mkdir -p ${{ env.DEPLOY_DIR }}
           rsync -a --delete \
+            --exclude='.env' \
             --exclude='.git' \
             --exclude='node_modules' \
             "${{ github.workspace }}/" "${{ env.DEPLOY_DIR }}/"

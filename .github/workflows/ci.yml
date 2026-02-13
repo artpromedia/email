@@ -435,6 +435,7 @@ jobs:
         run: |
           mkdir -p "${{ env.DEPLOY_DIR }}"
           rsync -a --delete \
+            --exclude='.env' \
             --exclude='.git' \
             --exclude='node_modules' \
             "${{ github.workspace }}/" "${{ env.DEPLOY_DIR }}/"
@@ -460,7 +461,17 @@ jobs:
 
       - name: Pull new Docker images
         working-directory: ${{ env.DEPLOY_DIR }}
-        run: docker compose -f docker-compose.prod.yml pull
+        run: |
+          # Pull images individually - some services may not have built successfully
+          SERVICES="auth domain-manager storage contacts calendar chat transactional-api sms-gateway ai-assistant smtp-server imap-server web admin"
+          for svc in $SERVICES; do
+            echo -n "Pulling ${svc}... "
+            if docker compose -f docker-compose.prod.yml pull "${svc}" 2>/dev/null; then
+              echo "✅"
+            else
+              echo "⚠️ not available (will use existing image if any)"
+            fi
+          done
 
       - name: Deploy backend services
         working-directory: ${{ env.DEPLOY_DIR }}
