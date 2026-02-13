@@ -430,8 +430,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: ${{ env.DEPLOY_DIR }}
+
+      - name: Sync to deploy directory
+        run: |
+          sudo mkdir -p "${{ env.DEPLOY_DIR }}"
+          sudo rsync -a --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            "${{ github.workspace }}/" "${{ env.DEPLOY_DIR }}/"
+          sudo chown -R root:root "${{ env.DEPLOY_DIR }}"
 
       - name: Pre-deploy database backup
         working-directory: ${{ env.DEPLOY_DIR }}
