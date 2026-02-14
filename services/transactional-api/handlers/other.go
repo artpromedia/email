@@ -78,8 +78,8 @@ func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
 		"opened": true, "clicked": true, "unsubscribed": true, "spam_report": true,
 	}
 	for _, event := range req.Events {
-		if !validEvents[event] {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid event type: " + event})
+		if !validEvents[string(event)] {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid event type: " + string(event)})
 			return
 		}
 	}
