@@ -5,7 +5,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 
-const AUTH_URL = process.env.AUTH_URL || "http://auth:8080";
+const AUTH_URL = process.env["AUTH_URL"] || "http://auth:8080";
 
 export async function GET(request: NextRequest) {
   try {

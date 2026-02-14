@@ -5,9 +5,10 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 
-const DOMAIN_MANAGER_URL = process.env.DOMAIN_MANAGER_URL || "http://domain-manager:8083";
-const TRANSACTIONAL_API_URL = process.env.TRANSACTIONAL_API_URL || "http://transactional-api:8085";
-const AUTH_URL = process.env.AUTH_URL || "http://auth:8080";
+const DOMAIN_MANAGER_URL = process.env["DOMAIN_MANAGER_URL"] || "http://domain-manager:8083";
+const TRANSACTIONAL_API_URL =
+  process.env["TRANSACTIONAL_API_URL"] || "http://transactional-api:8085";
+const AUTH_URL = process.env["AUTH_URL"] || "http://auth:8080";
 
 interface DashboardStats {
   totalEmails: number;

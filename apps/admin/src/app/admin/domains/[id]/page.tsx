@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Globe,
@@ -66,12 +66,14 @@ interface DkimKey {
   createdAt: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
+const API_BASE = "/api/v1";
 
 export default function DomainDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const domainId = params.id as string;
+  const searchParams = useSearchParams();
+  const domainId = params["id"] as string;
+  const defaultTab = searchParams.get("tab") ?? "dns";
 
   const [domain, setDomain] = useState<DomainDetail | null>(null);
   const [_dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
@@ -86,13 +88,13 @@ export default function DomainDetailPage() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}`);
+      const res = await fetch(`${API_BASE}/domains/${domainId}`);
       if (!res.ok) throw new Error("Failed to fetch domain");
       const data = (await res.json()) as DomainDetail;
       setDomain(data);
 
       // Fetch DNS records
-      const dnsRes = await fetch(`${API_BASE}/api/admin/domains/${domainId}/check-dns`, {
+      const dnsRes = await fetch(`${API_BASE}/domains/${domainId}/dns`, {
         method: "POST",
       });
       if (dnsRes.ok) {
@@ -101,7 +103,7 @@ export default function DomainDetailPage() {
       }
 
       // Fetch DKIM keys
-      const dkimRes = await fetch(`${API_BASE}/api/admin/domains/${domainId}/dkim`);
+      const dkimRes = await fetch(`${API_BASE}/domains/${domainId}/dkim`);
       if (dkimRes.ok) {
         const dkimData = (await dkimRes.json()) as { keys?: DkimKey[] };
         setDkimKeys(dkimData.keys ?? []);
@@ -122,7 +124,7 @@ export default function DomainDetailPage() {
 
     try {
       setSaving(true);
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}`, {
+      const res = await fetch(`${API_BASE}/domains/${domainId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -141,7 +143,7 @@ export default function DomainDetailPage() {
 
   const handleVerify = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}/verify`, {
+      const res = await fetch(`${API_BASE}/domains/${domainId}/verify`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Verification failed");
@@ -153,7 +155,7 @@ export default function DomainDetailPage() {
 
   const handleGenerateDkim = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}/dkim/generate`, {
+      const res = await fetch(`${API_BASE}/domains/${domainId}/dkim`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to generate DKIM key");
@@ -167,7 +169,7 @@ export default function DomainDetailPage() {
     if (!confirm("Are you sure you want to delete this domain? This cannot be undone.")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}`, {
+      const res = await fetch(`${API_BASE}/domains/${domainId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete domain");
@@ -257,7 +259,7 @@ export default function DomainDetailPage() {
         </div>
       )}
 
-      <Tabs defaultValue="dns" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="dns">DNS Records</TabsTrigger>
           <TabsTrigger value="dkim">DKIM</TabsTrigger>

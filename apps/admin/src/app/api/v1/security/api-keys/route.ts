@@ -1,17 +1,15 @@
 /**
- * Domain DKIM API Route
- * Manages DKIM keys for a domain
+ * Admin API Keys Management Route
+ * Proxies requests to the auth service for API key management
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 
-const DOMAIN_MANAGER_URL = process.env["DOMAIN_MANAGER_URL"] || "http://domain-manager:8083";
+const AUTH_URL = process.env["AUTH_URL"] || "http://auth:8080";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest) {
   try {
-    const { id } = await params;
-
-    const response = await fetch(`${DOMAIN_MANAGER_URL}/api/admin/domains/${id}/dkim`, {
+    const response = await fetch(`${AUTH_URL}/api/v1/admin/api-keys`, {
       headers: {
         "Content-Type": "application/json",
         ...(request.headers.get("Authorization") && {
@@ -20,20 +18,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
     });
 
+    if (!response.ok) {
+      return NextResponse.json({ keys: [] });
+    }
+
     const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("Failed to fetch DKIM keys:", error);
-    return NextResponse.json({ error: "Failed to fetch DKIM keys" }, { status: 500 });
+    console.error("Failed to fetch API keys:", error);
+    return NextResponse.json({ keys: [] });
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest) {
   try {
-    const { id } = await params;
     const body: unknown = await request.json();
 
-    const response = await fetch(`${DOMAIN_MANAGER_URL}/api/admin/domains/${id}/dkim/generate`, {
+    const response = await fetch(`${AUTH_URL}/api/v1/admin/api-keys`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const data: unknown = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("Failed to generate DKIM key:", error);
-    return NextResponse.json({ error: "Failed to generate DKIM key" }, { status: 500 });
+    console.error("Failed to create API key:", error);
+    return NextResponse.json({ error: "Failed to create API key" }, { status: 500 });
   }
 }

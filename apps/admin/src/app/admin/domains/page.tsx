@@ -57,7 +57,7 @@ interface Domain {
   createdAt: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
+const API_BASE = "/api/v1";
 
 export default function DomainsPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -72,7 +72,7 @@ export default function DomainsPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}/api/admin/domains`);
+      const res = await fetch(`${API_BASE}/domains`);
       if (!res.ok) throw new Error("Failed to fetch domains");
       const data = (await res.json()) as { domains?: Domain[] };
       setDomains(data.domains ?? []);
@@ -92,7 +92,7 @@ export default function DomainsPage() {
 
     try {
       setAddingDomain(true);
-      const res = await fetch(`${API_BASE}/api/admin/domains`, {
+      const res = await fetch(`${API_BASE}/domains`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newDomainName.trim().toLowerCase() }),
@@ -117,7 +117,7 @@ export default function DomainsPage() {
     if (!confirm("Are you sure you want to delete this domain?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}`, {
+      const res = await fetch(`${API_BASE}/domains/${domainId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete domain");
@@ -129,7 +129,7 @@ export default function DomainsPage() {
 
   const handleVerifyDomain = async (domainId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/domains/${domainId}/verify`, {
+      const res = await fetch(`${API_BASE}/domains/${domainId}/verify`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Verification failed");
@@ -328,7 +328,7 @@ export default function DomainsPage() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/admin/domains/${domain.id}/dkim`}>
+                          <Link href={`/admin/domains/${domain.id}?tab=dkim`}>
                             <Key className="mr-2 h-4 w-4" />
                             DKIM Keys
                           </Link>

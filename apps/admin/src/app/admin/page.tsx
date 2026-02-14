@@ -61,7 +61,7 @@ interface ServiceHealth {
   responseTime: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
+const API_BASE = "/api/v1";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -76,66 +76,39 @@ export default function AdminDashboard() {
       setLoading(true);
       setError(null);
 
-      // Fetch domains from domain-manager
-      const domainsRes = await fetch(`${API_BASE}/api/admin/domains`);
-      if (domainsRes.ok) {
-        const domainsData = (await domainsRes.json()) as { domains?: Domain[] };
-        setDomains(domainsData.domains ?? []);
-
-        // Calculate stats from domains
-        const activeDomains =
-          domainsData.domains?.filter((d: Domain) => d.status === "active").length ?? 0;
-        const pendingDomains =
-          domainsData.domains?.filter((d: Domain) => d.status === "pending").length ?? 0;
-        const totalUsers =
-          domainsData.domains?.reduce((sum: number, d: Domain) => sum + d.userCount, 0) ?? 0;
-        const totalEmails =
-          domainsData.domains?.reduce((sum: number, d: Domain) => sum + d.emailCount, 0) ?? 0;
-
+      // Fetch aggregated stats from server-side proxy
+      const statsRes = await fetch(`${API_BASE}/stats`);
+      if (statsRes.ok) {
+        const statsData = (await statsRes.json()) as {
+          domains?: Domain[];
+          totalEmails?: number;
+          emailsToday?: number;
+          activeUsers?: number;
+          activeDomains?: number;
+          deliveryRate?: number;
+          bounceRate?: number;
+          recentAlerts?: Alert[];
+        };
+        setDomains(statsData.domains ?? []);
         setStats({
-          totalEmails,
-          emailsToday: 0,
-          activeUsers: totalUsers,
-          activeDomains,
-          pendingDomains,
-          deliveryRate: 0,
-          bounceRate: 0,
+          totalEmails: statsData.totalEmails ?? 0,
+          emailsToday: statsData.emailsToday ?? 0,
+          activeUsers: statsData.activeUsers ?? 0,
+          activeDomains: statsData.activeDomains ?? 0,
+          pendingDomains: 0,
+          deliveryRate: statsData.deliveryRate ?? 0,
+          bounceRate: statsData.bounceRate ?? 0,
           queueSize: 0,
         });
+        setAlerts(statsData.recentAlerts ?? []);
       }
 
-      // Check service health
-      const healthChecks = [
-        { name: "Auth Service", url: "http://localhost:8082/health" },
-        { name: "Domain Manager", url: "http://localhost:8084/health" },
-        { name: "SMTP Server", url: "http://localhost:9092/health" },
-        { name: "IMAP Server", url: "http://localhost:9093/health" },
-        { name: "Storage", url: "http://localhost:8085/health" },
-      ];
-
-      const healthResults: ServiceHealth[] = [];
-      for (const service of healthChecks) {
-        try {
-          const start = Date.now();
-          const res = await fetch(service.url, { signal: AbortSignal.timeout(5000) });
-          const responseTime = Date.now() - start;
-          healthResults.push({
-            name: service.name,
-            status: res.ok ? "healthy" : "degraded",
-            responseTime,
-          });
-        } catch {
-          healthResults.push({
-            name: service.name,
-            status: "down",
-            responseTime: 0,
-          });
-        }
+      // Fetch service health via server-side proxy (avoids browser CORS issues)
+      const healthRes = await fetch(`${API_BASE}/health`);
+      if (healthRes.ok) {
+        const healthData = (await healthRes.json()) as { services?: ServiceHealth[] };
+        setServices(healthData.services ?? []);
       }
-      setServices(healthResults);
-
-      // No mock alerts - fetch from API when available
-      setAlerts([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch dashboard data");
     } finally {

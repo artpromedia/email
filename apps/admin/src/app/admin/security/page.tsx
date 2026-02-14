@@ -59,7 +59,7 @@ interface ApiKey {
   expiresAt: string | null;
 }
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8082";
+const API_BASE = "/api/v1";
 
 export default function SecurityPage() {
   const [settings, setSettings] = useState<SecuritySettings>({
@@ -88,45 +88,23 @@ export default function SecurityPage() {
       setError(null);
 
       // Fetch security settings
-      const settingsRes = await fetch(`${AUTH_API}/api/v1/admin/security/settings`);
+      const settingsRes = await fetch(`${API_BASE}/security/settings`);
       if (settingsRes.ok) {
         const data = (await settingsRes.json()) as SecuritySettings;
         setSettings(data);
       }
 
       // Fetch audit logs
-      const logsRes = await fetch(`${AUTH_API}/api/v1/admin/audit?limit=50`);
+      const logsRes = await fetch(`${API_BASE}/security/audit?limit=50`);
       if (logsRes.ok) {
         const data = (await logsRes.json()) as { logs?: AuditLog[] };
         setAuditLogs(data.logs ?? []);
       } else {
-        // Sample audit logs
-        setAuditLogs([
-          {
-            id: "1",
-            action: "login",
-            userId: "1",
-            userEmail: "admin@oonrumail.com",
-            ipAddress: "192.168.1.1",
-            userAgent: "Mozilla/5.0",
-            timestamp: new Date().toISOString(),
-            status: "success",
-          },
-          {
-            id: "2",
-            action: "password_change",
-            userId: "2",
-            userEmail: "user@oonrumail.com",
-            ipAddress: "10.0.0.1",
-            userAgent: "Chrome/120",
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            status: "success",
-          },
-        ]);
+        setAuditLogs([]);
       }
 
       // Fetch API keys
-      const keysRes = await fetch(`${AUTH_API}/api/v1/admin/api-keys`);
+      const keysRes = await fetch(`${API_BASE}/security/api-keys`);
       if (keysRes.ok) {
         const data = (await keysRes.json()) as { keys?: ApiKey[] };
         setApiKeys(data.keys ?? []);
@@ -145,7 +123,7 @@ export default function SecurityPage() {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      const res = await fetch(`${AUTH_API}/api/v1/admin/security/settings`, {
+      const res = await fetch(`${API_BASE}/security/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
@@ -162,7 +140,7 @@ export default function SecurityPage() {
     if (!newKeyName.trim()) return;
 
     try {
-      const res = await fetch(`${AUTH_API}/api/v1/admin/api-keys`, {
+      const res = await fetch(`${API_BASE}/security/api-keys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newKeyName }),
@@ -181,7 +159,7 @@ export default function SecurityPage() {
     if (!confirm("Are you sure you want to delete this API key?")) return;
 
     try {
-      const res = await fetch(`${AUTH_API}/api/v1/admin/api-keys/${keyId}`, {
+      const res = await fetch(`${API_BASE}/security/api-keys/${keyId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete API key");

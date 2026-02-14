@@ -48,7 +48,7 @@ interface EmailLog {
   smtpResponse?: string;
 }
 
-const TRANSACTIONAL_API = process.env.NEXT_PUBLIC_TRANSACTIONAL_API_URL ?? "http://localhost:8095";
+const API_BASE = "/api/v1";
 
 export default function EmailLogsPage() {
   const [logs, setLogs] = useState<EmailLog[]>([]);
@@ -71,7 +71,7 @@ export default function EmailLogsPage() {
       if (searchQuery) params.set("search", searchQuery);
       if (statusFilter !== "all") params.set("status", statusFilter);
 
-      const res = await fetch(`${TRANSACTIONAL_API}/v1/events?${params}`);
+      const res = await fetch(`${API_BASE}/email-logs?${params}`);
       if (res.ok) {
         const data = (await res.json()) as { events?: EmailLog[]; total?: number };
         setLogs(data.events ?? []);

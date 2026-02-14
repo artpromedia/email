@@ -67,8 +67,7 @@ interface Domain {
   name: string;
 }
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8082";
-const DOMAIN_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8084";
+const API_BASE = "/api/v1";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -87,14 +86,14 @@ export default function UsersPage() {
       setError(null);
 
       // Fetch domains
-      const domainsRes = await fetch(`${DOMAIN_API}/api/admin/domains`);
+      const domainsRes = await fetch(`${API_BASE}/domains`);
       if (domainsRes.ok) {
         const domainsData = (await domainsRes.json()) as { domains?: Domain[] };
         setDomains(domainsData.domains ?? []);
       }
 
-      // Fetch users from auth service
-      const usersRes = await fetch(`${AUTH_API}/api/v1/admin/users`);
+      // Fetch users from auth service via proxy
+      const usersRes = await fetch(`${API_BASE}/users`);
       if (usersRes.ok) {
         const usersData = (await usersRes.json()) as { users?: User[] };
         setUsers(usersData.users ?? []);
@@ -118,7 +117,7 @@ export default function UsersPage() {
 
     try {
       setAddingUser(true);
-      const res = await fetch(`${AUTH_API}/api/v1/admin/users`, {
+      const res = await fetch(`${API_BASE}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newUser),
@@ -143,7 +142,7 @@ export default function UsersPage() {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
     try {
-      const res = await fetch(`${AUTH_API}/api/v1/admin/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete user");
@@ -155,7 +154,7 @@ export default function UsersPage() {
 
   const handleSuspendUser = async (userId: string) => {
     try {
-      const res = await fetch(`${AUTH_API}/api/v1/admin/users/${userId}/suspend`, {
+      const res = await fetch(`${API_BASE}/users/${userId}/suspend`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to suspend user");

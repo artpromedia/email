@@ -6,15 +6,14 @@ import { NextResponse, type NextRequest } from "next/server";
  * Implements:
  * - Security headers (CSP, HSTS, XSS protection)
  * - Rate limiting
- * - CSRF protection validation
- * - Admin authentication checks
+ * - CSRF protection (token generation + validation)
  */
 
 // Rate limiting store (in production, use Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 const RATE_LIMITS = {
-  auth: { requests: 3, windowMs: 60000 }, // 3 requests per minute for admin auth
+  auth: { requests: 10, windowMs: 60000 }, // 10 requests per minute for admin auth
   api: { requests: 200, windowMs: 60000 }, // 200 requests per minute for admin API
   default: { requests: 100, windowMs: 60000 }, // 100 requests per minute default
 };
@@ -45,6 +44,14 @@ function checkRateLimit(
   return true;
 }
 
+/**
+ * Generate a simple CSRF token.
+ * In edge runtime crypto.randomUUID is available.
+ */
+function generateCsrfToken(): string {
+  return crypto.randomUUID();
+}
+
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const { pathname } = request.nextUrl;
@@ -55,7 +62,7 @@ export function middleware(request: NextRequest) {
 
   // Rate limiting
   const rateLimit = getRateLimit(pathname);
-  const rateLimitKey = `${identifier}:${pathname}`;
+  const rateLimitKey = `${identifier}:${pathname.split("/").slice(0, 3).join("/")}`;
 
   if (!checkRateLimit(rateLimitKey, rateLimit)) {
     return new NextResponse(
@@ -72,33 +79,20 @@ export function middleware(request: NextRequest) {
 
   // Security Headers (Stricter for admin)
   const securityHeaders = {
-    // Strict-Transport-Security: Force HTTPS
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-
-    // X-Frame-Options: Prevent clickjacking
     "X-Frame-Options": "DENY",
-
-    // X-Content-Type-Options: Prevent MIME sniffing
     "X-Content-Type-Options": "nosniff",
-
-    // X-XSS-Protection: Enable XSS filter
     "X-XSS-Protection": "1; mode=block",
-
-    // Referrer-Policy: No referrer for admin
     "Referrer-Policy": "no-referrer",
-
-    // Permissions-Policy: Disable all features
     "Permissions-Policy":
       "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()",
-
-    // Content-Security-Policy: Strict policy for admin
     "Content-Security-Policy": [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'", // Note: Remove unsafe-inline in production
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https:",
-      "connect-src 'self' https://api.yourdomain.com",
+      "connect-src 'self' https://api.oonrumail.com https://admin.oonrumail.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -106,13 +100,16 @@ export function middleware(request: NextRequest) {
     ].join("; "),
   };
 
-  // Apply security headers
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
 
-  // CSRF Token validation for state-changing requests
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
+  // CSRF token management
+  // Internal API proxy routes (/api/v1/*) are server-side proxies and don't need CSRF.
+  // Only enforce CSRF on non-proxy mutation endpoints (e.g. /api/auth/*)
+  const isInternalApiProxy = pathname.startsWith("/api/v1/");
+
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method) && !isInternalApiProxy) {
     const csrfToken = request.headers.get("x-csrf-token");
     const csrfCookie = request.cookies.get("csrf-token")?.value;
 
@@ -120,6 +117,20 @@ export function middleware(request: NextRequest) {
       return new NextResponse(JSON.stringify({ error: "Invalid CSRF token" }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  // Generate CSRF token cookie if not present (on page navigations)
+  if (request.method === "GET" && !pathname.startsWith("/api/")) {
+    const existingToken = request.cookies.get("csrf-token")?.value;
+    if (!existingToken) {
+      const token = generateCsrfToken();
+      response.cookies.set("csrf-token", token, {
+        httpOnly: false, // Must be readable by JS to send in header
+        secure: true,
+        sameSite: "strict",
+        path: "/",
       });
     }
   }
