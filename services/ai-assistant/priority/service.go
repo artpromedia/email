@@ -514,7 +514,7 @@ Date: %s
 		Temperature: 0.3,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "priority")
 	if err != nil {
 		return nil, err
 	}

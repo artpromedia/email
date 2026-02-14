@@ -260,7 +260,7 @@ func (s *Service) processSingleBatch(ctx context.Context, items []embeddingItem,
 	errors := make([]EmbeddingError, 0)
 
 	// Get embedding provider
-	provider, err := s.router.GetEmbeddingProvider(ctx)
+	embeddingProvider, err := s.router.GetEmbeddingProvider(ctx)
 	if err != nil {
 		for _, item := range items {
 			errors = append(errors, EmbeddingError{
@@ -287,7 +287,7 @@ func (s *Service) processSingleBatch(ctx context.Context, items []embeddingItem,
 		},
 	}
 
-	batchResp, err := provider.GenerateEmbeddingBatch(ctx, batchReq)
+	batchResp, err := embeddingProvider.GenerateEmbeddingBatch(ctx, batchReq)
 	if err != nil {
 		// Fall back to individual requests
 		return s.processIndividually(ctx, items, orgID, userID)

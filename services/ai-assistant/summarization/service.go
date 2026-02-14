@@ -137,7 +137,7 @@ Date: %s
 		Temperature: 0.3, // Low temperature for factual summarization
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "summarization")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary: %w", err)
 	}
@@ -334,7 +334,7 @@ Output as JSON:
 		Temperature: 0.3,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "summarization")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate thread summary: %w", err)
 	}
@@ -581,7 +581,7 @@ Output as JSON:
 		Temperature: 0.4,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "summarization")
 	if err != nil {
 		// Return basic summary on AI failure
 		return &DailySummaryResponse{

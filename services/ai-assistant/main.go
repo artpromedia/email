@@ -18,11 +18,16 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/oonrumail/ai-assistant/analysis"
+	"github.com/oonrumail/ai-assistant/autoreply"
 	"github.com/oonrumail/ai-assistant/config"
+	"github.com/oonrumail/ai-assistant/draft"
 	"github.com/oonrumail/ai-assistant/embedding"
 	"github.com/oonrumail/ai-assistant/handlers"
+	"github.com/oonrumail/ai-assistant/priority"
 	"github.com/oonrumail/ai-assistant/provider"
 	"github.com/oonrumail/ai-assistant/ratelimit"
+	"github.com/oonrumail/ai-assistant/smartreply"
+	"github.com/oonrumail/ai-assistant/summarization"
 )
 
 func main() {
@@ -140,8 +145,39 @@ func main() {
 	embeddingSvc := embedding.NewService(providerRouter, redisClient, embeddingCfg, logger)
 	logger.Info().Msg("Initialized embedding service")
 
+	// Initialize smart reply service
+	smartReplyCfg := smartreply.ServiceConfig{
+		CacheTTL: cfg.Cache.SmartReplyTTL,
+	}
+	smartReplySvc := smartreply.NewService(providerRouter, redisClient, smartReplyCfg, logger)
+	logger.Info().Msg("Initialized smart reply service")
+
+	// Initialize auto-reply service
+	autoReplyCfg := autoreply.ServiceConfig{}
+	autoReplySvc := autoreply.NewService(providerRouter, redisClient, autoReplyCfg, logger)
+	logger.Info().Msg("Initialized auto-reply service")
+
+	// Initialize summarization service
+	summarizationCfg := summarization.ServiceConfig{
+		CacheTTL: cfg.Cache.AnalysisTTL,
+	}
+	summarizationSvc := summarization.NewService(providerRouter, redisClient, summarizationCfg, logger)
+	logger.Info().Msg("Initialized summarization service")
+
+	// Initialize draft assistant service
+	draftCfg := draft.ServiceConfig{}
+	draftSvc := draft.NewService(providerRouter, redisClient, draftCfg, logger)
+	logger.Info().Msg("Initialized draft service")
+
+	// Initialize priority service
+	priorityCfg := priority.ServiceConfig{
+		CacheTTL: cfg.Cache.AnalysisTTL,
+	}
+	prioritySvc := priority.NewService(providerRouter, redisClient, priorityCfg, logger)
+	logger.Info().Msg("Initialized priority service")
+
 	// Initialize HTTP handler
-	handler := handlers.NewHandler(providerRouter, analysisSvc, embeddingSvc, rateLimiter, logger)
+	handler := handlers.NewHandler(providerRouter, analysisSvc, embeddingSvc, smartReplySvc, autoReplySvc, summarizationSvc, draftSvc, prioritySvc, rateLimiter, logger)
 
 	// Setup HTTP server
 	r := chi.NewRouter()
@@ -153,7 +189,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{"https://mail.oonrumail.com", "https://admin.oonrumail.com", "https://console.oonrumail.com", "https://oonrumail.com", "http://localhost:3000", "http://localhost:3001"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
 		ExposedHeaders:   []string{"Link"},
@@ -169,11 +205,13 @@ func main() {
 
 	// Create server
 	srv := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              ":" + cfg.Port,
+		Handler:           r,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	// Start server

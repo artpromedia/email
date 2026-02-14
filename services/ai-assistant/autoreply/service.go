@@ -519,7 +519,7 @@ Generate only the reply body, no subject line.`,
 		Temperature: 0.5,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "auto_reply")
 	if err != nil {
 		return "", err
 	}

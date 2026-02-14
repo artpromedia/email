@@ -148,7 +148,7 @@ func (s *Service) GenerateReplies(ctx context.Context, req *SmartReplyRequest) (
 		Temperature: 0.7, // Slightly creative for variety
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "smart_reply")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate replies: %w", err)
 	}

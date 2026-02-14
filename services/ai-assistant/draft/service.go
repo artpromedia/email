@@ -143,7 +143,7 @@ Output ONLY the completion text, nothing else.`
 		Temperature: 0.7,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "draft")
 	if err != nil {
 		return &InlineSuggestionResponse{
 			Suggestion: "",
@@ -295,7 +295,7 @@ func (s *Service) HelpMeWrite(ctx context.Context, req *HelpMeWriteRequest) (*He
 		Temperature: 0.6,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "draft")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate draft: %w", err)
 	}
@@ -418,7 +418,7 @@ Output as JSON:
 		Temperature: 0.4,
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "draft")
 	if err != nil {
 		return nil, fmt.Errorf("failed to adjust tone: %w", err)
 	}
@@ -538,7 +538,7 @@ Be thorough but not overly pedantic.`
 		Temperature: 0.2, // Low temperature for accuracy
 	}
 
-	result, err := s.router.CompleteWithFallback(ctx, completionReq)
+	result, err := s.router.CompleteWithFallback(ctx, completionReq, "draft")
 	if err != nil {
 		return nil, fmt.Errorf("failed to check grammar: %w", err)
 	}
