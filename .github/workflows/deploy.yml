@@ -81,6 +81,8 @@ jobs:
             --exclude='.env' \
             --exclude='.git' \
             --exclude='node_modules' \
+            --exclude='docker/certs' \
+            --exclude='docker/data' \
             "${{ github.workspace }}/" "${{ env.DEPLOY_DIR }}/"
 
       - name: Pre-deploy database backup
