@@ -99,8 +99,8 @@ export default function DomainsPage() {
       });
 
       if (!res.ok) {
-        const data = (await res.json()) as { message?: string };
-        throw new Error(data.message ?? "Failed to add domain");
+        const data = (await res.json()) as { message?: string; error?: string };
+        throw new Error(data.message ?? data.error ?? "Failed to add domain");
       }
 
       setNewDomainName("");
@@ -140,7 +140,7 @@ export default function DomainsPage() {
   };
 
   const filteredDomains = domains.filter((domain) =>
-    domain.name.toLowerCase().includes(searchQuery.toLowerCase())
+    domain.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusIcon = (status: string) => {
