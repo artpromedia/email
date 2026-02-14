@@ -220,6 +220,24 @@ func (s *AuthService) Register(ctx context.Context, params RegisterParams) (*Reg
 		return nil, fmt.Errorf("failed to generate tokens: %w", err)
 	}
 
+	// Send verification email
+	if s.config.Security.RequireEmailVerify && s.emailService != nil {
+		go func() {
+			if err := s.emailService.SendVerificationEmail(params.Email, params.DisplayName, verificationToken); err != nil {
+				fmt.Printf("Failed to send verification email to %s: %v\n", params.Email, err)
+			}
+		}()
+	}
+
+	// Send welcome email
+	if s.emailService != nil {
+		go func() {
+			if err := s.emailService.SendWelcomeEmail(params.Email, params.DisplayName, org.Name); err != nil {
+				fmt.Printf("Failed to send welcome email to %s: %v\n", params.Email, err)
+			}
+		}()
+	}
+
 	// Record login attempt
 	s.recordLoginAttempt(ctx, &user.ID, params.Email, params.IPAddress, params.UserAgent, true, "", "registration")
 
@@ -1125,8 +1143,8 @@ func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 		return nil // Don't reveal errors
 	}
 
-	// Build reset URL
-	resetURL := fmt.Sprintf("%s/reset-password?token=%s", s.config.SSO.BaseURL, resetToken)
+	// Build reset URL - use the configured password reset URL
+	resetURL := s.config.Email.PasswordResetURL
 
 	// Send password reset email
 	if s.emailService != nil {

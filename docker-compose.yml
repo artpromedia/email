@@ -362,6 +362,16 @@ services:
       BCRYPT_COST: ${BCRYPT_COST:-12}
       RATE_LIMIT_REQUESTS: ${AUTH_RATE_LIMIT:-100}
       RATE_LIMIT_WINDOW: ${AUTH_RATE_WINDOW:-1m}
+      # Email / SMTP configuration (for verification, password reset, welcome emails)
+      SMTP_HOST: smtp-server
+      SMTP_PORT: "25"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-noreply@oonrumail.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-OonruMail}
+      EMAIL_VERIFICATION_URL: ${EMAIL_VERIFICATION_URL:-https://mail.oonrumail.com/verify-email}
+      EMAIL_PASSWORD_RESET_URL: ${EMAIL_PASSWORD_RESET_URL:-https://mail.oonrumail.com/reset-password}
+      REQUIRE_EMAIL_VERIFY: ${REQUIRE_EMAIL_VERIFY:-true}
     ports:
       - "${AUTH_PORT:-8088}:8080"
     depends_on:
@@ -371,6 +381,8 @@ services:
         condition: service_healthy
       pgbouncer:
         condition: service_started
+      smtp-server:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s

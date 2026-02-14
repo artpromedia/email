@@ -3,10 +3,12 @@ package service
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"net/smtp"
 	"strings"
+	"time"
 
 	"github.com/artpromedia/email/services/auth/internal/config"
 )
@@ -40,10 +42,13 @@ func (s *EmailService) Send(params EmailParams) error {
 	}
 
 	// Prepare headers
+	msgID := generateMessageID(s.config.FromAddress)
 	headers := make(map[string]string)
 	headers["From"] = fmt.Sprintf("%s <%s>", s.config.FromName, s.config.FromAddress)
 	headers["To"] = strings.Join(params.To, ", ")
 	headers["Subject"] = params.Subject
+	headers["Date"] = time.Now().Format(time.RFC1123Z)
+	headers["Message-ID"] = msgID
 	headers["MIME-Version"] = "1.0"
 	headers["Content-Type"] = "text/html; charset=UTF-8"
 
@@ -68,8 +73,67 @@ func (s *EmailService) Send(params EmailParams) error {
 		return s.sendTLS(addr, auth, params.To, msg.Bytes())
 	}
 
-	// For STARTTLS connections (port 587) or plain (port 25)
-	return smtp.SendMail(addr, auth, s.config.FromAddress, params.To, msg.Bytes())
+	// For STARTTLS connections (port 587) or internal relay (port 25)
+	// Use custom client to handle self-signed certs on internal Docker network
+	return s.sendSTARTTLS(addr, auth, params.To, msg.Bytes())
+}
+
+func (s *EmailService) sendSTARTTLS(addr string, auth smtp.Auth, to []string, msg []byte) error {
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server %s: %w", addr, err)
+	}
+	defer client.Close()
+
+	// Send EHLO
+	if err := client.Hello("localhost"); err != nil {
+		return fmt.Errorf("SMTP HELLO failed: %w", err)
+	}
+
+	// Try STARTTLS if available (skip cert verification for internal relay)
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		tlsConfig := &tls.Config{
+			ServerName:         s.config.SMTPHost,
+			InsecureSkipVerify: true, // Internal Docker network relay
+		}
+		if err := client.StartTLS(tlsConfig); err != nil {
+			// Log but continue without TLS for internal connections
+			fmt.Printf("STARTTLS failed (continuing without TLS): %v\n", err)
+		}
+	}
+
+	// Auth if credentials provided
+	if auth != nil {
+		if err := client.Auth(auth); err != nil {
+			return fmt.Errorf("SMTP auth failed: %w", err)
+		}
+	}
+
+	// Set sender
+	if err := client.Mail(s.config.FromAddress); err != nil {
+		return fmt.Errorf("SMTP MAIL FROM failed: %w", err)
+	}
+
+	// Set recipients
+	for _, rcpt := range to {
+		if err := client.Rcpt(rcpt); err != nil {
+			return fmt.Errorf("SMTP RCPT TO <%s> failed: %w", rcpt, err)
+		}
+	}
+
+	// Send message body
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("SMTP DATA failed: %w", err)
+	}
+	if _, err := w.Write(msg); err != nil {
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("failed to close data writer: %w", err)
+	}
+
+	return client.Quit()
 }
 
 func (s *EmailService) sendTLS(addr string, auth smtp.Auth, to []string, msg []byte) error {
@@ -236,4 +300,16 @@ func (s *EmailService) SendWelcomeEmail(to, displayName, orgName string) error {
 		Subject:  fmt.Sprintf("Welcome to %s!", orgName),
 		HTMLBody: htmlBody,
 	})
+}
+
+// generateMessageID creates a unique Message-ID for email headers.
+func generateMessageID(fromAddress string) string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	domain := "oonrumail.com"
+	parts := strings.Split(fromAddress, "@")
+	if len(parts) == 2 {
+		domain = parts[1]
+	}
+	return fmt.Sprintf("<%x.%x@%s>", b[:8], time.Now().UnixNano(), domain)
 }
