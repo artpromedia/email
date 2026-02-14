@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -54,10 +55,21 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("read config file: %w", err)
 	}
 
-	data = []byte(os.ExpandEnv(string(data)))
+	// Expand env vars with support for ${VAR:-default} syntax
+	expanded := os.Expand(string(data), func(key string) string {
+		if idx := strings.Index(key, ":-"); idx >= 0 {
+			envKey := key[:idx]
+			defaultVal := key[idx+2:]
+			if val, ok := os.LookupEnv(envKey); ok {
+				return val
+			}
+			return defaultVal
+		}
+		return os.Getenv(key)
+	})
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
