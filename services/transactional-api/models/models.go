@@ -26,14 +26,14 @@ type APIKeyResponse struct {
 // ============================================================
 
 type WebhookResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	URL           string     `json:"url"`
-	Events        []string   `json:"events"`
-	IsActive      bool       `json:"is_active"`
-	Secret        string     `json:"secret,omitempty"` // Only on creation
-	FailureCount  int        `json:"failure_count"`
-	LastTriggered *time.Time `json:"last_triggered,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID            uuid.UUID          `json:"id"`
+	URL           string             `json:"url"`
+	Events        []WebhookEventType `json:"events"`
+	IsActive      bool               `json:"is_active"`
+	Secret        string             `json:"secret,omitempty"` // Only on creation
+	FailureCount  int                `json:"failure_count"`
+	LastTriggered *time.Time         `json:"last_triggered,omitempty"`
+	CreatedAt     time.Time          `json:"created_at"`
 }
 
 // ============================================================
