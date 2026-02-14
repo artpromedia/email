@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Mail, Users, Globe, Settings, BarChart3, Shield, LogOut } from "lucide-react";
+import { Mail, Users, Globe, Settings, BarChart3, Shield, LogOut, Send } from "lucide-react";
 import { cn } from "@email/ui";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin/domains", label: "Domains", icon: Globe },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/email-logs", label: "Email Logs", icon: Mail },
+  { href: "/admin/transactional", label: "Transactional", icon: Send },
   { href: "/admin/security", label: "Security", icon: Shield },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
