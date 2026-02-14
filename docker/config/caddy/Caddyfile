@@ -5,9 +5,9 @@
     email admin@oonrumail.com
 }
 
-# Marketing / landing page - served at www.oonrumail.com
+# Marketing / landing page - served at oonrumail.com (bare domain)
 # The Next.js middleware restricts this domain to marketing & auth pages only
-www.oonrumail.com {
+oonrumail.com {
     reverse_proxy web:3000
     encode gzip
 
@@ -20,9 +20,9 @@ www.oonrumail.com {
     }
 }
 
-# Bare domain redirects to www (marketing page)
-oonrumail.com {
-    redir https://www.oonrumail.com{uri} permanent
+# www redirects to bare domain (landing page)
+www.oonrumail.com {
+    redir https://oonrumail.com{uri} permanent
 }
 
 # Mail application - served at mail.oonrumail.com (primary) and app.oonrumail.com (alias)

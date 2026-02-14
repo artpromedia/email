@@ -415,11 +415,11 @@ async function checkRateLimit(identifier: string, pathname: string): Promise<Rat
 
 // ============================================================
 // Domain-based routing configuration
-// www.oonrumail.com  → Marketing / landing page only
+// oonrumail.com      → Marketing / landing page only
 // mail.oonrumail.com → Full mail application
 // ============================================================
 
-const MARKETING_DOMAIN = process.env["MARKETING_DOMAIN"] || "www.oonrumail.com";
+const MARKETING_DOMAIN = process.env["MARKETING_DOMAIN"] || "oonrumail.com";
 const MAIL_DOMAIN = process.env["MAIL_DOMAIN"] || "mail.oonrumail.com";
 
 /** Routes that are exclusively app routes (not available on www) */
@@ -443,7 +443,7 @@ export async function middleware(request: NextRequest) {
 
   // --- Domain-based routing ---
 
-  // On the MARKETING domain (www.oonrumail.com):
+  // On the MARKETING domain (oonrumail.com):
   //   - Allow marketing pages, auth pages, and API routes
   //   - Redirect app routes (/mail, /calendar, etc.) to mail.oonrumail.com
   if (hostname === MARKETING_DOMAIN) {
