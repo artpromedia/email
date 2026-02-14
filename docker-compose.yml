@@ -818,8 +818,8 @@ services:
   # Admin App - Administration Panel
   admin:
     build:
-      context: ./apps/admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/admin/Dockerfile
     image: app-admin
     container_name: oonrumail-admin
     restart: unless-stopped
