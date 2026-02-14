@@ -362,7 +362,7 @@ export function PWAInstallPrompt({ onInstall, onDismiss }: InstallPromptProps) {
           </svg>
         </div>
         <div>
-          <p className="font-medium">Install Enterprise Email</p>
+          <p className="font-medium">Install OonruMail</p>
           <p className="text-sm text-muted-foreground">
             Add to your home screen for quick access and offline support.
           </p>

@@ -21,12 +21,12 @@ info:
   version: 1.0.0
   contact:
     name: Transactional API Support
-    email: transactional@enterpriseemail.com
+    email: transactional@oonrumail.com
 
 servers:
   - url: http://localhost:8085
     description: Development server
-  - url: https://transactional.enterpriseemail.com
+  - url: https://transactional.oonrumail.com
     description: Production server
 
 tags:

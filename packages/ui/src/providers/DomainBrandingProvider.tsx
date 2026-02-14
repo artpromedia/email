@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Enterprise Email - Domain Branding Provider
+ * OonruMail - Domain Branding Provider
  * Manages domain-specific branding for multi-tenant email system
  */
 
@@ -72,7 +72,7 @@ export interface DomainBrandingProviderProps {
 // STORAGE KEYS
 // ============================================================
 
-const DOMAIN_STORAGE_KEY = "enterprise-email-active-domain";
+const DOMAIN_STORAGE_KEY = "oonrumail-active-domain";
 
 // ============================================================
 // PROVIDER COMPONENT

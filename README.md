@@ -53,8 +53,8 @@ oonrumail/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/enterprise-email.git
-cd enterprise-email
+git clone https://github.com/artpromedia/email.git
+cd email
 
 # Install dependencies
 pnpm install

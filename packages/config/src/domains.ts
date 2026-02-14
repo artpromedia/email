@@ -230,7 +230,7 @@ export function generateVerificationDnsRecord(prefix: string, token: string): Dn
   return {
     type: "TXT",
     name: prefix,
-    value: `v=enterprise-email;t=${token}`,
+    value: `v=oonrumail;t=${token}`,
     ttl: 3600,
   };
 }

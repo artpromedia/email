@@ -1,6 +1,6 @@
 /**
  * @email/ui
- * Shared UI components for Enterprise Email
+ * Shared UI components for OonruMail
  */
 
 // Utilities

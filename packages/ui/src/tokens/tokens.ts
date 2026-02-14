@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Design System - TypeScript Design Tokens
+ * OonruMail Design System - TypeScript Design Tokens
  * Complete token system for programmatic access
  */
 
@@ -578,7 +578,7 @@ export interface DomainBrandingConfig {
 
 export const defaultDomainBranding: DomainBranding = {
   domain: "default",
-  displayName: "Enterprise Email",
+  displayName: "OonruMail",
   logo: "/logos/default-logo.svg",
   logoMark: "/logos/default-logo-mark.svg",
   primaryColor: colors.primary[600],

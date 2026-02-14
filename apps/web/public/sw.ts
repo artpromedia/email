@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 /**
- * Service Worker for Enterprise Email PWA
+ * Service Worker for OonruMail PWA
  *
  * Features:
  * - Offline support with cache-first strategy for static assets
@@ -59,7 +59,7 @@ cleanupOutdatedCaches();
 // CACHE NAMES
 // ============================================================
 
-const CACHE_PREFIX = "enterprise-email";
+const CACHE_PREFIX = "oonrumail";
 const CACHE_VERSION = "v1";
 
 const CACHES = {
@@ -343,7 +343,7 @@ const offlineFallback = new Route(
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Offline - Enterprise Email</title>
+          <title>Offline - OonruMail</title>
           <style>
             body {
               font-family: system-ui, sans-serif;

@@ -1,7 +1,7 @@
 {
-  "name": "Enterprise Email",
+  "name": "OonruMail",
   "short_name": "Email",
-  "description": "Secure enterprise email platform with advanced features",
+  "description": "OonruMail - Complete email platform with inbox and transactional API",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

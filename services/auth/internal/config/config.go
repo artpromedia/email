@@ -149,7 +149,7 @@ func Load() *Config {
 			RateLimitWindow:    getEnvDuration("RATE_LIMIT_WINDOW", time.Minute),
 			PasswordMinLength:  getEnvInt("PASSWORD_MIN_LENGTH", 12),
 			RequireEmailVerify: getEnvBool("REQUIRE_EMAIL_VERIFY", true),
-			MFAIssuer:          getEnv("MFA_ISSUER", "Enterprise Email"),
+			MFAIssuer:          getEnv("MFA_ISSUER", "OonruMail"),
 		},
 		SSO: SSOConfig{
 			BaseURL:            getEnv("SSO_BASE_URL", "http://localhost:8080"),
@@ -169,7 +169,7 @@ func Load() *Config {
 			SMTPUser:         getEnv("SMTP_USER", ""),
 			SMTPPassword:     getEnv("SMTP_PASSWORD", ""),
 			FromAddress:      getEnv("EMAIL_FROM_ADDRESS", "noreply@example.com"),
-			FromName:         getEnv("EMAIL_FROM_NAME", "Enterprise Email"),
+			FromName:         getEnv("EMAIL_FROM_NAME", "OonruMail"),
 			VerificationURL:  getEnv("EMAIL_VERIFICATION_URL", "http://localhost:3000/verify"),
 			PasswordResetURL: getEnv("EMAIL_PASSWORD_RESET_URL", "http://localhost:3000/reset-password"),
 		},

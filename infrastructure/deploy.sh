@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 ENVIRONMENT="${ENVIRONMENT:-production}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 KUBERNETES_NAMESPACE="${KUBERNETES_NAMESPACE:-email-system}"
-PRIMARY_DOMAIN="${PRIMARY_DOMAIN:-enterprise-email.com}"
+PRIMARY_DOMAIN="${PRIMARY_DOMAIN:-oonrumail.com}"
 
 log() {
     echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
@@ -105,7 +105,7 @@ configure_kubectl() {
 
     aws eks update-kubeconfig \
         --region "$AWS_REGION" \
-        --name "enterprise-email-$ENVIRONMENT"
+        --name "oonrumail-$ENVIRONMENT"
 
     # Verify connection
     if kubectl cluster-info &> /dev/null; then

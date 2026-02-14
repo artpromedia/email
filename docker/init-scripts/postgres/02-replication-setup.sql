@@ -1,4 +1,4 @@
--- PostgreSQL Replication Setup for Enterprise Email
+-- PostgreSQL Replication Setup for OonruMail
 -- This script configures the primary server for streaming replication
 
 -- Create replication user with appropriate permissions

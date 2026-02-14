@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Enterprise Email Design System - Theme Provider
+ * OonruMail Design System - Theme Provider
  * React context for theme and domain branding management
  */
 
@@ -288,13 +288,13 @@ export function useTokens(): Theme {
  */
 export const themeScript = `
 (function() {
-  var storageKey = "enterprise-email-theme";
+  var storageKey = "oonrumail-theme";
   var attribute = "data-theme";
-  
+
   function getSystemTheme() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-  
+
   function getStoredTheme() {
     try {
       return localStorage.getItem(storageKey);
@@ -302,14 +302,14 @@ export const themeScript = `
       return null;
     }
   }
-  
+
   var stored = getStoredTheme();
-  var theme = stored === "dark" || stored === "light" 
-    ? stored 
-    : stored === "system" 
-      ? getSystemTheme() 
+  var theme = stored === "dark" || stored === "light"
+    ? stored
+    : stored === "system"
+      ? getSystemTheme()
       : getSystemTheme();
-  
+
   document.documentElement.setAttribute(attribute, theme);
 })();
 `;

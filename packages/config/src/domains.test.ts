@@ -145,7 +145,7 @@ describe("generateVerificationDnsRecord", () => {
 
     expect(record.type).toBe("TXT");
     expect(record.name).toBe("_verify");
-    expect(record.value).toBe("v=enterprise-email;t=test-token-123");
+    expect(record.value).toBe("v=oonrumail;t=test-token-123");
     expect(record.ttl).toBe(3600);
   });
 

@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Distribution Lists Schema
+ * OonruMail Database - Distribution Lists Schema
  * Mailing lists with cross-domain membership support
  */
 

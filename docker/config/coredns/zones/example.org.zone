@@ -37,7 +37,7 @@ mail._domainkey IN      TXT     "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCA
 _dmarc  IN      TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@example.org; adkim=s; aspf=s; pct=100"
 
 ; TXT Records - Domain Verification
-_enterprise-email-verify IN TXT "verify-token-example-org-67890"
+_oonrumail-verify IN TXT "verify-token-example-org-67890"
 
 ; SRV Records
 _imaps._tcp     IN      SRV     0 1 993 imap.example.org.

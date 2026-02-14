@@ -19,12 +19,12 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Enterprise Email",
-    template: "%s | Enterprise Email",
+    default: "OonruMail",
+    template: "%s | OonruMail",
   },
-  description: "Enterprise Email System with Multi-Domain Support",
+  description: "OonruMail System with Multi-Domain Support",
   keywords: ["email", "enterprise", "multi-domain", "business"],
-  authors: [{ name: "Enterprise Email Team" }],
+  authors: [{ name: "OonruMail Team" }],
   robots: {
     index: false,
     follow: false,

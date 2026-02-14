@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Replication Support
+ * OonruMail Database - Replication Support
  * Read/Write splitting and replica management
  */
 

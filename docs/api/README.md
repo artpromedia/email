@@ -18,7 +18,7 @@ The platform provides OpenAPI 3.0 documentation for all services:
 View the interactive API documentation with Swagger UI:
 
 **Web App:** http://localhost:3000/api/docs **Admin App:** http://localhost:3001/api/docs
-**Production:** https://api.enterpriseemail.com/docs
+**Production:** https://api.oonrumail.com/docs
 
 ## Quick Start
 
@@ -30,14 +30,14 @@ Most API endpoints require authentication. Different services use different meth
 
 ```bash
 curl -H "Authorization: Bearer <your-token>" \
-  https://api.enterpriseemail.com/v1/mail/compose/addresses
+  https://api.oonrumail.com/v1/mail/compose/addresses
 ```
 
 **API Key (SMS Gateway, Transactional API):**
 
 ```bash
 curl -H "X-API-Key: <your-api-key>" \
-  https://sms.enterpriseemail.com/api/sms/send
+  https://sms.oonrumail.com/api/sms/send
 ```
 
 ### Rate Limiting
@@ -111,7 +111,7 @@ All errors follow this format:
 ### Send Email
 
 ```bash
-curl -X POST https://api.enterpriseemail.com/v1/mail/compose/send \
+curl -X POST https://api.oonrumail.com/v1/mail/compose/send \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -138,7 +138,7 @@ Response (202 Accepted):
 ### Create Draft
 
 ```bash
-curl -X POST https://api.enterpriseemail.com/v1/mail/compose/drafts \
+curl -X POST https://api.oonrumail.com/v1/mail/compose/drafts \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -153,7 +153,7 @@ curl -X POST https://api.enterpriseemail.com/v1/mail/compose/drafts \
 ### Upload Attachment
 
 ```bash
-curl -X POST https://api.enterpriseemail.com/v1/mail/compose/attachments \
+curl -X POST https://api.oonrumail.com/v1/mail/compose/attachments \
   -H "Authorization: Bearer <token>" \
   -F "file=@document.pdf"
 ```
@@ -174,7 +174,7 @@ Response (201 Created):
 ### Validate Email
 
 ```bash
-curl -X POST https://api.enterpriseemail.com/v1/mail/compose/validate \
+curl -X POST https://api.oonrumail.com/v1/mail/compose/validate \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -203,7 +203,7 @@ import { EmailClient } from "@oonrumail/client";
 
 const client = new EmailClient({
   apiKey: "your-api-key",
-  baseUrl: "https://api.enterpriseemail.com/v1",
+  baseUrl: "https://api.oonrumail.com/v1",
 });
 
 // Send email
@@ -236,7 +236,7 @@ from oonrumail import EmailClient
 
 client = EmailClient(
     api_key='your-api-key',
-    base_url='https://api.enterpriseemail.com/v1'
+    base_url='https://api.oonrumail.com/v1'
 )
 
 # Send email
@@ -291,7 +291,7 @@ Event payload example:
 
 ## Support
 
-- **Documentation:** https://docs.enterpriseemail.com
-- **Support Email:** support@enterpriseemail.com
+- **Documentation:** https://docs.oonrumail.com
+- **Support Email:** support@oonrumail.com
 - **GitHub Issues:** https://github.com/artpromedia/email/issues
-- **Status Page:** https://status.enterpriseemail.com
+- **Status Page:** https://status.oonrumail.com

@@ -317,7 +317,7 @@ func (v *OAuth2Validator) detectTokenProvider(token string) (OAuth2Provider, err
 		return ProviderGoogle, nil
 	case strings.Contains(claims.Iss, "login.microsoftonline.com") || strings.Contains(claims.Iss, "sts.windows.net"):
 		return ProviderMicrosoft, nil
-	case strings.Contains(claims.Iss, "enterprise-email") || v.config.InternalJWTSecret != "":
+	case strings.Contains(claims.Iss, "oonrumail") || v.config.InternalJWTSecret != "":
 		return ProviderInternal, nil
 	default:
 		return "", ErrUnsupportedProvider

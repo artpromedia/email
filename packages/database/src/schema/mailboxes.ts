@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Mailboxes & Folders Schema
+ * OonruMail Database - Mailboxes & Folders Schema
  * Domain-scoped mailboxes with hierarchical folder support
  */
 

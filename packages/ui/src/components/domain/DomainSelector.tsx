@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Enterprise Email - Domain Selector Component
+ * OonruMail - Domain Selector Component
  * Dropdown to switch between available domains
  */
 

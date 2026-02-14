@@ -1,5 +1,5 @@
 # Docker Compose Override for PostgreSQL Replication
-# Enterprise Email - High Availability Setup
+# OonruMail - High Availability Setup
 #
 # Usage:
 #   docker-compose -f docker-compose.yml -f docker-compose.replication.yml up -d
@@ -75,7 +75,11 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail} && psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail} -c 'SELECT 1' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail} && psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:-oonrumail} -c 'SELECT 1' || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,4 +1,4 @@
-# Patroni Configuration for Enterprise Email Platform
+# Patroni Configuration for OonruMail Platform
 # This configuration provides high availability PostgreSQL with automatic failover
 
 scope: email-cluster
@@ -23,7 +23,7 @@ bootstrap:
     ttl: 30
     loop_wait: 10
     retry_timeout: 10
-    maximum_lag_on_failover: 1048576  # 1MB
+    maximum_lag_on_failover: 1048576 # 1MB
     maximum_lag_on_syncnode: -1
     master_start_timeout: 300
     synchronous_mode: false
@@ -63,10 +63,10 @@ bootstrap:
         log_destination: stderr
         logging_collector: "on"
         log_directory: pg_log
-        log_filename: 'postgresql-%Y-%m-%d_%H%M%S.log'
+        log_filename: "postgresql-%Y-%m-%d_%H%M%S.log"
         log_min_messages: warning
         log_min_error_statement: error
-        log_min_duration_statement: 1000  # Log queries taking > 1 second
+        log_min_duration_statement: 1000 # Log queries taking > 1 second
         log_checkpoints: "on"
         log_connections: "on"
         log_disconnections: "on"

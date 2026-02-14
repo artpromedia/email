@@ -79,7 +79,7 @@ resource "aws_route53_record" "mx" {
   records = length(var.custom_mx_records) > 0 ? [
     for mx in var.custom_mx_records : "${mx.priority} ${mx.value}"
   ] : [
-    "10 mail.enterprise-email.com"
+    "10 mail.oonrumail.com"
   ]
 }
 
@@ -90,7 +90,7 @@ resource "aws_route53_record" "mail" {
   name    = "mail.${var.domain_name}"
   type    = "CNAME"
   ttl     = 3600
-  records = ["mail.enterprise-email.com"]
+  records = ["mail.oonrumail.com"]
 }
 
 # SPF Record
@@ -102,7 +102,7 @@ resource "aws_route53_record" "spf" {
   ttl     = 3600
 
   records = [
-    "v=spf1 include:spf.enterprise-email.com ~all"
+    "v=spf1 include:spf.oonrumail.com ~all"
   ]
 }
 
@@ -128,7 +128,7 @@ resource "aws_route53_record" "dmarc" {
   ttl     = 3600
 
   records = [
-    "v=DMARC1; p=quarantine; rua=mailto:dmarc@enterprise-email.com; ruf=mailto:dmarc@enterprise-email.com; fo=1"
+    "v=DMARC1; p=quarantine; rua=mailto:dmarc@oonrumail.com; ruf=mailto:dmarc@oonrumail.com; fo=1"
   ]
 }
 
@@ -152,7 +152,7 @@ resource "aws_route53_record" "webmail" {
   name    = "webmail.${var.domain_name}"
   type    = "CNAME"
   ttl     = 3600
-  records = ["webmail.enterprise-email.com"]
+  records = ["webmail.oonrumail.com"]
 }
 
 # Outputs

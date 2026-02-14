@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 
 usage() {
     cat << EOF
-Enterprise Email Platform - Rollback Controller
+OonruMail Platform - Rollback Controller
 
 Usage: $0 <command> [options]
 
@@ -412,7 +412,7 @@ show_status() {
 
     echo ""
     echo "=========================================="
-    echo "  Enterprise Email Platform Status"
+    echo "  OonruMail Platform Status"
     echo "=========================================="
     echo ""
     echo "Current Phase: $current_phase"

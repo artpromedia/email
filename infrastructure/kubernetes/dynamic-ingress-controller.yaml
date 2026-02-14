@@ -30,7 +30,7 @@ spec:
             - name: KUBERNETES_NAMESPACE
               value: email-system
             - name: PRIMARY_DOMAIN
-              value: enterprise-email.com
+              value: oonrumail.com
             - name: CERT_ISSUER
               value: letsencrypt-prod
             - name: LOG_LEVEL

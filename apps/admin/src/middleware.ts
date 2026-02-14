@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Security Middleware for Enterprise Email Admin Dashboard
+ * Security Middleware for OonruMail Admin Dashboard
  *
  * Implements:
  * - Security headers (CSP, HSTS, XSS protection)

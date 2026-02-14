@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Enterprise Email - Domain Badge Component
+ * OonruMail - Domain Badge Component
  * Displays domain branding badge with logo and name
  */
 

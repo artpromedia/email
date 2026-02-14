@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Users Schema
+ * OonruMail Database - Users Schema
  * Multi-domain user accounts with email addresses and aliases
  */
 

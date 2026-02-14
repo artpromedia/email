@@ -25,12 +25,12 @@ info:
   version: 1.0.0
   contact:
     name: SMS Gateway Support
-    email: sms-support@enterpriseemail.com
+    email: sms-support@oonrumail.com
 
 servers:
   - url: http://localhost:8087
     description: Development server
-  - url: https://sms.enterpriseemail.com
+  - url: https://sms.oonrumail.com
     description: Production server
 
 tags:

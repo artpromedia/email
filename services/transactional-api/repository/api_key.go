@@ -58,7 +58,7 @@ func (r *APIKeyRepository) GenerateAPIKey() (key string, prefix string, hash str
 
 	// Create key with prefix
 	rawKey := base64.URLEncoding.EncodeToString(bytes)
-	key = "em_" + rawKey // em_ prefix for "enterprise mail"
+	key = "em_" + rawKey // em_ prefix for "oonrumail"
 	prefix = key[:12]
 
 	// Hash the key

@@ -18,10 +18,10 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Admin | Enterprise Email",
-    template: "%s | Admin | Enterprise Email",
+    default: "Admin | OonruMail",
+    template: "%s | Admin | OonruMail",
   },
-  description: "Enterprise Email Administration Dashboard",
+  description: "OonruMail Administration Dashboard",
   robots: {
     index: false,
     follow: false,

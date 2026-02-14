@@ -727,7 +727,7 @@ func eventToICal(event *models.Event) string {
 	var ical strings.Builder
 	ical.WriteString("BEGIN:VCALENDAR\r\n")
 	ical.WriteString("VERSION:2.0\r\n")
-	ical.WriteString("PRODID:-//Enterprise Email//Calendar//EN\r\n")
+	ical.WriteString("PRODID:-//OonruMail//Calendar//EN\r\n")
 	ical.WriteString("BEGIN:VEVENT\r\n")
 	ical.WriteString(fmt.Sprintf("UID:%s\r\n", event.UID))
 	ical.WriteString(fmt.Sprintf("DTSTAMP:%s\r\n", modifiedStr))

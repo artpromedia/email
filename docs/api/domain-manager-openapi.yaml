@@ -22,12 +22,12 @@ info:
   version: 1.0.0
   contact:
     name: Domain Manager Support
-    email: domains@enterpriseemail.com
+    email: domains@oonrumail.com
 
 servers:
   - url: http://localhost:8086
     description: Development server
-  - url: https://domains.enterpriseemail.com
+  - url: https://domains.oonrumail.com
     description: Production server
 
 tags:

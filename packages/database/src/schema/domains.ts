@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Domains Schema
+ * OonruMail Database - Domains Schema
  * Multi-domain support with DNS verification and DKIM keys
  */
 

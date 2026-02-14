@@ -195,10 +195,10 @@ func applyDefaults(cfg *Config) {
 
 	// DNS defaults
 	if cfg.DNS.VerificationPrefix == "" {
-		cfg.DNS.VerificationPrefix = "_enterprise-email-verify"
+		cfg.DNS.VerificationPrefix = "_oonrumail-verify"
 	}
 	if cfg.DNS.MXHost == "" {
-		cfg.DNS.MXHost = "mail.enterprise-email.com"
+		cfg.DNS.MXHost = "mail.oonrumail.com"
 	}
 	if cfg.DNS.MXPriority == 0 {
 		cfg.DNS.MXPriority = 10
@@ -207,7 +207,7 @@ func applyDefaults(cfg *Config) {
 		cfg.DNS.SPFRecord = "v=spf1 mx a -all"
 	}
 	if cfg.DNS.DMARCReportEmail == "" {
-		cfg.DNS.DMARCReportEmail = "dmarc@enterprise-email.com"
+		cfg.DNS.DMARCReportEmail = "dmarc@oonrumail.com"
 	}
 	if cfg.DNS.DefaultDKIMSelector == "" {
 		cfg.DNS.DefaultDKIMSelector = "mail"

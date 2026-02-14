@@ -1,5 +1,5 @@
 -- ============================================================
--- ENTERPRISE EMAIL SYSTEM - DATABASE INITIALIZATION
+-- OONRUMAIL SYSTEM - DATABASE INITIALIZATION
 -- ============================================================
 -- This script runs automatically when PostgreSQL container starts
 -- ============================================================

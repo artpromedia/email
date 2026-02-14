@@ -158,7 +158,7 @@ func TestOAuth2ValidatorDetectProvider(t *testing.T) {
 		},
 		{
 			name:         "Internal JWT",
-			token:        createTestJWT("https://enterprise-email.com", "test@company.com"),
+			token:        createTestJWT("https://oonrumail.com", "test@company.com"),
 			wantProvider: ProviderInternal,
 		},
 		{
@@ -242,7 +242,7 @@ func TestOAuth2ValidatorValidateInternalToken(t *testing.T) {
 		"sub":   "user-123",
 		"email": "user@internal.com",
 		"exp":   time.Now().Add(time.Hour).Unix(),
-		"iss":   "https://enterprise-email.com",
+		"iss":   "https://oonrumail.com",
 		"aud":   "smtp-server",
 	}
 
@@ -266,7 +266,7 @@ func TestOAuth2ValidatorExpiredInternalToken(t *testing.T) {
 		"sub":   "user-123",
 		"email": "user@internal.com",
 		"exp":   time.Now().Add(-time.Hour).Unix(), // Expired
-		"iss":   "https://enterprise-email.com",
+		"iss":   "https://oonrumail.com",
 	}
 
 	token := createTestJWTWithClaims(claims)

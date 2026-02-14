@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Design System - Theme Configuration
+ * OonruMail Design System - Theme Configuration
  * Light/Dark themes with domain branding support
  */
 
@@ -296,8 +296,8 @@ export function createTheme(mode: "light" | "dark", branding?: Partial<DomainBra
 // THEME STORAGE
 // ============================================================
 
-const THEME_STORAGE_KEY = "enterprise-email-theme";
-const DOMAIN_STORAGE_KEY = "enterprise-email-domain";
+const THEME_STORAGE_KEY = "oonrumail-theme";
+const DOMAIN_STORAGE_KEY = "oonrumail-domain";
 
 /**
  * Save theme preference to localStorage

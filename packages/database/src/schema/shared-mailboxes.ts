@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Shared Mailboxes Schema
+ * OonruMail Database - Shared Mailboxes Schema
  * Cross-domain shared mailbox support
  */
 

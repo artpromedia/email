@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Emails & Threads Schema
+ * OonruMail Database - Emails & Threads Schema
  * Email storage with threading and domain tracking
  */
 

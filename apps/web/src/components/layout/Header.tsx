@@ -111,7 +111,7 @@ export function Header({ className }: HeaderProps) {
               </div>
             )}
             <span className="hidden font-semibold sm:inline-block">
-              {activeDomainBranding.displayName || "Enterprise Email"}
+              {activeDomainBranding.displayName || "OonruMail"}
             </span>
           </Link>
 

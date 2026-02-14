@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # PostgreSQL Partition Management Script
-# Enterprise Email Platform
+# OonruMail Platform
 # =============================================================================
 #
 # This script manages table partitions for emails and audit_logs tables.
@@ -324,7 +324,7 @@ cmd_verify() {
 cmd_help() {
     cat << EOF
 PostgreSQL Partition Management Script
-Enterprise Email Platform
+OonruMail Platform
 
 Usage: $0 [command] [options]
 

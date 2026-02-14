@@ -18,13 +18,13 @@ virtual_alias_maps = proxy:pgsql:/etc/postfix/pgsql-aliases.cf
 tls_server_sni_maps = hash:/etc/postfix/sni_maps
 
 # TLS certificate and key (fallback/primary)
-smtpd_tls_cert_file = /etc/ssl/certs/mail.enterprise-email.com.crt
-smtpd_tls_key_file = /etc/ssl/private/mail.enterprise-email.com.key
+smtpd_tls_cert_file = /etc/ssl/certs/mail.oonrumail.com.crt
+smtpd_tls_key_file = /etc/ssl/private/mail.oonrumail.com.key
 
 # TLS chain files
 smtpd_tls_chain_files =
-    /etc/ssl/certs/mail.enterprise-email.com.fullchain.pem,
-    /etc/ssl/private/mail.enterprise-email.com.key
+    /etc/ssl/certs/mail.oonrumail.com.fullchain.pem,
+    /etc/ssl/private/mail.oonrumail.com.key
 
 # Enable TLS
 smtpd_tls_security_level = may
@@ -137,7 +137,7 @@ debug_peer_list =
 # ============================================================
 
 # Hostname
-myhostname = mail.enterprise-email.com
+myhostname = mail.oonrumail.com
 myorigin = $myhostname
 mydestination = localhost
 

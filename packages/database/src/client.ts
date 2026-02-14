@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Client
+ * OonruMail Database - Client
  * PostgreSQL connection with Drizzle ORM
  */
 

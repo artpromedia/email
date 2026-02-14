@@ -533,25 +533,25 @@ const status = await getEmailStatus("msg_abc123xyz");
 
 ```bash
 # Node.js/TypeScript
-npm install @enterpriseemail/sdk
+npm install @oonrumail/sdk
 
 # Python
-pip install enterpriseemail
+pip install oonrumail
 
 # PHP
-composer require enterpriseemail/sdk
+composer require oonrumail/sdk
 
 # Go
-go get github.com/enterpriseemail/go-sdk
+go get github.com/oonrumail/go-sdk
 
 # Ruby
-gem install enterpriseemail
+gem install oonrumail
 
 # Java
 # Add to pom.xml
 <dependency>
-  <groupId>com.enterpriseemail</groupId>
-  <artifactId>enterpriseemail-sdk</artifactId>
+  <groupId>com.oonrumail</groupId>
+  <artifactId>oonrumail-sdk</artifactId>
   <version>1.0.0</version>
 </dependency>
 ```
@@ -560,9 +560,9 @@ gem install enterpriseemail
 
 ```javascript
 // Node.js SDK
-const EnterpriseEmail = require("@enterpriseemail/sdk");
+const OonruMail = require("@oonrumail/sdk");
 
-const client = new EnterpriseEmail({
+const client = new OonruMail({
   apiKey: process.env.EMAIL_API_KEY,
   baseURL: "https://api.yourdomain.com",
 });

@@ -26,14 +26,14 @@ const baseEnvSchema = z.object({
   // Application
   NODE_ENV: z.enum(["development", "staging", "production", "test"]).default("development"),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
-  APP_NAME: z.string().default("Enterprise Email"),
+  APP_NAME: z.string().default("OonruMail"),
   APP_VERSION: z.string().default("1.0.0"),
 
   // Multi-Domain Configuration
   PRIMARY_DOMAIN: domainSchema,
   ALLOWED_DOMAINS: domainListSchema,
   DEFAULT_DOMAIN: domainSchema,
-  DOMAIN_VERIFICATION_PREFIX: z.string().default("_enterprise-email-verify"),
+  DOMAIN_VERIFICATION_PREFIX: z.string().default("_oonrumail-verify"),
   DOMAIN_VERIFICATION_TTL: z.coerce.number().int().positive().default(3600),
   MAX_DOMAINS_PER_ORG: z.coerce.number().int().nonnegative().default(10),
 
@@ -116,7 +116,7 @@ const baseEnvSchema = z.object({
     .default("false"),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
-  SMTP_FROM_NAME: z.string().default("Enterprise Email"),
+  SMTP_FROM_NAME: z.string().default("OonruMail"),
   SMTP_FROM_ADDRESS: z.string().email().optional(),
   SMTP_POOL_SIZE: z.coerce.number().int().positive().default(5),
   SMTP_POOL_MAX_CONNECTIONS: z.coerce.number().int().positive().default(10),
@@ -126,8 +126,8 @@ const baseEnvSchema = z.object({
 
   // Authentication
   JWT_SECRET: z.string().min(32),
-  JWT_ISSUER: z.string().default("enterprise-email"),
-  JWT_AUDIENCE: z.string().default("enterprise-email-clients"),
+  JWT_ISSUER: z.string().default("oonrumail"),
+  JWT_AUDIENCE: z.string().default("oonrumail-clients"),
   JWT_ACCESS_TOKEN_EXPIRES: z.string().default("15m"),
   JWT_REFRESH_TOKEN_EXPIRES: z.string().default("7d"),
   SESSION_SECRET: z.string().min(32),

@@ -1,7 +1,7 @@
 import { AISettingsPage } from "@/components/ai";
 
 export const metadata = {
-  title: "AI Settings | Enterprise Email",
+  title: "AI Settings | OonruMail",
   description: "Configure AI-powered features for your email workflow",
 };
 

@@ -8,7 +8,6 @@ server:
   allowed_origins:
     - "http://localhost:3000"
     - "http://localhost:3001"
-    - "https://*.enterprise-email.com"
     - "https://*.oonrumail.com"
     - "https://oonrumail.com"
 
@@ -32,7 +31,7 @@ redis:
   pool_size: 10
 
 dns:
-  verification_prefix: "enterprise-email-verify"
+  verification_prefix: "oonrumail-verify"
   mx_host: "${MX_HOST:-mail.oonrumail.com}"
   spf_include: "${SPF_INCLUDE:-}"
   spf_record: "${SPF_RECORD:-v=spf1 mx a ip4:138.201.37.187 -all}"

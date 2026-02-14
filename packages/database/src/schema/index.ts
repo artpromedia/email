@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Schema Index
+ * OonruMail Database - Schema Index
  * Exports all schema definitions
  */
 

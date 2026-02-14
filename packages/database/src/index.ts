@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Main Export
+ * OonruMail Database - Main Export
  * @email/database package entry point
  */
 

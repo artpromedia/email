@@ -106,7 +106,7 @@ func (s *NotificationService) generateICalInvite(event *models.Event, method str
 
 	ical := fmt.Sprintf(`BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Enterprise Email//Calendar//EN
+PRODID:-//OonruMail//Calendar//EN
 CALSCALE:GREGORIAN
 METHOD:%s
 BEGIN:VEVENT

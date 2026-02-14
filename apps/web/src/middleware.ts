@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { RATE_LIMIT_TIERS, type RateLimitResult, type RateLimitConfig } from "@email/utils";
 
 /**
- * Security Middleware for Enterprise Email Platform
+ * Security Middleware for OonruMail Platform
  *
  * Implements:
  * - Security headers (CSP, HSTS, XSS protection)

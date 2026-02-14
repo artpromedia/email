@@ -1,6 +1,6 @@
 /**
  * @email/types
- * Shared TypeScript types for Enterprise Email
+ * Shared TypeScript types for OonruMail
  */
 
 // Admin domain types

@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Organizations Schema
+ * OonruMail Database - Organizations Schema
  * Core multi-tenant organization table
  */
 

@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Routing Rules Schema
+ * OonruMail Database - Routing Rules Schema
  * Domain-level email routing and forwarding rules
  */
 

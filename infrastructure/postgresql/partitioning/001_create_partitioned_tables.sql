@@ -1,6 +1,6 @@
 -- =============================================================================
 -- PostgreSQL Table Partitioning Migration
--- Enterprise Email Platform
+-- OonruMail Platform
 --
 -- This migration converts large tables to partitioned tables for improved
 -- performance and manageability at scale.

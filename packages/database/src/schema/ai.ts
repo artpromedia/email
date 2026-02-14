@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - AI Features Schema
+ * OonruMail Database - AI Features Schema
  * Tables for AI-powered email analysis, smart replies, and automation
  */
 

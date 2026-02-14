@@ -1,6 +1,6 @@
 {
   "from": { "email": "test@oonrumail.com", "name": "OONRUMAIL" },
   "to": [{ "email": "ofemeofem@gmail.com", "name": "Test User" }],
-  "subject": "Test from OONRUMAIL Enterprise Email",
-  "text_body": "Hello from OONRUMAIL enterprise email platform. This is a test email to verify delivery."
+  "subject": "Test from OonruMail",
+  "text_body": "Hello from OonruMail platform. This is a test email to verify delivery."
 }

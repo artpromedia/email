@@ -9,7 +9,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@enterprise-email.com
+    email: admin@oonrumail.com
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
@@ -29,7 +29,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: admin@enterprise-email.com
+    email: admin@oonrumail.com
     privateKeySecretRef:
       name: letsencrypt-staging-key
     solvers:
@@ -50,12 +50,12 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - mail.enterprise-email.com
-    - "*.enterprise-email.com"
-    - smtp.enterprise-email.com
-    - imap.enterprise-email.com
-    - webmail.enterprise-email.com
-    - api.enterprise-email.com
+    - mail.oonrumail.com
+    - "*.oonrumail.com"
+    - smtp.oonrumail.com
+    - imap.oonrumail.com
+    - webmail.oonrumail.com
+    - api.oonrumail.com
   renewBefore: 720h # 30 days
 
 ---
@@ -81,12 +81,12 @@ metadata:
 spec:
   tls:
     - hosts:
-        - mail.enterprise-email.com
-        - webmail.enterprise-email.com
-        - api.enterprise-email.com
+        - mail.oonrumail.com
+        - webmail.oonrumail.com
+        - api.oonrumail.com
       secretName: primary-tls
   rules:
-    - host: webmail.enterprise-email.com
+    - host: webmail.oonrumail.com
       http:
         paths:
           - path: /
@@ -96,7 +96,7 @@ spec:
                 name: web-client
                 port:
                   number: 80
-    - host: api.enterprise-email.com
+    - host: api.oonrumail.com
       http:
         paths:
           - path: /auth
@@ -167,8 +167,8 @@ metadata:
   name: domain-config
   namespace: email-system
 data:
-  primary_domain: "enterprise-email.com"
-  mail_server_hostname: "mail.enterprise-email.com"
+  primary_domain: "oonrumail.com"
+  mail_server_hostname: "mail.oonrumail.com"
   # This will be updated by the domain-manager service
   verified_domains: |
     []

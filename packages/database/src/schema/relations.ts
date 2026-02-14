@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Relations
+ * OonruMail Database - Relations
  * Drizzle ORM relations for type-safe joins
  */
 

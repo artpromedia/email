@@ -385,5 +385,5 @@ security-scan:
 
 For security concerns:
 
-- **Security Team**: security@enterpriseemail.com
-- **Bug Bounty**: https://enterpriseemail.com/security/bug-bounty
+- **Security Team**: security@oonrumail.com
+- **Bug Bounty**: https://oonrumail.com/security/bug-bounty

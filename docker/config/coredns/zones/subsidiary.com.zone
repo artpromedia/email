@@ -37,7 +37,7 @@ mail._domainkey IN      TXT     "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCA
 _dmarc  IN      TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@subsidiary.com; adkim=s; aspf=s; pct=100"
 
 ; TXT Records - Domain Verification
-_enterprise-email-verify IN TXT "verify-token-subsidiary-com-11111"
+_oonrumail-verify IN TXT "verify-token-subsidiary-com-11111"
 
 ; SRV Records
 _imaps._tcp     IN      SRV     0 1 993 imap.subsidiary.com.

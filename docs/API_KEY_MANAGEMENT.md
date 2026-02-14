@@ -585,7 +585,7 @@ curl -X PATCH https://api.yourdomain.com/v1/api-keys/apk_123 \
 Enable debug logging:
 
 ```javascript
-const client = new EnterpriseEmail({
+const client = new OonruMail({
   apiKey: process.env.EMAIL_API_KEY,
   debug: true  // Logs all requests/responses
 });

@@ -1,6 +1,6 @@
 /**
  * @email/config
- * Shared configuration and environment validation for Enterprise Email
+ * Shared configuration and environment validation for OonruMail
  */
 
 // Environment configuration

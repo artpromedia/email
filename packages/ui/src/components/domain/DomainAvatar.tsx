@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Enterprise Email - Domain Avatar Component
+ * OonruMail - Domain Avatar Component
  * Avatar component with domain-aware branding colors
  */
 

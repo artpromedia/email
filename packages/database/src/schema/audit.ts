@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Audit Logs Schema
+ * OonruMail Database - Audit Logs Schema
  * Comprehensive audit logging with partitioning support
  */
 

@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Migration Utilities
+ * OonruMail Database - Migration Utilities
  * Drizzle Kit migration helpers
  */
 

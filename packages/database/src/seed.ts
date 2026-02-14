@@ -1,5 +1,5 @@
 /**
- * Enterprise Email Database - Seed Data
+ * OonruMail Database - Seed Data
  * Test data for development with multiple domains
  */
 
