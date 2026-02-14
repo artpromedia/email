@@ -98,15 +98,27 @@ export default function DomainDetailPage() {
         method: "POST",
       });
       if (dnsRes.ok) {
-        const dnsData = (await dnsRes.json()) as { records?: DnsRecord[] };
-        setDnsRecords(dnsData.records ?? []);
+        const dnsData = (await dnsRes.json()) as DnsRecord[] | { records?: DnsRecord[] } | null;
+        if (Array.isArray(dnsData)) {
+          setDnsRecords(dnsData);
+        } else if (dnsData && typeof dnsData === "object" && "records" in dnsData) {
+          setDnsRecords(dnsData.records ?? []);
+        } else {
+          setDnsRecords([]);
+        }
       }
 
       // Fetch DKIM keys
       const dkimRes = await fetch(`${API_BASE}/domains/${domainId}/dkim`);
       if (dkimRes.ok) {
-        const dkimData = (await dkimRes.json()) as { keys?: DkimKey[] };
-        setDkimKeys(dkimData.keys ?? []);
+        const dkimData = (await dkimRes.json()) as DkimKey[] | { keys?: DkimKey[] } | null;
+        if (Array.isArray(dkimData)) {
+          setDkimKeys(dkimData);
+        } else if (dkimData && typeof dkimData === "object" && "keys" in dkimData) {
+          setDkimKeys(dkimData.keys ?? []);
+        } else {
+          setDkimKeys([]);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch domain");
