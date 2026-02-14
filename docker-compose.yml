@@ -797,8 +797,8 @@ services:
   # Web App - Main User Interface
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     image: app-web
     container_name: oonrumail-web
     restart: unless-stopped

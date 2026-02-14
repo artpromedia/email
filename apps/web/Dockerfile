@@ -31,6 +31,8 @@ RUN pnpm --filter @email/config build || true
 # Build the web app
 WORKDIR /app/apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
+# Remove babel config to avoid SWC conflict (babel is only needed for Jest tests)
+RUN rm -f babel.config.js .babelrc
 RUN pnpm build
 
 # Production stage
