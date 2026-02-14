@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const DOMAIN_API_URL = process.env.DOMAIN_API_URL || "http://domain-manager:8083";
+const DOMAIN_API_URL = process.env["DOMAIN_API_URL"] || "http://domain-manager:8083";
 
 /**
  * GET /api/v1/mail/compose/branding

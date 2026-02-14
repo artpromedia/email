@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 
-const IMAP_API_URL = process.env.IMAP_API_URL || "http://imap-server:8084";
+const IMAP_API_URL = process.env["IMAP_API_URL"] || "http://imap-server:8084";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

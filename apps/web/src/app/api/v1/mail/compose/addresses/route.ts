@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const AUTH_API_URL = process.env.AUTH_API_URL || "http://auth:8080";
+const AUTH_API_URL = process.env["AUTH_API_URL"] || "http://auth:8080";
 
 /**
  * Extract user ID from JWT token in authorization header

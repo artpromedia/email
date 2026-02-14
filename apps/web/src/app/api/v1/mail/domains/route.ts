@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 
-const DOMAIN_MANAGER_URL = process.env.DOMAIN_MANAGER_URL || "http://domain-manager:8083";
+const DOMAIN_MANAGER_URL = process.env["DOMAIN_MANAGER_URL"] || "http://domain-manager:8083";
 
 export async function GET(request: Request) {
   try {

@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 
-const CALENDAR_API_URL = process.env.CALENDAR_API_URL || "http://calendar:8082";
+const CALENDAR_API_URL = process.env["CALENDAR_API_URL"] || "http://calendar:8082";
 
 export async function GET(request: Request) {
   try {

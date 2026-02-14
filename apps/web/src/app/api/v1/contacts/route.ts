@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 
-const CONTACTS_API_URL = process.env.CONTACTS_API_URL || "http://contacts:8083";
+const CONTACTS_API_URL = process.env["CONTACTS_API_URL"] || "http://contacts:8083";
 
 export async function GET(request: Request) {
   try {
