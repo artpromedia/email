@@ -12,6 +12,7 @@ import (
 
 	"transactional-api/middleware"
 	"transactional-api/models"
+	"transactional-api/repository"
 	"transactional-api/service"
 )
 
@@ -267,10 +268,3 @@ func getPagination(r *http.Request) (int, int) {
 
 	return page, pageSize
 }
-
-// Import for repository
-type repository struct{}
-
-var _ = repository{}
-
-import "transactional-api/repository"
