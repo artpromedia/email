@@ -179,9 +179,16 @@ export default function CalendarPage() {
   };
 
   const handleAddEvent = () => {
-    const [year, month, day] = newEvent.date.split("-").map(Number);
-    const [startHour, startMin] = newEvent.startTime.split(":").map(Number);
-    const [endHour, endMin] = newEvent.endTime.split(":").map(Number);
+    const dateParts = newEvent.date.split("-").map(Number);
+    const startParts = newEvent.startTime.split(":").map(Number);
+    const endParts = newEvent.endTime.split(":").map(Number);
+    const year = dateParts[0] ?? 2024;
+    const month = dateParts[1] ?? 1;
+    const day = dateParts[2] ?? 1;
+    const startHour = startParts[0] ?? 0;
+    const startMin = startParts[1] ?? 0;
+    const endHour = endParts[0] ?? 0;
+    const endMin = endParts[1] ?? 0;
 
     const event: CalendarEvent = {
       id: Date.now().toString(),
