@@ -62,6 +62,7 @@ interface DkimKey {
   id: string;
   selector: string;
   publicKey: string;
+  dnsRecord: string;
   active: boolean;
   createdAt: string;
 }
@@ -417,7 +418,11 @@ export default function DomainDetailPage() {
                         <div className="flex items-center gap-2">
                           <Key className="h-4 w-4 text-gray-500" />
                           <span className="font-medium">Selector: {key.selector}</span>
-                          {key.active && <Badge>Active</Badge>}
+                          {key.active ? (
+                            <Badge>Active</Badge>
+                          ) : (
+                            <Badge variant="secondary">Inactive</Badge>
+                          )}
                         </div>
                         <span className="text-sm text-gray-500">
                           Created {new Date(key.createdAt).toLocaleDateString()}
@@ -425,16 +430,101 @@ export default function DomainDetailPage() {
                       </div>
                       <div className="mt-2">
                         <Label className="text-sm text-gray-500">DNS Record Name</Label>
-                        <div className="mt-1 rounded bg-gray-100 p-2 font-mono text-sm dark:bg-gray-800">
-                          {key.selector}._domainkey.{domain.name}
+                        <div className="mt-1 flex items-center justify-between rounded bg-gray-100 p-2 font-mono text-sm dark:bg-gray-800">
+                          <span>
+                            {key.selector}._domainkey.{domain.name}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              copyToClipboard(
+                                `${key.selector}._domainkey.${domain.name}`,
+                                `dkim-name-${key.id}`
+                              )
+                            }
+                          >
+                            {copied === `dkim-name-${key.id}` ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
                       <div className="mt-2">
                         <Label className="text-sm text-gray-500">DNS Record Value (TXT)</Label>
-                        <div className="mt-1 break-all rounded bg-gray-100 p-2 font-mono text-xs dark:bg-gray-800">
-                          v=DKIM1; k=rsa; p={key.publicKey.substring(0, 100)}...
+                        <div className="mt-1 flex items-start justify-between rounded bg-gray-100 p-2 font-mono text-xs dark:bg-gray-800">
+                          <span className="break-all pr-2">
+                            {key.dnsRecord ||
+                              `v=DKIM1; k=rsa; p=${key.publicKey?.replace(/-----[A-Z ]+-----/g, "").replace(/\n/g, "")}`}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0"
+                            onClick={() =>
+                              copyToClipboard(
+                                key.dnsRecord ||
+                                  `v=DKIM1; k=rsa; p=${key.publicKey?.replace(/-----[A-Z ]+-----/g, "").replace(/\n/g, "")}`,
+                                `dkim-val-${key.id}`
+                              )
+                            }
+                          >
+                            {copied === `dkim-val-${key.id}` ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
+                      {!key.active && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(
+                                  `${API_BASE}/domains/${domainId}/dkim/${key.id}/activate`,
+                                  { method: "POST" }
+                                );
+                                if (!res.ok) throw new Error("Failed to activate");
+                                void fetchDomain();
+                              } catch (err) {
+                                setError(
+                                  err instanceof Error ? err.message : "Failed to activate DKIM key"
+                                );
+                              }
+                            }}
+                          >
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Activate
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              if (!confirm("Delete this DKIM key?")) return;
+                              try {
+                                const res = await fetch(
+                                  `${API_BASE}/domains/${domainId}/dkim/${key.id}`,
+                                  { method: "DELETE" }
+                                );
+                                if (!res.ok) throw new Error("Failed to delete");
+                                void fetchDomain();
+                              } catch (err) {
+                                setError(
+                                  err instanceof Error ? err.message : "Failed to delete DKIM key"
+                                );
+                              }
+                            }}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Delete
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
