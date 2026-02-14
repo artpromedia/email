@@ -52,7 +52,7 @@ func (r *DomainRepository) GetAllDomains(ctx context.Context) ([]*domain.Domain,
 			d.rate_limit_per_hour, d.rate_limit_per_day,
 			d.created_at, d.updated_at, d.verified_at
 		FROM domains d
-		WHERE d.status IN ('verified', 'pending')
+		WHERE d.status IN ('verified', 'pending', 'active')
 		ORDER BY d.name
 	`
 
