@@ -254,7 +254,7 @@ function SSOLoginContent() {
             {isLoadingDomain ? "Loading..." : "Redirecting to SSO"}
           </CardTitle>
           <CardDescription className="mt-2">
-            {domainInfo.organizationName
+            {domainInfo?.organizationName
               ? `Signing in to ${domainInfo.organizationName}`
               : "Please wait while we redirect you"}
           </CardDescription>
