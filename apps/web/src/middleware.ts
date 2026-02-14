@@ -94,30 +94,28 @@ function generateNonce(): string {
 /**
  * Build CSP header from configuration
  */
-function buildCSPHeader(config: CSPEnvConfig, nonce: string): string {
+function buildCSPHeader(config: CSPEnvConfig): string {
   const directives: string[] = [];
 
   // Default sources
   directives.push("default-src 'self'");
 
-  // Script sources with nonce
-  const scriptSources = ["'self'", `'nonce-${nonce}'`, "https://cdn.jsdelivr.net"];
+  // Script sources — use 'unsafe-inline' because Next.js App Router injects
+  // bootstrapping inline scripts that cannot carry a CSP nonce attribute.
+  // NOTE: In CSP Level 2+, presence of a nonce causes 'unsafe-inline' to be
+  // ignored, so we intentionally omit the nonce from script-src.
+  const scriptSources = ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"];
   if (config.scriptDomains.length > 0) {
     scriptSources.push(...config.scriptDomains);
   }
-  // Development: allow unsafe-inline and unsafe-eval for hot reload
+  // Development: also allow unsafe-eval for hot reload
   if (config.isDevelopment) {
-    scriptSources.push("'unsafe-inline'", "'unsafe-eval'");
+    scriptSources.push("'unsafe-eval'");
   }
   directives.push(`script-src ${scriptSources.join(" ")}`);
 
-  // Style sources with nonce
-  const styleSources = [
-    "'self'",
-    `'nonce-${nonce}'`,
-    "'unsafe-inline'",
-    "https://fonts.googleapis.com",
-  ];
+  // Style sources — unsafe-inline needed for Next.js injected styles
+  const styleSources = ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"];
   if (config.styleDomains.length > 0) {
     styleSources.push(...config.styleDomains);
   }
@@ -494,7 +492,7 @@ export async function middleware(request: NextRequest) {
 
   // Get CSP configuration
   const cspConfig = getOrCreateCSPConfig();
-  const cspHeader = buildCSPHeader(cspConfig, nonce);
+  const cspHeader = buildCSPHeader(cspConfig);
   const cspHeaderName = cspConfig.reportOnly
     ? "Content-Security-Policy-Report-Only"
     : "Content-Security-Policy";
