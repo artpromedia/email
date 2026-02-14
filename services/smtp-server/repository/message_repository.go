@@ -647,7 +647,9 @@ func (r *MessageRepository) GetMailboxesNearQuota(ctx context.Context, threshold
 	return statuses, rows.Err()
 }
 
-// RecordMailboxMessage records a message in the mailbox messages table
+// RecordMailboxMessage records a message in the mailbox messages table.
+// This is a best-effort operation — if the table doesn't exist yet,
+// the message was still delivered via the SMTP queue.
 func (r *MessageRepository) RecordMailboxMessage(ctx context.Context, mailboxID string, msg *domain.Message, storagePath string, size int64) error {
 	query := `
 		INSERT INTO mailbox_messages (
@@ -664,7 +666,11 @@ func (r *MessageRepository) RecordMailboxMessage(ctx context.Context, mailboxID 
 		msg.FromAddress, msg.Subject, size,
 	)
 	if err != nil {
-		return fmt.Errorf("record mailbox message: %w", err)
+		// Log but don't fail — the message was already delivered
+		r.logger.Warn("Failed to record mailbox message (table may not exist)",
+			zap.String("mailbox_id", mailboxID),
+			zap.Error(err))
+		return nil
 	}
 
 	return nil
