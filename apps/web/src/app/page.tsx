@@ -20,9 +20,69 @@ import {
   Users,
   Settings,
   CreditCard,
+  Inbox,
+  Send,
+  Paperclip,
+  Search,
+  Star,
+  FolderOpen,
+  MessageSquare,
 } from "lucide-react";
 
-const FEATURES = [
+// ============================================================
+// REGULAR EMAIL FEATURES
+// ============================================================
+
+const EMAIL_FEATURES = [
+  {
+    icon: Inbox,
+    title: "Multi-Domain Inbox",
+    description:
+      "Manage all your email accounts in one unified inbox. Filter by domain, search across accounts, and switch seamlessly between personal and team mailboxes.",
+    color: "from-blue-500 to-cyan-400",
+  },
+  {
+    icon: Send,
+    title: "Compose & Send",
+    description:
+      "Rich text editor with formatting, attachments, signatures, and domain branding. Reply, forward, schedule sends, and undo sent emails with one click.",
+    color: "from-purple-500 to-pink-400",
+  },
+  {
+    icon: Users,
+    title: "Team Accounts",
+    description:
+      "Create user accounts for your team with role-based access. Admins, domain managers, and users — each with the right level of control over shared mailboxes.",
+    color: "from-green-500 to-emerald-400",
+  },
+  {
+    icon: FolderOpen,
+    title: "Folders & Organization",
+    description:
+      "Inbox, Sent, Drafts, Starred, Archive, Trash, and custom folders. Drag-and-drop emails between folders, snooze messages, and keep everything organized.",
+    color: "from-orange-500 to-amber-400",
+  },
+  {
+    icon: Search,
+    title: "Advanced Search",
+    description:
+      "Find any email instantly with full-text search, operator filters (from:, to:, subject:, has:attachment), and recent search suggestions.",
+    color: "from-red-500 to-rose-400",
+  },
+  {
+    icon: Globe,
+    title: "Multi-Domain Management",
+    description:
+      "Add and verify multiple domains with automated DKIM, SPF, and DMARC configuration. DNS records generated and validated in real time.",
+    color: "from-indigo-500 to-violet-400",
+  },
+];
+
+// ============================================================
+// TRANSACTIONAL EMAIL FEATURES
+// ============================================================
+
+const TRANSACTIONAL_FEATURES = [
   {
     icon: Zap,
     title: "Transactional Email API",
@@ -38,25 +98,11 @@ const FEATURES = [
     color: "from-purple-500 to-pink-400",
   },
   {
-    icon: Globe,
-    title: "Multi-Domain Management",
-    description:
-      "Add and verify multiple sending domains with automated DKIM, SPF, and DMARC configuration. DNS records generated and validated in real time.",
-    color: "from-green-500 to-emerald-400",
-  },
-  {
     icon: BarChart3,
     title: "Real-Time Analytics",
     description:
       "Track delivery rates, open rates, click-through rates, and bounces. Visual dashboards with time-range filtering and exportable reports.",
     color: "from-orange-500 to-amber-400",
-  },
-  {
-    icon: Activity,
-    title: "Email Activity Log",
-    description:
-      "Live event stream showing every email you send. Filter by recipient, subject, or status. Expandable details with headers, IPs, and user agents.",
-    color: "from-red-500 to-rose-400",
   },
   {
     icon: Webhook,
@@ -78,13 +124,6 @@ const FEATURES = [
     description:
       "Automatic suppression of bounced addresses and complaints. Add addresses manually or in bulk. CSV export for compliance audits.",
     color: "from-yellow-500 to-orange-400",
-  },
-  {
-    icon: Key,
-    title: "Scoped API Keys",
-    description:
-      "Create API keys with fine-grained scopes — send, read, templates, webhooks, analytics, suppressions. Revoke any key instantly.",
-    color: "from-pink-500 to-fuchsia-400",
   },
 ];
 
@@ -151,21 +190,21 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-24 text-center sm:pt-32">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-sm text-blue-400">
             <Zap className="h-3.5 w-3.5" />
-            Email infrastructure for developers — Free to start
+            Complete email platform — Regular mail + Transactional API
           </div>
 
           <h1 className="text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Send transactional email
+            Your email, your way.
             <br />
             <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              with confidence
+              Inbox + API in one platform
             </span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-400 sm:text-xl">
-            Reliable email delivery API with a developer-first SDK, real-time analytics,
-            multi-domain support, and a full-featured console. The modern alternative to SendGrid
-            and Zoho.
+            OonruMail is a full email platform for teams and developers. Send and receive regular
+            email with a modern inbox, create team accounts with role-based access, and power your
+            apps with a transactional email API and TypeScript SDK.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -173,19 +212,19 @@ export default function HomePage() {
               href="/register"
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3.5 text-sm font-semibold transition hover:bg-blue-500"
             >
-              Start Sending Free
+              Start For Free
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/pricing"
+              href="/docs"
               className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold transition hover:bg-white/10"
             >
-              View Pricing
+              API Documentation
             </Link>
           </div>
 
           <p className="mt-4 text-xs text-gray-500">
-            3,000 emails/month free · No credit card required · 1-minute setup
+            Full inbox + Transactional API · 3,000 emails/month free · No credit card required
           </p>
 
           {/* Stats row */}
@@ -289,26 +328,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Grid */}
+      {/* Regular Email Features */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="mb-16 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
-            <Shield className="h-3 w-3" />
-            Everything you need
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+            <Inbox className="h-3 w-3" />
+            Full email client
           </div>
           <h2 className="text-3xl font-bold sm:text-4xl">
-            A complete email platform,
+            A modern inbox
             <br />
-            <span className="text-gray-400">not just an API</span>
+            <span className="text-gray-400">for your team</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-gray-400">
-            From sending your first email to managing millions monthly — OonruMail gives you the
-            tools, analytics, and controls to deliver with confidence.
+            Send and receive regular email across multiple domains. Create team accounts with shared
+            mailboxes, custom folders, and role-based access control.
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
+          {EMAIL_FEATURES.map((feature) => (
             <div
               key={feature.title}
               className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05]"
@@ -325,14 +364,188 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Console Preview Section */}
+      {/* Inbox Preview Section */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 p-8 lg:p-12">
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+                <Mail className="h-3 w-3" />
+                Multi-domain inbox
+              </div>
+              <h2 className="text-3xl font-bold sm:text-4xl">
+                All your accounts,
+                <br />
+                <span className="text-gray-400">one powerful inbox</span>
+              </h2>
+              <p className="mt-4 leading-relaxed text-gray-400">
+                Switch between domains or view everything in a unified inbox. Preview emails without
+                leaving your list, drag-and-drop to organize, and compose with rich formatting and
+                signatures.
+              </p>
+              <div className="mt-8 grid grid-cols-2 gap-3">
+                {[
+                  { icon: Inbox, label: "Unified inbox view" },
+                  { icon: Star, label: "Star & organize" },
+                  { icon: Search, label: "Full-text search" },
+                  { icon: FolderOpen, label: "Custom folders" },
+                  { icon: Paperclip, label: "File attachments" },
+                  { icon: Users, label: "Shared mailboxes" },
+                  { icon: MessageSquare, label: "Thread grouping" },
+                  { icon: Clock, label: "Undo send & snooze" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-2.5">
+                    <item.icon className="h-4 w-4 shrink-0 text-blue-400" />
+                    <span className="text-sm text-gray-300">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+              <Link
+                href="/register"
+                className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
+              >
+                Try the inbox
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            {/* Inbox mock preview */}
+            <div className="rounded-xl border border-white/10 bg-gray-950 p-1">
+              <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-red-500/50" />
+                <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/50" />
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500/50" />
+                <span className="ml-2 text-xs text-gray-600">mail.oonrumail.com/mail/inbox</span>
+              </div>
+              <div className="flex">
+                {/* Mini sidebar */}
+                <div className="w-36 border-r border-white/10 p-3">
+                  <div className="mb-3 rounded-md bg-blue-600 px-3 py-1.5 text-center text-xs font-medium">
+                    Compose
+                  </div>
+                  {[
+                    { name: "Inbox", count: 12, active: true },
+                    { name: "Starred", count: 3, active: false },
+                    { name: "Sent", count: 0, active: false },
+                    { name: "Drafts", count: 1, active: false },
+                  ].map((folder) => (
+                    <div
+                      key={folder.name}
+                      className={`flex items-center justify-between rounded px-2 py-1 text-xs ${
+                        folder.active ? "bg-blue-500/20 text-blue-400" : "text-gray-500"
+                      }`}
+                    >
+                      <span>{folder.name}</span>
+                      {folder.count > 0 && <span className="text-[10px]">{folder.count}</span>}
+                    </div>
+                  ))}
+                  <div className="mt-3 border-t border-white/10 pt-2 text-[10px] font-semibold uppercase text-gray-600">
+                    acme.com
+                  </div>
+                  <div className="mt-1 rounded px-2 py-1 text-xs text-gray-500">Inbox</div>
+                  <div className="rounded px-2 py-1 text-xs text-gray-500">Sent</div>
+                </div>
+                {/* Email list */}
+                <div className="flex-1 p-3">
+                  {[
+                    {
+                      from: "Sarah Chen",
+                      subject: "Q4 Report ready for review",
+                      time: "10:23 AM",
+                      unread: true,
+                    },
+                    {
+                      from: "GitHub",
+                      subject: "New PR: feat/auth-refactor #127",
+                      time: "9:45 AM",
+                      unread: true,
+                    },
+                    {
+                      from: "David Kim",
+                      subject: "Re: Meeting notes from Friday",
+                      time: "Yesterday",
+                      unread: false,
+                    },
+                    {
+                      from: "AWS",
+                      subject: "Your invoice for December 2024",
+                      time: "Yesterday",
+                      unread: false,
+                    },
+                    {
+                      from: "Jira",
+                      subject: "[PROJ-452] Bug fix deployed to staging",
+                      time: "Mon",
+                      unread: false,
+                    },
+                  ].map((email, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-2 border-b border-white/5 px-2 py-2 text-xs ${
+                        email.unread ? "text-white" : "text-gray-500"
+                      }`}
+                    >
+                      <div
+                        className={`h-1.5 w-1.5 rounded-full ${email.unread ? "bg-blue-400" : "bg-transparent"}`}
+                      />
+                      <span className={`w-20 truncate ${email.unread ? "font-semibold" : ""}`}>
+                        {email.from}
+                      </span>
+                      <span className="flex-1 truncate">{email.subject}</span>
+                      <span className="shrink-0 text-gray-600">{email.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Transactional Email Features */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="mb-16 text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
+            <Shield className="h-3 w-3" />
+            Transactional email API
+          </div>
+          <h2 className="text-3xl font-bold sm:text-4xl">
+            Developer-first
+            <br />
+            <span className="text-gray-400">transactional email</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-gray-400">
+            Power your application with a reliable transactional email API. Send password resets,
+            order confirmations, and notifications with our TypeScript SDK and RESTful API.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {TRANSACTIONAL_FEATURES.map((feature) => (
+            <div
+              key={feature.title}
+              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05]"
+            >
+              <div
+                className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${feature.color} bg-opacity-20`}
+              >
+                <feature.icon className="h-5 w-5 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-400">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* API Console Preview Section */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 p-8 lg:p-12">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
                 <Settings className="h-3 w-3" />
-                Customer Console
+                API Console
               </div>
               <h2 className="text-3xl font-bold sm:text-4xl">
                 Full control from
@@ -340,8 +553,9 @@ export default function HomePage() {
                 <span className="text-gray-400">a single dashboard</span>
               </h2>
               <p className="mt-4 leading-relaxed text-gray-400">
-                Manage every aspect of your email infrastructure from the OonruMail console. No API
-                calls required — everything is available through a polished web interface.
+                Manage every aspect of your email infrastructure from the OonruMail console. Monitor
+                transactional email delivery, manage API keys, configure webhooks, and track
+                analytics — all in one place.
               </p>
               <div className="mt-8 grid grid-cols-2 gap-3">
                 {CONSOLE_FEATURES.map((item) => (
@@ -569,10 +783,10 @@ export default function HomePage() {
       {/* Final CTA */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="text-center">
-          <h2 className="text-3xl font-bold sm:text-4xl">Ready to start sending?</h2>
+          <h2 className="text-3xl font-bold sm:text-4xl">Ready to get started?</h2>
           <p className="mx-auto mt-4 max-w-lg text-gray-400">
-            Create your free account, verify a domain, and send your first email — all in under 5
-            minutes.
+            Create your free account to get a full email inbox and start sending transactional
+            emails through our API — all in under 5 minutes.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
@@ -596,11 +810,11 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-1.5">
               <Check className="h-4 w-4 text-green-400" />
-              3,000 emails/month free
+              Full inbox included
             </div>
             <div className="flex items-center gap-1.5">
               <Check className="h-4 w-4 text-green-400" />
-              Setup in minutes
+              3,000 transactional emails free
             </div>
           </div>
         </div>
@@ -618,12 +832,19 @@ export default function HomePage() {
                 <span className="font-bold">OonruMail</span>
               </div>
               <p className="mt-3 text-sm text-gray-500">
-                Transactional email infrastructure for developers and businesses.
+                Complete email platform — regular mail and transactional API for teams and
+                developers.
               </p>
             </div>
             <div>
               <h4 className="mb-3 text-sm font-semibold text-gray-300">Product</h4>
               <div className="space-y-2">
+                <Link
+                  href="/register"
+                  className="block text-sm text-gray-500 transition hover:text-gray-300"
+                >
+                  Email Inbox
+                </Link>
                 <Link
                   href="/pricing"
                   className="block text-sm text-gray-500 transition hover:text-gray-300"
@@ -634,7 +855,7 @@ export default function HomePage() {
                   href="/console"
                   className="block text-sm text-gray-500 transition hover:text-gray-300"
                 >
-                  Console
+                  API Console
                 </Link>
                 <Link
                   href="/docs"
