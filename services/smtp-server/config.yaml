@@ -48,11 +48,10 @@ limits:
   messages_per_minute: 100
   max_idle_time: 5m
   # Allow internal Docker network to relay without authentication
+  # SECURITY: Only allow the specific Docker network, not all RFC 1918 ranges
   trusted_networks:
     - "172.28.0.0/16" # Docker email-network
     - "127.0.0.0/8" # Localhost
-    - "10.0.0.0/8" # Private network
-    - "172.16.0.0/12" # Private network
 
 metrics:
   enabled: true

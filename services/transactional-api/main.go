@@ -110,7 +110,21 @@ func main() {
 	r.Handle("/metrics", promhttp.Handler())
 
 	// Webhook receiver (for incoming events from SMTP server)
-	r.Post("/internal/events", eventHandler.ReceiveEvent)
+	// Protected by shared secret to prevent unauthorized event injection
+	r.Post("/internal/events", func(w http.ResponseWriter, r *http.Request) {
+		internalSecret := os.Getenv("INTERNAL_API_SECRET")
+		if internalSecret == "" {
+			internalSecret = cfg.Server.InternalSecret
+		}
+		if internalSecret != "" {
+			authHeader := r.Header.Get("X-Internal-Secret")
+			if authHeader != internalSecret {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+		}
+		eventHandler.ReceiveEvent(w, r)
+	})
 
 	// API v1 routes (requires API key authentication)
 	r.Route("/v1", func(r chi.Router) {
@@ -186,11 +200,13 @@ func main() {
 
 	// Start HTTP server
 	server := &http.Server{
-		Addr:         cfg.Server.Addr,
-		Handler:      r,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:              cfg.Server.Addr,
+		Handler:           r,
+		ReadTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
 	}
 
 	go func() {

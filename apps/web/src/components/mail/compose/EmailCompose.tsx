@@ -38,6 +38,7 @@ import {
   useCheckSendPermission,
 } from "@/lib/mail/compose-api";
 import { useComposeStore, selectActiveDraft } from "@/lib/mail/compose-store";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ComposeHeader } from "./ComposeHeader";
 import type {
   SendableAddress,
@@ -221,7 +222,7 @@ function SignaturePreview({ signature, onChangeSignature }: SignaturePreviewProp
       </div>
       <div
         className="prose prose-sm dark:prose-invert max-w-none text-sm text-neutral-600 dark:text-neutral-400"
-        dangerouslySetInnerHTML={{ __html: signature.contentHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(signature.contentHtml) }}
       />
     </div>
   );
@@ -256,7 +257,7 @@ function BrandingPreview({ branding, position }: BrandingPreviewProps) {
       </div>
       <div
         className="prose prose-sm dark:prose-invert max-w-none text-sm"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
       />
     </div>
   );

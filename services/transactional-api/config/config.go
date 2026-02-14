@@ -22,6 +22,7 @@ type ServerConfig struct {
 	Addr           string   `yaml:"addr"`
 	LogLevel       string   `yaml:"logLevel"`
 	AllowedOrigins []string `yaml:"allowedOrigins"`
+	InternalSecret string   `yaml:"internalSecret"`
 }
 
 type DatabaseConfig struct {

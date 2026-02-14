@@ -19,10 +19,15 @@ FROM alpine:3.19
 
 RUN apk --no-cache add ca-certificates tzdata
 
+# Security: run as non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 WORKDIR /app
 
 COPY --from=builder /app/transactional-api .
 COPY --from=builder /app/config.yaml .
+
+USER appuser
 
 EXPOSE 8080
 

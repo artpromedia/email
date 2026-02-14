@@ -43,6 +43,7 @@ import {
   useUnstarEmails,
   useDeleteEmails,
 } from "@/lib/mail";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 // ============================================================
 // EMAIL DETAIL CONTENT
@@ -312,7 +313,10 @@ Message-ID: ${email.id}`}
           {/* Email body */}
           <div className="prose dark:prose-invert max-w-none">
             {email.htmlBody ? (
-              <div className="email-content" dangerouslySetInnerHTML={{ __html: email.htmlBody }} />
+              <div
+                className="email-content"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(email.htmlBody) }}
+              />
             ) : (
               <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
                 {email.textBody || email.snippet || "No content"}

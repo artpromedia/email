@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileText, Plus, Pencil, Trash2, Copy, Eye, Code2, Clock } from "lucide-react";
+import { sanitizeAdminHtml } from "@/lib/sanitize";
 
 interface Template {
   id: string;
@@ -344,7 +345,7 @@ export default function ConsoleTemplatesPage() {
                 <div
                   className="max-h-96 overflow-y-auto bg-white p-4 text-sm text-black"
                   dangerouslySetInnerHTML={{
-                    __html: template.html_body,
+                    __html: sanitizeAdminHtml(template.html_body),
                   }}
                 />
               </div>

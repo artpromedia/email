@@ -33,6 +33,11 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
+	// SECURITY: Validate JWT secret key is set and sufficiently long
+	if len(cfg.JWT.SecretKey) < 32 {
+		log.Fatal().Msg("JWT_SECRET_KEY must be at least 32 characters for security. Refusing to start.")
+	}
+
 	log.Info().
 		Str("environment", cfg.Server.Environment).
 		Int("port", cfg.Server.Port).
@@ -76,11 +81,13 @@ func main() {
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:      router,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
+		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:           router,
+		ReadTimeout:       cfg.Server.ReadTimeout,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      cfg.Server.WriteTimeout,
+		IdleTimeout:       cfg.Server.IdleTimeout,
+		MaxHeaderBytes:    1 << 20, // 1MB
 	}
 
 	// Start server in goroutine
@@ -205,10 +212,19 @@ func createRouter(
 	// Global middleware
 	r.Use(chimiddleware.RequestID)
 	r.Use(middleware.RequestID)
+	r.Use(middleware.SecurityHeaders)
 	r.Use(middleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Timeout(60 * time.Second))
+	r.Use(middleware.RequestSizeLimiter(1 << 20)) // 1MB max request body
+
+	// Global rate limiting (100 req/min per IP)
+	globalRL := middleware.NewSimpleRateLimiter(
+		cfg.Security.RateLimitRequests,
+		cfg.Security.RateLimitWindow,
+	)
+	r.Use(globalRL.RateLimit)
 
 	// CORS configuration
 	r.Use(cors.Handler(cors.Options{

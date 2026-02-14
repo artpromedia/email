@@ -215,6 +215,9 @@ importers:
       "@tanstack/react-virtual":
         specifier: ^3.13.18
         version: 3.13.18(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      "@types/dompurify":
+        specifier: ^3.2.0
+        version: 3.2.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -227,6 +230,9 @@ importers:
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
+      dompurify:
+        specifier: ^3.3.1
+        version: 3.3.1
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
@@ -4876,6 +4882,13 @@ packages:
         integrity: sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==,
       }
 
+  "@types/dompurify@3.2.0":
+    resolution:
+      {
+        integrity: sha512-Fgg31wv9QbLDA0SpTOXO3MaxySc4DKGLi8sna4/Utjo4r3ZRPdCt4UQee8BWr+Q5z21yifghREPJGYaEOEIACg==,
+      }
+    deprecated: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
+
   "@types/eslint-scope@3.7.7":
     resolution:
       {
@@ -5004,6 +5017,12 @@ packages:
     resolution:
       {
         integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==,
+      }
+
+  "@types/trusted-types@2.0.7":
+    resolution:
+      {
+        integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==,
       }
 
   "@types/yargs-parser@21.0.3":
@@ -6565,6 +6584,12 @@ packages:
       }
     engines: { node: ">=12" }
     deprecated: Use your platform's native DOMException instead
+
+  dompurify@3.3.1:
+    resolution:
+      {
+        integrity: sha512-qkdCKzLNtrgPFP1Vo+98FRzJnBRGe4ffyCea9IwHB1fyxPOeNTHpLKYGd4Uk9xvNoH0ZoOjwZxNptyMwqrId1Q==,
+      }
 
   dot-prop@5.3.0:
     resolution:
@@ -14263,6 +14288,10 @@ snapshots:
 
   "@types/d3-timer@3.0.2": {}
 
+  "@types/dompurify@3.2.0":
+    dependencies:
+      dompurify: 3.3.1
+
   "@types/eslint-scope@3.7.7":
     dependencies:
       "@types/eslint": 9.6.1
@@ -14341,6 +14370,9 @@ snapshots:
       "@types/node": 22.19.7
 
   "@types/tough-cookie@4.0.5": {}
+
+  "@types/trusted-types@2.0.7":
+    optional: true
 
   "@types/yargs-parser@21.0.3": {}
 
@@ -15317,6 +15349,10 @@ snapshots:
   domexception@4.0.0:
     dependencies:
       webidl-conversions: 7.0.0
+
+  dompurify@3.3.1:
+    optionalDependencies:
+      "@types/trusted-types": 2.0.7
 
   dot-prop@5.3.0:
     dependencies:

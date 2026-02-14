@@ -116,10 +116,21 @@ api.oonrumail.com {
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
-        Access-Control-Allow-Origin "*"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Access-Control-Allow-Origin "https://mail.oonrumail.com"
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         Access-Control-Allow-Headers "Authorization, Content-Type, X-API-Key, X-Request-ID"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Max-Age "300"
     }
+
+    # Handle CORS preflight for admin origin
+    @adminOrigin header Origin https://admin.oonrumail.com
+    header @adminOrigin Access-Control-Allow-Origin "https://admin.oonrumail.com"
+
+    @landingOrigin header Origin https://oonrumail.com
+    header @landingOrigin Access-Control-Allow-Origin "https://oonrumail.com"
 }
 
 # NOTE: If using Cloudflare proxy for oonrumail.com and www.oonrumail.com,

@@ -2,8 +2,12 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -12,12 +16,16 @@ import (
 type AuthMiddleware struct {
 	authServiceURL string
 	logger         *zap.Logger
+	httpClient     *http.Client
 }
 
 func NewAuthMiddleware(authServiceURL string, logger *zap.Logger) *AuthMiddleware {
 	return &AuthMiddleware{
 		authServiceURL: authServiceURL,
 		logger:         logger,
+		httpClient: &http.Client{
+			Timeout: 5 * time.Second,
+		},
 	}
 }
 
@@ -72,29 +80,74 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 
 // validateToken validates JWT with auth service
 func (m *AuthMiddleware) validateToken(token string) (uuid.UUID, string, error) {
-	// In production, call auth service to validate token
-	// For now, implement a simple JWT parsing (in real implementation, use proper JWT library)
+	req, err := http.NewRequest("GET", m.authServiceURL+"/api/auth/me", nil)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
 
-	// Mock implementation for development
-	// In production: call auth service's /api/v1/auth/validate endpoint
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("auth service request: %w", err)
+	}
+	defer resp.Body.Close()
 
-	// Placeholder - return mock user
-	// This should be replaced with actual auth service call
-	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-	email := "user@example.com"
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return uuid.Nil, "", fmt.Errorf("auth service returned %d: %s", resp.StatusCode, string(body))
+	}
 
-	return userID, email, nil
+	var result struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return uuid.Nil, "", fmt.Errorf("decode response: %w", err)
+	}
+
+	userID, err := uuid.Parse(result.ID)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("parse user ID: %w", err)
+	}
+
+	return userID, result.Email, nil
 }
 
 // validateBasicAuth validates username/password with auth service
 func (m *AuthMiddleware) validateBasicAuth(username, password string) (uuid.UUID, string, error) {
-	// In production, call auth service to validate credentials
-	// For CalDAV clients that don't support OAuth
+	loginBody := fmt.Sprintf(`{"email":"%s","password":"%s"}`, username, password)
+	req, err := http.NewRequest("POST", m.authServiceURL+"/api/auth/login", strings.NewReader(loginBody))
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
 
-	// Placeholder - return mock user
-	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("auth service request: %w", err)
+	}
+	defer resp.Body.Close()
 
-	return userID, username, nil
+	if resp.StatusCode != http.StatusOK {
+		return uuid.Nil, "", fmt.Errorf("invalid credentials")
+	}
+
+	var result struct {
+		User struct {
+			ID    string `json:"id"`
+			Email string `json:"email"`
+		} `json:"user"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return uuid.Nil, "", fmt.Errorf("decode response: %w", err)
+	}
+
+	userID, err := uuid.Parse(result.User.ID)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("parse user ID: %w", err)
+	}
+
+	return userID, result.User.Email, nil
 }
 
 // OptionalAuth allows unauthenticated requests but sets user if token present

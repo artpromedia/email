@@ -15,6 +15,7 @@ import {
   useUpdateDomainBranding,
   useUploadDomainLogo,
 } from "@/lib/admin/domain-api";
+import { sanitizeAdminHtml } from "@/lib/sanitize";
 
 // ============================================================
 // TYPES
@@ -324,7 +325,7 @@ export function DomainBrandingTab({ domainId }: DomainBrandingTabProps) {
               </div>
               <div
                 className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800"
-                dangerouslySetInnerHTML={{ __html: branding.footerHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeAdminHtml(branding.footerHtml) }}
               />
             </div>
           )}
