@@ -139,22 +139,18 @@ func (s *WebhookService) DispatchEvent(ctx context.Context, orgID uuid.UUID, eve
 
 	// Create payload
 	payload := &models.WebhookPayload{
-		Event:     event.EventType,
+		Event:     models.WebhookEventType(event.EventType),
 		Timestamp: event.Timestamp,
-		MessageID: event.MessageID,
+		MessageID: event.MessageID.String(),
 		Recipient: event.Recipient,
-		Data: map[string]any{
-			"event_id":   event.ID.String(),
-			"user_agent": event.UserAgent,
-			"ip_address": event.IPAddress,
-			"url":        event.URL,
-			"metadata":   event.Metadata,
-		},
+		UserAgent: event.UserAgent,
+		IPAddress: event.IPAddress,
+		URL:       event.URL,
 	}
 
 	if event.BounceType != "" {
-		payload.Data["bounce_type"] = event.BounceType
-		payload.Data["bounce_reason"] = event.BounceReason
+		payload.BounceType = event.BounceType
+		payload.Reason = event.BounceReason
 	}
 
 	// Queue for dispatch
@@ -246,11 +242,9 @@ func (s *WebhookService) TestWebhook(ctx context.Context, webhook *models.Webhoo
 	testPayload := &models.WebhookPayload{
 		Event:     "test",
 		Timestamp: time.Now(),
-		MessageID: uuid.New(),
+		MessageID: uuid.New().String(),
 		Recipient: "test@example.com",
-		Data: map[string]any{
-			"message": "This is a test webhook delivery",
-		},
+		Reason:    "This is a test webhook delivery",
 	}
 
 	body, _ := json.Marshal(testPayload)

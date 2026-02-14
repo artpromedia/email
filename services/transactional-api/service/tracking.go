@@ -369,7 +369,7 @@ func (s *TrackingService) BuildUnsubscribeURL(messageID, domainID, recipient str
 	data.Set("e", recipient)
 
 	return fmt.Sprintf("%s/unsubscribe?%s",
-		s.config.Tracking.TrackingURL,
+		s.config.Tracking.TrackingHost,
 		data.Encode(),
 	)
 }
