@@ -267,6 +267,18 @@ export function Header({ className }: HeaderProps) {
                           Organization
                         </Link>
                       )}
+                      {(user.role === "domain_admin" ||
+                        user.role === "org_admin" ||
+                        user.role === "super_admin") && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+                        >
+                          <Shield className="h-4 w-4" />
+                          Domain Admin
+                        </Link>
+                      )}
                       <Link
                         href="/settings"
                         onClick={() => setShowUserMenu(false)}
