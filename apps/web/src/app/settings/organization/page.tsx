@@ -82,12 +82,23 @@ export default function OrganizationSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // TODO: Implement save organization API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/organization`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(organization),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to save organization: ${response.statusText}`);
+      }
       alert("Organization settings saved");
     } catch (error) {
       console.error("Failed to save:", error);
-      alert("Failed to save organization settings");
+      alert(error instanceof Error ? error.message : "Failed to save organization settings");
     } finally {
       setSaving(false);
     }

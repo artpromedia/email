@@ -71,8 +71,10 @@ interface ContactGroup {
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [_loading, setLoading] = useState(true);
-  const [_error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [filterActive, setFilterActive] = useState(false);
   const [groups, setGroups] = useState<ContactGroup[]>([
     { id: "all", name: "All Contacts", count: 0 },
     { id: "favorites", name: "Favorites", count: 0 },
@@ -136,31 +138,48 @@ export default function ContactsPage() {
 
   const handleAddContact = async () => {
     try {
-      const response = await fetch("/api/v1/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...newContact,
-          favorite: false,
-          groups: [],
-        }),
-      });
-      if (response.ok) {
-        const result = (await response.json()) as { contact: Contact };
-        setContacts([...contacts, result.contact]);
-        setAddDialogOpen(false);
-        setNewContact({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          company: "",
-          jobTitle: "",
-          address: "",
+      const token = localStorage.getItem("accessToken");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      if (editingContactId) {
+        const response = await fetch(`/api/v1/contacts/${editingContactId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(newContact),
         });
+        if (response.ok) {
+          const result = (await response.json()) as { contact: Contact };
+          setContacts(contacts.map((c) => (c.id === editingContactId ? result.contact : c)));
+        }
+      } else {
+        const response = await fetch("/api/v1/contacts", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            ...newContact,
+            favorite: false,
+            groups: [],
+          }),
+        });
+        if (response.ok) {
+          const result = (await response.json()) as { contact: Contact };
+          setContacts([...contacts, result.contact]);
+        }
       }
+      setAddDialogOpen(false);
+      setEditingContactId(null);
+      setNewContact({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        company: "",
+        jobTitle: "",
+        address: "",
+      });
     } catch (err) {
-      console.error("Failed to add contact:", err);
+      console.error("Failed to save contact:", err);
     }
   };
 
@@ -201,25 +220,120 @@ export default function ContactsPage() {
     }
   };
 
+  const handleEditContact = (contact: Contact) => {
+    setNewContact({
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      email: contact.email,
+      phone: contact.phone ?? "",
+      company: contact.company ?? "",
+      jobTitle: contact.jobTitle ?? "",
+      address: contact.address ?? "",
+    });
+    setEditingContactId(contact.id);
+    setAddDialogOpen(true);
+  };
+
+  const handleExportContacts = () => {
+    const csvHeaders = [
+      "First Name",
+      "Last Name",
+      "Email",
+      "Phone",
+      "Company",
+      "Job Title",
+      "Address",
+    ];
+    const rows = contacts.map((c) => [
+      c.firstName,
+      c.lastName,
+      c.email,
+      c.phone ?? "",
+      c.company ?? "",
+      c.jobTitle ?? "",
+      c.address ?? "",
+    ]);
+    const csv = [csvHeaders.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join(
+      "\n"
+    );
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "contacts.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportContacts = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv,.vcf";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const token = localStorage.getItem("accessToken");
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch("/api/v1/contacts/import", {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        });
+        if (response.ok) {
+          const result = (await response.json()) as { contacts: Contact[] };
+          setContacts((prev) => [...prev, ...result.contacts]);
+        }
+      } catch (err) {
+        console.error("Failed to import contacts:", err);
+      }
+    };
+    input.click();
+  };
+
   const getInitials = (contact: Contact) => {
     return `${contact.firstName[0]}${contact.lastName[0]}`.toUpperCase();
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setAddDialogOpen(open);
+    if (!open) setEditingContactId(null);
   };
 
   return (
     <div className="flex h-[calc(100vh-4rem)]">
       {/* Sidebar */}
       <div className="flex w-64 flex-col border-r p-4">
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <Dialog open={addDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
-            <Button className="mb-4 w-full">
+            <Button
+              className="mb-4 w-full"
+              onClick={() => {
+                setEditingContactId(null);
+                setNewContact({
+                  firstName: "",
+                  lastName: "",
+                  email: "",
+                  phone: "",
+                  company: "",
+                  jobTitle: "",
+                  address: "",
+                });
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Contact
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Contact</DialogTitle>
-              <DialogDescription>Enter the contact information below.</DialogDescription>
+              <DialogTitle>{editingContactId ? "Edit Contact" : "Add New Contact"}</DialogTitle>
+              <DialogDescription>
+                {editingContactId
+                  ? "Update the contact information."
+                  : "Enter the contact information below."}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -275,10 +389,18 @@ export default function ContactsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAddDialogOpen(false);
+                  setEditingContactId(null);
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddContact}>Add Contact</Button>
+              <Button onClick={handleAddContact}>
+                {editingContactId ? "Save Changes" : "Add Contact"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -299,11 +421,11 @@ export default function ContactsPage() {
         </div>
 
         <div className="mt-auto space-y-2 border-t pt-4">
-          <Button variant="outline" className="w-full" size="sm">
+          <Button variant="outline" className="w-full" size="sm" onClick={handleImportContacts}>
             <Upload className="mr-2 h-4 w-4" />
             Import
           </Button>
-          <Button variant="outline" className="w-full" size="sm">
+          <Button variant="outline" className="w-full" size="sm" onClick={handleExportContacts}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
@@ -322,200 +444,224 @@ export default function ContactsPage() {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="icon">
+          <Button
+            variant={filterActive ? "default" : "outline"}
+            size="icon"
+            onClick={() => {
+              setFilterActive(!filterActive);
+              setSelectedGroup(filterActive ? "all" : "favorites");
+            }}
+          >
             <Filter className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="flex flex-1">
-          {/* Contact List Panel */}
-          <div className="w-1/2 overflow-auto border-r">
-            {filteredContacts.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p>No contacts found</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {filteredContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    role="button"
-                    tabIndex={0}
-                    className={`flex cursor-pointer items-center gap-4 p-4 hover:bg-muted ${
-                      selectedContact?.id === contact.id ? "bg-muted" : ""
-                    }`}
-                    onClick={() => setSelectedContact(contact)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") setSelectedContact(contact);
-                    }}
-                  >
-                    <Avatar>
-                      <AvatarImage src={contact.avatar} />
-                      <AvatarFallback>{getInitials(contact)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium">
-                          {contact.firstName} {contact.lastName}
-                        </span>
-                        {contact.favorite && (
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        )}
-                      </div>
-                      <div className="truncate text-sm text-muted-foreground">{contact.email}</div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleToggleFavorite(contact.id)}>
-                          <Star className="mr-2 h-4 w-4" />
-                          {contact.favorite ? "Remove from Favorites" : "Add to Favorites"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDeleteContact(contact.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
-            )}
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
-
-          {/* Contact Detail Panel */}
-          <div className="w-1/2 overflow-auto">
-            {selectedContact ? (
-              <div className="p-6">
-                <div className="mb-6 flex items-start gap-6">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={selectedContact.avatar} />
-                    <AvatarFallback className="text-2xl">
-                      {getInitials(selectedContact)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="text-2xl font-bold">
-                      {selectedContact.firstName} {selectedContact.lastName}
-                    </h2>
-                    {selectedContact.jobTitle && (
-                      <p className="text-muted-foreground">
-                        {selectedContact.jobTitle}
-                        {selectedContact.company && ` at ${selectedContact.company}`}
-                      </p>
-                    )}
-                    <div className="mt-4 flex gap-2">
-                      <Button size="sm">
-                        <Mail className="mr-2 h-4 w-4" />
-                        Send Email
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleToggleFavorite(selectedContact.id)}
-                      >
-                        <Star
-                          className={`mr-2 h-4 w-4 ${
-                            selectedContact.favorite ? "fill-yellow-400 text-yellow-400" : ""
-                          }`}
-                        />
-                        {selectedContact.favorite ? "Favorited" : "Favorite"}
-                      </Button>
-                    </div>
-                  </div>
+        ) : error ? (
+          <div className="flex flex-1 items-center justify-center text-center">
+            <div>
+              <p className="font-medium text-red-500">{error}</p>
+              <Button variant="outline" className="mt-2" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-1">
+            {/* Contact List Panel */}
+            <div className="w-1/2 overflow-auto border-r">
+              {filteredContacts.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
+                  <p>No contacts found</p>
                 </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredContacts.map((contact) => (
+                    <div
+                      key={contact.id}
+                      role="button"
+                      tabIndex={0}
+                      className={`flex cursor-pointer items-center gap-4 p-4 hover:bg-muted ${
+                        selectedContact?.id === contact.id ? "bg-muted" : ""
+                      }`}
+                      onClick={() => setSelectedContact(contact)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelectedContact(contact);
+                      }}
+                    >
+                      <Avatar>
+                        <AvatarImage src={contact.avatar} />
+                        <AvatarFallback>{getInitials(contact)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium">
+                            {contact.firstName} {contact.lastName}
+                          </span>
+                          {contact.favorite && (
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          )}
+                        </div>
+                        <div className="truncate text-sm text-muted-foreground">
+                          {contact.email}
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleToggleFavorite(contact.id)}>
+                            <Star className="mr-2 h-4 w-4" />
+                            {contact.favorite ? "Remove from Favorites" : "Add to Favorites"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditContact(contact)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDeleteContact(contact.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Contact Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <div className="text-sm text-muted-foreground">Email</div>
-                        <a
-                          href={`mailto:${selectedContact.email}`}
-                          className="text-primary hover:underline"
+            {/* Contact Detail Panel */}
+            <div className="w-1/2 overflow-auto">
+              {selectedContact ? (
+                <div className="p-6">
+                  <div className="mb-6 flex items-start gap-6">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={selectedContact.avatar} />
+                      <AvatarFallback className="text-2xl">
+                        {getInitials(selectedContact)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        {selectedContact.firstName} {selectedContact.lastName}
+                      </h2>
+                      {selectedContact.jobTitle && (
+                        <p className="text-muted-foreground">
+                          {selectedContact.jobTitle}
+                          {selectedContact.company && ` at ${selectedContact.company}`}
+                        </p>
+                      )}
+                      <div className="mt-4 flex gap-2">
+                        <Button size="sm">
+                          <Mail className="mr-2 h-4 w-4" />
+                          Send Email
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleToggleFavorite(selectedContact.id)}
                         >
-                          {selectedContact.email}
-                        </a>
+                          <Star
+                            className={`mr-2 h-4 w-4 ${
+                              selectedContact.favorite ? "fill-yellow-400 text-yellow-400" : ""
+                            }`}
+                          />
+                          {selectedContact.favorite ? "Favorited" : "Favorite"}
+                        </Button>
                       </div>
                     </div>
-                    {selectedContact.phone && (
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Contact Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       <div className="flex items-center gap-3">
-                        <Phone className="h-5 w-5 text-muted-foreground" />
+                        <Mail className="h-5 w-5 text-muted-foreground" />
                         <div>
-                          <div className="text-sm text-muted-foreground">Phone</div>
+                          <div className="text-sm text-muted-foreground">Email</div>
                           <a
-                            href={`tel:${selectedContact.phone}`}
+                            href={`mailto:${selectedContact.email}`}
                             className="text-primary hover:underline"
                           >
-                            {selectedContact.phone}
+                            {selectedContact.email}
                           </a>
                         </div>
                       </div>
-                    )}
-                    {selectedContact.company && (
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <div className="text-sm text-muted-foreground">Company</div>
-                          <div>{selectedContact.company}</div>
+                      {selectedContact.phone && (
+                        <div className="flex items-center gap-3">
+                          <Phone className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="text-sm text-muted-foreground">Phone</div>
+                            <a
+                              href={`tel:${selectedContact.phone}`}
+                              className="text-primary hover:underline"
+                            >
+                              {selectedContact.phone}
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {selectedContact.address && (
-                      <div className="flex items-center gap-3">
-                        <MapPin className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <div className="text-sm text-muted-foreground">Address</div>
-                          <div>{selectedContact.address}</div>
+                      )}
+                      {selectedContact.company && (
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="text-sm text-muted-foreground">Company</div>
+                            <div>{selectedContact.company}</div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {selectedContact.groups.length > 0 && (
-                  <Card className="mt-4">
-                    <CardHeader>
-                      <CardTitle>Groups</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedContact.groups.map((group) => (
-                          <Badge key={group} variant="secondary">
-                            {group.charAt(0).toUpperCase() + group.slice(1)}
-                          </Badge>
-                        ))}
-                      </div>
+                      )}
+                      {selectedContact.address && (
+                        <div className="flex items-center gap-3">
+                          <MapPin className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="text-sm text-muted-foreground">Address</div>
+                            <div>{selectedContact.address}</div>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                )}
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                  <p>Select a contact to view details</p>
+
+                  {selectedContact.groups.length > 0 && (
+                    <Card className="mt-4">
+                      <CardHeader>
+                        <CardTitle>Groups</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedContact.groups.map((group) => (
+                            <Badge key={group} variant="secondary">
+                              {group.charAt(0).toUpperCase() + group.slice(1)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
+                    <p>Select a contact to view details</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

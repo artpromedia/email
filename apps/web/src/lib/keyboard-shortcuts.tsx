@@ -513,7 +513,7 @@ export function useMailKeyboardShortcuts() {
       disableInInput: true,
       handler: () => {
         if (focusedEmailId) {
-          router.push(`/mail/${focusedEmailId}`);
+          router.push(`/mail/inbox/${focusedEmailId}`);
         }
       },
     });
@@ -525,7 +525,7 @@ export function useMailKeyboardShortcuts() {
       disableInInput: true,
       handler: () => {
         if (focusedEmailId) {
-          router.push(`/mail/${focusedEmailId}`);
+          router.push(`/mail/inbox/${focusedEmailId}`);
         }
       },
     });
@@ -536,8 +536,8 @@ export function useMailKeyboardShortcuts() {
       category: "navigation",
       disableInInput: true,
       handler: () => {
-        if (pathname.startsWith("/mail/") && pathname !== "/mail") {
-          router.push("/mail");
+        if (pathname.startsWith("/mail/inbox/") && pathname !== "/mail/inbox") {
+          router.push("/mail/inbox");
         }
       },
     });
@@ -549,7 +549,7 @@ export function useMailKeyboardShortcuts() {
       description: "Go to Inbox",
       category: "navigation",
       disableInInput: true,
-      handler: () => router.push("/mail?folder=inbox"),
+      handler: () => router.push("/mail/inbox"),
     });
 
     register({
@@ -558,7 +558,7 @@ export function useMailKeyboardShortcuts() {
       description: "Go to Starred",
       category: "navigation",
       disableInInput: true,
-      handler: () => router.push("/mail?folder=starred"),
+      handler: () => router.push("/mail/inbox?folder=starred"),
     });
 
     register({
@@ -567,7 +567,7 @@ export function useMailKeyboardShortcuts() {
       description: "Go to Drafts",
       category: "navigation",
       disableInInput: true,
-      handler: () => router.push("/mail?folder=drafts"),
+      handler: () => router.push("/mail/inbox?folder=drafts"),
     });
 
     register({
@@ -576,7 +576,7 @@ export function useMailKeyboardShortcuts() {
       description: "Go to Sent",
       category: "navigation",
       disableInInput: true,
-      handler: () => router.push("/mail?folder=sent"),
+      handler: () => router.push("/mail/inbox?folder=sent"),
     });
 
     // --- ACTIONS ---

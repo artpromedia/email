@@ -97,9 +97,26 @@ export default function PreferencesSettingsPage() {
     void fetchPreferences();
   }, []);
 
-  const handleSave = () => {
-    // TODO: Implement save preferences API call
-    alert("Preferences saved");
+  const handleSave = async () => {
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/preferences`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(preferences),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to save preferences: ${response.statusText}`);
+      }
+      alert("Preferences saved");
+    } catch (error) {
+      console.error("Failed to save preferences:", error);
+      alert(error instanceof Error ? error.message : "Failed to save preferences");
+    }
   };
 
   return (

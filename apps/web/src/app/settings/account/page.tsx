@@ -71,13 +71,24 @@ export default function AccountSettingsPage() {
     return user.email.slice(0, 2).toUpperCase();
   };
 
-  const onSubmit = async (_data: ProfileFormData) => {
+  const onSubmit = async (data: ProfileFormData) => {
     setIsSaving(true);
     setSaveSuccess(false);
 
     try {
-      // FUTURE: Implement profile update API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to save profile: ${response.statusText}`);
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {

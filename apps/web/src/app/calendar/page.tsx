@@ -77,9 +77,10 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const [addEventOpen, setAddEventOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [_loading, setLoading] = useState(true);
-  const [_error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -178,7 +179,7 @@ export default function CalendarPage() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1));
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     const dateParts = newEvent.date.split("-").map(Number);
     const startParts = newEvent.startTime.split(":").map(Number);
     const endParts = newEvent.endTime.split(":").map(Number);
@@ -190,19 +191,65 @@ export default function CalendarPage() {
     const endHour = endParts[0] ?? 0;
     const endMin = endParts[1] ?? 0;
 
-    const event: CalendarEvent = {
-      id: Date.now().toString(),
+    const eventData = {
       title: newEvent.title,
       description: newEvent.description || undefined,
-      start: new Date(year, month - 1, day, startHour, startMin),
-      end: new Date(year, month - 1, day, endHour, endMin),
+      start: new Date(year, month - 1, day, startHour, startMin).toISOString(),
+      end: new Date(year, month - 1, day, endHour, endMin).toISOString(),
       allDay: newEvent.allDay,
       location: newEvent.location || undefined,
       color: newEvent.color,
     };
 
-    setEvents([...events, event]);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      if (editingEventId) {
+        const response = await fetch(`/api/v1/calendar/${editingEventId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(eventData),
+        });
+        if (response.ok) {
+          const result = (await response.json()) as { event: CalendarEvent };
+          setEvents(
+            events.map((e) =>
+              e.id === editingEventId
+                ? {
+                    ...result.event,
+                    start: new Date(result.event.start),
+                    end: new Date(result.event.end),
+                  }
+                : e
+            )
+          );
+        }
+      } else {
+        const response = await fetch("/api/v1/calendar", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(eventData),
+        });
+        if (response.ok) {
+          const result = (await response.json()) as { event: CalendarEvent };
+          setEvents([
+            ...events,
+            {
+              ...result.event,
+              start: new Date(result.event.start),
+              end: new Date(result.event.end),
+            },
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to save event:", err);
+    }
+
     setAddEventOpen(false);
+    setEditingEventId(null);
     setNewEvent({
       title: "",
       description: "",
@@ -219,6 +266,22 @@ export default function CalendarPage() {
     if (confirm("Are you sure you want to delete this event?")) {
       setEvents(events.filter((e) => e.id !== eventId));
     }
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    setNewEvent({
+      title: event.title,
+      description: event.description ?? "",
+      date: `${event.start.getFullYear()}-${pad(event.start.getMonth() + 1)}-${pad(event.start.getDate())}`,
+      startTime: `${pad(event.start.getHours())}:${pad(event.start.getMinutes())}`,
+      endTime: `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`,
+      allDay: event.allDay,
+      location: event.location ?? "",
+      color: event.color,
+    });
+    setEditingEventId(event.id);
+    setAddEventOpen(true);
   };
 
   const formatTime = (date: Date) => {
@@ -270,17 +333,39 @@ export default function CalendarPage() {
                 </Button>
               ))}
             </div>
-            <Dialog open={addEventOpen} onOpenChange={setAddEventOpen}>
+            <Dialog
+              open={addEventOpen}
+              onOpenChange={(open: boolean) => {
+                setAddEventOpen(open);
+                if (!open) setEditingEventId(null);
+              }}
+            >
               <DialogTrigger asChild>
-                <Button>
+                <Button
+                  onClick={() => {
+                    setEditingEventId(null);
+                    setNewEvent({
+                      title: "",
+                      description: "",
+                      date: "",
+                      startTime: "09:00",
+                      endTime: "10:00",
+                      allDay: false,
+                      location: "",
+                      color: "bg-blue-500",
+                    });
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Add New Event</DialogTitle>
-                  <DialogDescription>Create a new calendar event.</DialogDescription>
+                  <DialogTitle>{editingEventId ? "Edit Event" : "Add New Event"}</DialogTitle>
+                  <DialogDescription>
+                    {editingEventId ? "Update the calendar event." : "Create a new calendar event."}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
@@ -361,72 +446,94 @@ export default function CalendarPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setAddEventOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAddEventOpen(false);
+                      setEditingEventId(null);
+                    }}
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleAddEvent}>Add Event</Button>
+                  <Button onClick={handleAddEvent}>
+                    {editingEventId ? "Save Changes" : "Add Event"}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="flex-1 overflow-hidden rounded-lg border">
-          <div className="grid grid-cols-7 border-b">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div
-                key={day}
-                className="border-r p-2 text-center text-sm font-medium text-muted-foreground last:border-r-0"
-              >
-                {day}
-              </div>
-            ))}
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
-          <div className="grid h-[calc(100%-40px)] flex-1 grid-cols-7 grid-rows-6">
-            {days.map((day, index) => (
-              <div
-                key={index}
-                role="button"
-                tabIndex={0}
-                className={`min-h-[100px] cursor-pointer border-b border-r p-1 hover:bg-muted/50 ${
-                  !day.isCurrentMonth ? "bg-muted/30" : ""
-                } ${selectedDate?.getTime() === day.date.getTime() ? "bg-primary/10" : ""}`}
-                onClick={() => setSelectedDate(day.date)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setSelectedDate(day.date);
-                }}
-              >
+        ) : error ? (
+          <div className="flex flex-1 items-center justify-center text-center">
+            <div>
+              <p className="font-medium text-red-500">{error}</p>
+              <Button variant="outline" className="mt-2" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-hidden rounded-lg border">
+            <div className="grid grid-cols-7 border-b">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div
-                  className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
-                    day.isToday
-                      ? "bg-primary text-primary-foreground"
-                      : !day.isCurrentMonth
-                        ? "text-muted-foreground"
-                        : ""
-                  }`}
+                  key={day}
+                  className="border-r p-2 text-center text-sm font-medium text-muted-foreground last:border-r-0"
                 >
-                  {day.date.getDate()}
+                  {day}
                 </div>
-                <div className="space-y-1">
-                  {day.events.slice(0, 3).map((event) => (
-                    <div
-                      key={event.id}
-                      className={`truncate rounded px-1 py-0.5 text-xs text-white ${event.color}`}
-                    >
-                      {event.allDay ? event.title : `${formatTime(event.start)} ${event.title}`}
-                    </div>
-                  ))}
-                  {day.events.length > 3 && (
-                    <div className="text-xs text-muted-foreground">
-                      +{day.events.length - 3} more
-                    </div>
-                  )}
+              ))}
+            </div>
+            <div className="grid h-[calc(100%-40px)] flex-1 grid-cols-7 grid-rows-6">
+              {days.map((day, index) => (
+                <div
+                  key={index}
+                  role="button"
+                  tabIndex={0}
+                  className={`min-h-[100px] cursor-pointer border-b border-r p-1 hover:bg-muted/50 ${
+                    !day.isCurrentMonth ? "bg-muted/30" : ""
+                  } ${selectedDate?.getTime() === day.date.getTime() ? "bg-primary/10" : ""}`}
+                  onClick={() => setSelectedDate(day.date)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedDate(day.date);
+                  }}
+                >
+                  <div
+                    className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
+                      day.isToday
+                        ? "bg-primary text-primary-foreground"
+                        : !day.isCurrentMonth
+                          ? "text-muted-foreground"
+                          : ""
+                    }`}
+                  >
+                    {day.date.getDate()}
+                  </div>
+                  <div className="space-y-1">
+                    {day.events.slice(0, 3).map((event) => (
+                      <div
+                        key={event.id}
+                        className={`truncate rounded px-1 py-0.5 text-xs text-white ${event.color}`}
+                      >
+                        {event.allDay ? event.title : `${formatTime(event.start)} ${event.title}`}
+                      </div>
+                    ))}
+                    {day.events.length > 3 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{day.events.length - 3} more
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Event Sidebar */}
@@ -460,7 +567,7 @@ export default function CalendarPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditEvent(event)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>

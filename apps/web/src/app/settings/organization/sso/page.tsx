@@ -113,42 +113,94 @@ export default function SSOSettingsPage() {
     alert("Copied to clipboard");
   };
 
-  const handleAddProvider = () => {
-    const provider: SSOProvider = {
-      id: Date.now().toString(),
-      name: newProvider.name,
-      type: newProvider.type,
-      enabled: true,
-      entityId: newProvider.entityId || undefined,
-      ssoUrl: newProvider.ssoUrl || undefined,
-      certificate: newProvider.certificate || undefined,
-      clientId: newProvider.clientId || undefined,
-      issuer: newProvider.issuer || undefined,
-      domains: [],
-      createdAt: new Date().toISOString(),
-    };
-    setProviders([...providers, provider]);
-    setAddDialogOpen(false);
-    setNewProvider({
-      name: "",
-      type: "saml",
-      entityId: "",
-      ssoUrl: "",
-      certificate: "",
-      clientId: "",
-      clientSecret: "",
-      issuer: "",
-    });
-  };
-
-  const handleDeleteProvider = (providerId: string) => {
-    if (confirm("Are you sure you want to delete this SSO provider?")) {
-      setProviders(providers.filter((p) => p.id !== providerId));
+  const handleAddProvider = async () => {
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/sso/providers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(newProvider),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to add provider: ${response.statusText}`);
+      }
+      const data = (await response.json()) as { provider?: SSOProvider };
+      const provider: SSOProvider = data.provider ?? {
+        id: Date.now().toString(),
+        name: newProvider.name,
+        type: newProvider.type,
+        enabled: true,
+        entityId: newProvider.entityId || undefined,
+        ssoUrl: newProvider.ssoUrl || undefined,
+        certificate: newProvider.certificate || undefined,
+        clientId: newProvider.clientId || undefined,
+        issuer: newProvider.issuer || undefined,
+        domains: [],
+        createdAt: new Date().toISOString(),
+      };
+      setProviders([...providers, provider]);
+      setAddDialogOpen(false);
+      setNewProvider({
+        name: "",
+        type: "saml",
+        entityId: "",
+        ssoUrl: "",
+        certificate: "",
+        clientId: "",
+        clientSecret: "",
+        issuer: "",
+      });
+    } catch (error) {
+      console.error("Failed to add provider:", error);
+      alert(error instanceof Error ? error.message : "Failed to add provider");
     }
   };
 
-  const handleToggleProvider = (providerId: string, enabled: boolean) => {
-    setProviders(providers.map((p) => (p.id === providerId ? { ...p, enabled } : p)));
+  const handleDeleteProvider = async (providerId: string) => {
+    if (!confirm("Are you sure you want to delete this SSO provider?")) return;
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/sso/providers/${providerId}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete provider: ${response.statusText}`);
+      }
+      setProviders(providers.filter((p) => p.id !== providerId));
+    } catch (error) {
+      console.error("Failed to delete provider:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete provider");
+    }
+  };
+
+  const handleToggleProvider = async (providerId: string, enabled: boolean) => {
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/sso/providers/${providerId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to toggle provider: ${response.statusText}`);
+      }
+      setProviders(providers.map((p) => (p.id === providerId ? { ...p, enabled } : p)));
+    } catch (error) {
+      console.error("Failed to toggle provider:", error);
+      alert(error instanceof Error ? error.message : "Failed to toggle provider");
+    }
   };
 
   return (

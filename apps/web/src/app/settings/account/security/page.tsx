@@ -68,24 +68,77 @@ export default function SecuritySettingsPage() {
     void fetchSessions();
   }, []);
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert("Passwords do not match");
       return;
     }
-    // TODO: Implement password change API call
-    alert("Password changed successfully");
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      if (!response.ok) {
+        const err = (await response.json().catch(() => ({}))) as { message?: string };
+        throw new Error(err.message || response.statusText);
+      }
+      alert("Password changed successfully");
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      console.error("Failed to change password:", error);
+      alert(error instanceof Error ? error.message : "Failed to change password");
+    }
   };
 
-  const handleRevokeSession = (sessionId: string) => {
-    // TODO: Implement session revocation API call
-    alert(`Session ${sessionId} revoked`);
+  const handleRevokeSession = async (sessionId: string) => {
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/sessions/${sessionId}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to revoke session: ${response.statusText}`);
+      }
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      alert(`Session ${sessionId} revoked`);
+    } catch (error) {
+      console.error("Failed to revoke session:", error);
+      alert(error instanceof Error ? error.message : "Failed to revoke session");
+    }
   };
 
-  const handleRevokeAllSessions = () => {
-    // TODO: Implement revoke all sessions API call
-    alert("All other sessions revoked");
+  const handleRevokeAllSessions = async () => {
+    try {
+      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_URL}/api/v1/auth/sessions`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to revoke sessions: ${response.statusText}`);
+      }
+      setSessions((prev) => prev.filter((s) => s.current));
+      alert("All other sessions revoked");
+    } catch (error) {
+      console.error("Failed to revoke all sessions:", error);
+      alert(error instanceof Error ? error.message : "Failed to revoke sessions");
+    }
   };
 
   return (
@@ -184,7 +237,31 @@ export default function SecuritySettingsPage() {
                 Require a verification code when signing in
               </div>
             </div>
-            <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
+            <Switch
+              checked={twoFactorEnabled}
+              onCheckedChange={async (checked: boolean) => {
+                try {
+                  const API_URL =
+                    process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+                  const token = localStorage.getItem("accessToken");
+                  const response = await fetch(`${API_URL}/api/v1/auth/2fa/toggle`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({ enabled: checked }),
+                  });
+                  if (!response.ok) {
+                    throw new Error(`Failed to toggle 2FA: ${response.statusText}`);
+                  }
+                  setTwoFactorEnabled(checked);
+                } catch (error) {
+                  console.error("Failed to toggle 2FA:", error);
+                  alert(error instanceof Error ? error.message : "Failed to toggle 2FA");
+                }
+              }}
+            />
           </div>
           {twoFactorEnabled && (
             <div className="rounded-lg border bg-muted/50 p-4">
