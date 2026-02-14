@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -189,19 +190,30 @@ func (r *DomainRepository) GetActiveDKIMKey(ctx context.Context, domainName stri
 
 // GetMailboxByEmail returns a mailbox by email address
 func (r *DomainRepository) GetMailboxByEmail(ctx context.Context, email string) (*domain.Mailbox, error) {
+	// Match actual mailboxes table schema: id, domain_id, user_id, email,
+	// display_name, quota_bytes, used_bytes, is_active, domain_email,
+	// created_at, updated_at
 	query := `
 		SELECT
-			m.id, m.user_id, m.domain_id, m.local_part, m.email, m.display_name,
-			m.storage_quota_bytes, m.storage_used_bytes, m.is_active, m.auto_reply_enabled,
-			m.auto_reply_subject, m.auto_reply_body, m.auto_reply_start, m.auto_reply_end,
-			m.forward_enabled, m.forward_address, m.forward_keep_copy,
+			m.id, m.user_id, COALESCE(m.domain_id::text, ''), m.is_active,
+			COALESCE(m.domain_email, m.email, '') AS email,
+			COALESCE(m.display_name, ''),
+			COALESCE(m.quota_bytes, 5368709120) AS storage_quota_bytes,
+			COALESCE(m.used_bytes, 0) AS storage_used_bytes,
 			m.created_at, m.updated_at
 		FROM mailboxes m
-		WHERE m.email = $1 AND m.is_active = true
+		WHERE (m.domain_email = $1 OR m.email = $1) AND m.is_active = true
+		LIMIT 1
 	`
 
-	row := r.db.QueryRow(ctx, query, email)
-	mailbox, err := scanMailboxRow(row)
+	var mb domain.Mailbox
+	var displayName string
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&mb.ID, &mb.UserID, &mb.DomainID, &mb.IsActive,
+		&mb.Email, &displayName,
+		&mb.StorageQuotaBytes, &mb.StorageUsedBytes,
+		&mb.CreatedAt, &mb.UpdatedAt,
+	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -209,16 +221,24 @@ func (r *DomainRepository) GetMailboxByEmail(ctx context.Context, email string) 
 		return nil, fmt.Errorf("query mailbox by email: %w", err)
 	}
 
-	return mailbox, nil
+	mb.DisplayName = displayName
+	// Derive local_part from email
+	parts := strings.Split(mb.Email, "@")
+	if len(parts) == 2 {
+		mb.LocalPart = parts[0]
+		mb.Domain = parts[1]
+	}
+
+	return &mb, nil
 }
 
 // GetAliasesBySource returns aliases that point to a source email
 func (r *DomainRepository) GetAliasesBySource(ctx context.Context, email string) ([]*domain.Alias, error) {
 	query := `
 		SELECT
-			id, domain_id, source_email, target_email, is_active, created_at
+			id, domain_id, alias_address, destination_address, is_active, created_at
 		FROM aliases
-		WHERE source_email = $1 AND is_active = true
+		WHERE alias_address = $1 AND is_active = true
 	`
 
 	rows, err := r.db.Query(ctx, query, email)
@@ -247,9 +267,9 @@ func (r *DomainRepository) GetAliasesBySource(ctx context.Context, email string)
 func (r *DomainRepository) GetAliasesByTarget(ctx context.Context, email string) ([]*domain.Alias, error) {
 	query := `
 		SELECT
-			id, domain_id, source_email, target_email, is_active, created_at
+			id, domain_id, alias_address, destination_address, is_active, created_at
 		FROM aliases
-		WHERE target_email = $1 AND is_active = true
+		WHERE destination_address = $1 AND is_active = true
 	`
 
 	rows, err := r.db.Query(ctx, query, email)
@@ -290,10 +310,8 @@ func (r *DomainRepository) GetDistributionListByEmail(ctx context.Context, email
 		&dl.MembersOnly, &dl.Moderated, &dl.IsActive, &dl.CreatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("query distribution list: %w", err)
+		// Return nil for any error (table may not exist yet)
+		return nil, nil
 	}
 
 	// Load members

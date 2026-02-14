@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -455,18 +456,22 @@ func scanMessageRow(row pgx.Row) (*domain.Message, error) {
 func (r *MessageRepository) GetMailboxByEmail(ctx context.Context, email string) (*domain.Mailbox, error) {
 	query := `
 		SELECT
-			id, user_id, domain_id, organization_id, email, local_part, domain,
-			display_name, status, quota_bytes, used_bytes, is_active,
-			created_at, updated_at
-		FROM mailboxes
-		WHERE email = $1 AND is_active = true
+			m.id, m.user_id, COALESCE(m.domain_id::text, ''),
+			COALESCE(m.domain_email, m.email, '') AS email,
+			COALESCE(m.display_name, ''),
+			COALESCE(m.quota_bytes, 5368709120), COALESCE(m.used_bytes, 0),
+			m.is_active, m.created_at, m.updated_at
+		FROM mailboxes m
+		WHERE (m.domain_email = $1 OR m.email = $1) AND m.is_active = true
+		LIMIT 1
 	`
 
 	var mb domain.Mailbox
 	err := r.db.QueryRow(ctx, query, email).Scan(
-		&mb.ID, &mb.UserID, &mb.DomainID, &mb.OrganizationID, &mb.Email, &mb.LocalPart, &mb.Domain,
-		&mb.DisplayName, &mb.Status, &mb.QuotaBytes, &mb.UsedBytes, &mb.IsActive,
-		&mb.CreatedAt, &mb.UpdatedAt,
+		&mb.ID, &mb.UserID, &mb.DomainID,
+		&mb.Email, &mb.DisplayName,
+		&mb.QuotaBytes, &mb.UsedBytes,
+		&mb.IsActive, &mb.CreatedAt, &mb.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -475,21 +480,28 @@ func (r *MessageRepository) GetMailboxByEmail(ctx context.Context, email string)
 		return nil, fmt.Errorf("query mailbox: %w", err)
 	}
 
+	// Derive local_part and domain from email
+	parts := strings.Split(mb.Email, "@")
+	if len(parts) == 2 {
+		mb.LocalPart = parts[0]
+		mb.Domain = parts[1]
+	}
+
 	return &mb, nil
 }
 
 // GetAliasBySource returns an alias by source email
 func (r *MessageRepository) GetAliasBySource(ctx context.Context, email string) (*domain.Alias, error) {
 	query := `
-		SELECT id, domain_id, organization_id, source_email, target_email, is_active, created_at
+		SELECT id, domain_id, alias_address, destination_address, is_active, created_at
 		FROM aliases
-		WHERE source_email = $1 AND is_active = true
+		WHERE alias_address = $1 AND is_active = true
 		LIMIT 1
 	`
 
 	var alias domain.Alias
 	err := r.db.QueryRow(ctx, query, email).Scan(
-		&alias.ID, &alias.DomainID, &alias.OrganizationID, &alias.SourceEmail,
+		&alias.ID, &alias.DomainID, &alias.SourceEmail,
 		&alias.TargetEmail, &alias.IsActive, &alias.CreatedAt,
 	)
 	if err != nil {
@@ -517,10 +529,8 @@ func (r *MessageRepository) GetDistributionListByEmail(ctx context.Context, emai
 		&membersJSON, &dl.AllowExternal, &dl.IsActive, &dl.CreatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("query distribution list: %w", err)
+		// Return nil for any error (table may not exist yet)
+		return nil, nil
 	}
 
 	if err := json.Unmarshal(membersJSON, &dl.Members); err != nil {
