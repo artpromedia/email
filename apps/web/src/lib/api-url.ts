@@ -1,57 +1,23 @@
 /**
  * Multi-tenant API URL resolver
  *
- * Dynamically resolves the API base URL based on the current hostname.
- * When the user is on mail.skillancer.com → API goes to api.skillancer.com
- * When the user is on mail.oonrumail.com → API goes to api.oonrumail.com
- *
- * This enables white-label domains where each organization gets their
- * own branded login and API endpoint.
+ * All tenants (including white-label orgs like Skillancer) use the
+ * central OonruMail API at api.oonrumail.com.  White-label domains
+ * (e.g. mail.skillancer.com) are purely cosmetic — the API backend
+ * is always OonruMail.
  */
 
-/** Default API URL used as fallback (baked at build time) */
-const DEFAULT_API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.oonrumail.com";
+/** API URL — always the central OonruMail API */
+const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.oonrumail.com";
 
 /**
- * Derive the API base URL from the current browser hostname.
+ * Return the API base URL.
  *
- * mail.skillancer.com  → https://api.skillancer.com
- * mail.oonrumail.com   → https://api.oonrumail.com
- * app.oonrumail.com    → https://api.oonrumail.com
- * oonrumail.com        → https://api.oonrumail.com
- * localhost:3000       → (uses env var fallback)
+ * Every tenant — mail.skillancer.com, mail.oonrumail.com, localhost —
+ * talks to the same central API (api.oonrumail.com).
  */
 export function getApiBaseUrl(): string {
-  if (typeof window === "undefined") {
-    // Server-side (SSR / API routes): use internal Docker URLs via env var
-    return DEFAULT_API_URL;
-  }
-
-  const hostname = window.location.hostname;
-
-  // Local development: use env var
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return DEFAULT_API_URL;
-  }
-
-  // mail.<domain> → api.<domain>
-  if (hostname.startsWith("mail.")) {
-    const orgDomain = hostname.slice(5); // Remove "mail."
-    return `https://api.${orgDomain}`;
-  }
-
-  // app.<domain> → api.<domain>
-  if (hostname.startsWith("app.")) {
-    const orgDomain = hostname.slice(4); // Remove "app."
-    return `https://api.${orgDomain}`;
-  }
-
-  // Bare domain (e.g. oonrumail.com) → api.<domain>
-  if (!hostname.startsWith("api.") && !hostname.startsWith("admin.")) {
-    return `https://api.${hostname}`;
-  }
-
-  return DEFAULT_API_URL;
+  return API_URL;
 }
 
 /**
