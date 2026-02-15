@@ -21,6 +21,8 @@ import {
   Users,
   Plus,
   Settings,
+  MessageCircle,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@email/ui";
 
@@ -424,6 +426,20 @@ export function MailSidebar({ className }: MailSidebarProps) {
 
       {/* Footer Actions */}
       <div className="border-t border-neutral-200 p-2 dark:border-neutral-700">
+        <button
+          onClick={() => router.push("/mail/chat")}
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span>Chat</span>
+        </button>
+        <button
+          onClick={() => router.push("/mail/calendar")}
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+        >
+          <Calendar className="h-4 w-4" />
+          <span>Calendar</span>
+        </button>
         <button
           onClick={() => router.push("/settings/preferences")}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"

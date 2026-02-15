@@ -360,9 +360,9 @@ export function EmailCompose({ context, onClose, className }: EmailComposeProps)
     setBranding(branding ?? null);
   }, [branding, setBranding]);
 
-  // Initialize compose if not open
+  // Initialize compose if not open (always open on compose page, even without context)
   useEffect(() => {
-    if (!isComposeOpen && context) {
+    if (!isComposeOpen) {
       openCompose(context);
     }
   }, [context, isComposeOpen, openCompose]);
