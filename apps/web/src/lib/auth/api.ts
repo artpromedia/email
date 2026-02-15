@@ -2,7 +2,7 @@
  * Auth API client for authentication operations
  */
 
-import { getAuthApiUrl } from "../api-url";
+import { getAuthApiUrl, getApiBaseUrl } from "../api-url";
 import type {
   LoginRequest,
   LoginResponse,
