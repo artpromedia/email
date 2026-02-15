@@ -564,13 +564,9 @@ export {
 } from "./rate-limiter.js";
 
 // ============================================================
-// Redis Client
+// Redis Client (server-only — import directly from "./redis.js")
 // ============================================================
-export {
-  getRedisClient,
-  getRedisStatus,
-  isRedisAvailable,
-  disconnectRedis,
-  resetRedisClient,
-  type RedisClientOptions,
-} from "./redis.js";
+// NOTE: Redis utilities are NOT re-exported here because redis.ts
+// uses node:module and ioredis which break client/edge webpack builds.
+// Server-side consumers should import from "@email/utils/redis" or
+// the file directly.
