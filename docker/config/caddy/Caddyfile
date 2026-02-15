@@ -132,6 +132,14 @@ admin.oonrumail.com {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove upstream CORS headers to avoid duplicates
+        -Access-Control-Allow-Origin
+        -Access-Control-Allow-Methods
+        -Access-Control-Allow-Headers
+        -Access-Control-Allow-Credentials
+        -Access-Control-Max-Age
+        -Access-Control-Expose-Headers
+        # Set our own CORS headers
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         Access-Control-Allow-Headers "Authorization, Content-Type, X-API-Key, X-Request-ID"
         Access-Control-Allow-Credentials "true"
