@@ -282,6 +282,13 @@ func (w *Worker) storeInMailbox(ctx context.Context, msg *domain.Message, mailbo
 			zap.Error(err))
 	}
 
+	// Deliver to mail_messages table (web app UI) — best-effort
+	if err := w.manager.DeliverToMailFolder(ctx, mailbox.ID, msg, data, storagePath); err != nil {
+		w.logger.Warn("Failed to deliver to mail_messages",
+			zap.String("mailbox_id", mailbox.ID),
+			zap.Error(err))
+	}
+
 	// Record quota metrics
 	w.manager.RecordQuotaUsage(mailbox.ID, mailbox.Email, newUsedBytes, quotaBytes)
 

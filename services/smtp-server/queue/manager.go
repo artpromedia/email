@@ -484,6 +484,13 @@ func (m *Manager) RecordMailboxMessage(ctx context.Context, mailboxID string, ms
 	return m.msgRepo.RecordMailboxMessage(ctx, mailboxID, msg, storagePath, size)
 }
 
+// DeliverToMailFolder parses a raw email and inserts it into the mail_messages
+// table so it appears in the web app UI. This is called after storing the .eml
+// file and is best-effort — delivery is not affected if this fails.
+func (m *Manager) DeliverToMailFolder(ctx context.Context, mailboxID string, msg *domain.Message, rawData []byte, storagePath string) error {
+	return m.msgRepo.DeliverToMailFolder(ctx, mailboxID, msg, rawData, storagePath)
+}
+
 // AtomicQuotaCheckAndUpdate performs atomic quota verification and update.
 // Returns newUsedBytes, quotaBytes, and error (repository.ErrQuotaExceeded if exceeded).
 func (m *Manager) AtomicQuotaCheckAndUpdate(ctx context.Context, mailboxID string, additionalBytes int64) (int64, int64, error) {
