@@ -562,3 +562,15 @@ export {
   type RateLimitConfig,
   type RateLimitTier,
 } from "./rate-limiter.js";
+
+// ============================================================
+// Redis Client
+// ============================================================
+export {
+  getRedisClient,
+  getRedisStatus,
+  isRedisAvailable,
+  disconnectRedis,
+  resetRedisClient,
+  type RedisClientOptions,
+} from "./redis.js";
