@@ -1,4 +1,8 @@
+import * as net from "node:net";
 import { type NextRequest, NextResponse } from "next/server";
+
+const SMTP_HOST = process.env.SMTP_HOST || "smtp-server";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || "25", 10);
 
 /**
  * Decode JWT claims from authorization header
@@ -26,7 +30,7 @@ function decodeJwtClaims(authHeader: string): {
 }
 
 /**
- * Extract user ID from JWT token in authorization header
+ * Extract user ID from JWT token
  */
 function extractUserIdFromToken(authHeader: string): string | null {
   const claims = decodeJwtClaims(authHeader);
@@ -34,59 +38,15 @@ function extractUserIdFromToken(authHeader: string): string | null {
 }
 
 /**
- * Extract email from JWT token in authorization header
+ * Extract email and name from JWT token
  */
-function extractEmailFromToken(authHeader: string): string | null {
+function extractSenderFromToken(authHeader: string): {
+  email: string;
+  name: string;
+} | null {
   const claims = decodeJwtClaims(authHeader);
-  return claims?.email ?? null;
-}
-
-/**
- * Verify user has permission to send from this address
- */
-function verifySenderAuthorization(_userId: string, _fromAddress: string): boolean {
-  // In production: check user's verified sender addresses in database
-  // const authorized = await db.select().from(userAddresses).where(and(eq(userAddresses.userId, userId), eq(userAddresses.email, fromAddress))).first();
-  return true;
-}
-
-/**
- * Check rate limits and quotas for the user
- */
-function checkRateLimits(_userId: string): { allowed: boolean; reason?: string } {
-  // In production: check Redis for rate limit counters
-  // const dailyCount = await redis.get(`email:daily:${userId}`);
-  // if (dailyCount > DAILY_LIMIT) return { allowed: false, reason: 'Daily limit exceeded' };
-  return { allowed: true };
-}
-
-/**
- * Apply domain policies and filters to the email
- */
-function applyDomainPolicies(
-  _domain: string,
-  _email: Record<string, unknown>
-): { allowed: boolean; reason?: string } {
-  // In production: fetch and apply domain policies
-  // const policies = await db.select().from(domainPolicies).where(eq(domainPolicies.domain, domain)).first();
-  return { allowed: true };
-}
-
-/**
- * Queue email for sending via SMTP server
- */
-function queueEmailForSending(email: Record<string, unknown>): void {
-  // In production: add to message queue (Redis, RabbitMQ, etc.)
-  // await messageQueue.add('send-email', email);
-  console.info("Email queued for SMTP delivery:", { messageId: email["messageId"] });
-}
-
-/**
- * Save email to user's Sent folder
- */
-function saveToSentFolder(_userId: string, _email: Record<string, unknown>): void {
-  // In production: save to database
-  // await db.insert(emails).values({ ...email, folder: 'sent', userId });
+  if (!claims?.email) return null;
+  return { email: claims.email, name: claims.name ?? "" };
 }
 
 /**
@@ -95,6 +55,202 @@ function saveToSentFolder(_userId: string, _email: Record<string, unknown>): voi
 function toRecipientArray(value: string | string[] | undefined): string[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * Escape special characters for MIME header encoding
+ */
+function mimeEncode(text: string): string {
+  // If ASCII-only and no special chars, return as-is
+  if (/^[\x20-\x7E]*$/.test(text)) return text;
+  // Use RFC 2047 Q-encoding
+  return `=?UTF-8?B?${Buffer.from(text).toString("base64")}?=`;
+}
+
+/**
+ * Format an email address for the From/To header
+ */
+function formatAddress(email: string, name?: string): string {
+  if (name) return `${mimeEncode(name)} <${email}>`;
+  return email;
+}
+
+/**
+ * Build a MIME email message
+ */
+function buildMimeMessage(params: {
+  messageId: string;
+  from: string;
+  fromName: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  textBody: string;
+  htmlBody: string;
+  priority: string;
+  inReplyTo?: string;
+  references?: string[];
+  headers?: Record<string, string>;
+}): string {
+  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  const lines: string[] = [];
+
+  lines.push(`Message-ID: ${params.messageId}`);
+  lines.push(`Date: ${new Date().toUTCString()}`);
+  lines.push(`From: ${formatAddress(params.from, params.fromName)}`);
+  lines.push(`To: ${params.to.join(", ")}`);
+  if (params.cc.length > 0) lines.push(`Cc: ${params.cc.join(", ")}`);
+  // BCC is NOT included in headers (by design)
+  lines.push(`Subject: ${mimeEncode(params.subject)}`);
+  lines.push(`MIME-Version: 1.0`);
+
+  if (params.priority === "high") {
+    lines.push(`X-Priority: 1`);
+    lines.push(`Importance: high`);
+  } else if (params.priority === "low") {
+    lines.push(`X-Priority: 5`);
+    lines.push(`Importance: low`);
+  }
+
+  if (params.inReplyTo) lines.push(`In-Reply-To: ${params.inReplyTo}`);
+  if (params.references && params.references.length > 0) {
+    lines.push(`References: ${params.references.join(" ")}`);
+  }
+
+  // Custom headers
+  if (params.headers) {
+    for (const [key, value] of Object.entries(params.headers)) {
+      lines.push(`${key}: ${value}`);
+    }
+  }
+
+  lines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+  lines.push(``);
+
+  // Plain text part
+  const plainText = params.textBody || params.htmlBody.replace(/<[^>]*>/g, "");
+  lines.push(`--${boundary}`);
+  lines.push(`Content-Type: text/plain; charset=UTF-8`);
+  lines.push(`Content-Transfer-Encoding: base64`);
+  lines.push(``);
+  lines.push(Buffer.from(plainText).toString("base64"));
+  lines.push(``);
+
+  // HTML part
+  if (params.htmlBody) {
+    lines.push(`--${boundary}`);
+    lines.push(`Content-Type: text/html; charset=UTF-8`);
+    lines.push(`Content-Transfer-Encoding: base64`);
+    lines.push(``);
+    lines.push(Buffer.from(params.htmlBody).toString("base64"));
+    lines.push(``);
+  }
+
+  lines.push(`--${boundary}--`);
+  lines.push(``);
+
+  return lines.join("\r\n");
+}
+
+/**
+ * Send email via SMTP using the local smtp-server container
+ */
+async function sendViaSMTP(params: {
+  from: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  data: string;
+}): Promise<void> {
+  const allRecipients = [...params.to, ...params.cc, ...params.bcc];
+
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection(SMTP_PORT, SMTP_HOST);
+    let buffer = "";
+    let step = 0;
+    let recipientIndex = 0;
+    const timeout = setTimeout(() => {
+      socket.destroy();
+      reject(new Error("SMTP timeout"));
+    }, 30000);
+
+    socket.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(new Error(`SMTP connection error: ${err.message}`));
+    });
+
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString();
+      // Process complete lines
+      const lines = buffer.split("\r\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line) continue;
+        const code = parseInt(line.substring(0, 3), 10);
+        // Multi-line response (code followed by -)
+        if (line[3] === "-") continue;
+
+        if (code >= 400) {
+          clearTimeout(timeout);
+          socket.end("QUIT\r\n");
+          reject(new Error(`SMTP error (${code}): ${line}`));
+          return;
+        }
+
+        switch (step) {
+          case 0: // Greeting
+            socket.write(`EHLO localhost\r\n`);
+            step = 1;
+            break;
+          case 1: // EHLO response
+            socket.write(`MAIL FROM:<${params.from}>\r\n`);
+            step = 2;
+            break;
+          case 2: // MAIL FROM response
+            if (recipientIndex < allRecipients.length) {
+              const recipient = allRecipients[recipientIndex] ?? "";
+              socket.write(`RCPT TO:<${recipient}>\r\n`);
+              recipientIndex++;
+              if (recipientIndex < allRecipients.length) {
+                // Stay in step 2 for more recipients
+                break;
+              }
+            }
+            step = 3;
+            break;
+          case 3: // Last RCPT TO response
+            socket.write(`DATA\r\n`);
+            step = 4;
+            break;
+          case 4: // DATA response (354)
+            // Send the email data, ending with \r\n.\r\n
+            socket.write(params.data);
+            if (!params.data.endsWith("\r\n")) socket.write("\r\n");
+            socket.write(".\r\n");
+            step = 5;
+            break;
+          case 5: // Data accepted
+            socket.write("QUIT\r\n");
+            step = 6;
+            break;
+          case 6: // QUIT response
+            clearTimeout(timeout);
+            socket.end();
+            resolve();
+            return;
+        }
+      }
+    });
+
+    socket.on("close", () => {
+      clearTimeout(timeout);
+      if (step < 6) {
+        reject(new Error("SMTP connection closed prematurely"));
+      }
+    });
+  });
 }
 
 /**
@@ -108,154 +264,107 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    // Extract sender info from JWT
+    const userId = extractUserIdFromToken(authHeader);
+    if (!userId) {
+      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
+    }
+
+    const sender = extractSenderFromToken(authHeader);
+    if (!sender) {
+      return NextResponse.json({ message: "Cannot determine sender email" }, { status: 400 });
+    }
+
     const body = (await request.json()) as {
-      // Client sends these fields from SendEmailRequest type
       fromAddressId?: string;
       sendMode?: string;
-      bodyHtml?: string;
-      attachmentIds?: string[];
-      // Legacy / direct fields
       from?: string;
       to: string | string[];
       cc?: string | string[];
       bcc?: string | string[];
       subject: string;
       body: string;
+      bodyHtml?: string;
       bodyType?: string;
+      attachmentIds?: string[];
       attachments?: string[];
       priority?: string;
-      requestDeliveryReceipt?: boolean;
       requestReadReceipt?: boolean;
       inReplyTo?: string;
       references?: string[];
       headers?: Record<string, string>;
     };
-    const {
-      fromAddressId: _fromAddressId,
-      from: fromDirect,
-      to,
-      cc,
-      bcc,
-      subject,
-      body: emailBody,
-      bodyHtml,
-      bodyType = "html",
-      attachments = [],
-      attachmentIds = [],
-      priority = "normal",
-      requestDeliveryReceipt = false,
-      requestReadReceipt = false,
-      inReplyTo,
-      references,
-      headers = {},
-    } = body;
 
-    // Use 'from' directly if it looks like an email, otherwise resolve from JWT
-    let from = fromDirect ?? "";
-    if (!from?.includes("@")) {
-      // fromAddressId is a UUID — resolve the sender's email from the JWT
-      const jwtEmail = extractEmailFromToken(authHeader);
-      if (jwtEmail) {
-        from = jwtEmail;
-      }
-    }
-    // _fromAddressId reserved for future address lookup
+    // Resolve sender email: use 'from' if it looks like an email, else use JWT email
+    const fromEmail = body.from?.includes("@") ? body.from : sender.email;
+    const fromName = sender.name;
 
-    // Validate required fields
-    const toArray = toRecipientArray(to);
-    if (!from || !to || toArray.length === 0 || !subject || (!emailBody && !bodyHtml)) {
+    const toArray = toRecipientArray(body.to);
+    const ccArray = toRecipientArray(body.cc);
+    const bccArray = toRecipientArray(body.bcc);
+
+    if (toArray.length === 0 || !body.subject || (!body.body && !body.bodyHtml)) {
       return NextResponse.json(
-        {
-          error: "Missing required fields: from, to, subject, and body are required",
-        },
+        { message: "Missing required fields: to, subject, and body are required" },
         { status: 400 }
       );
     }
 
-    // Extract user from JWT token and verify sender authorization
-    const userId = extractUserIdFromToken(authHeader);
-    if (!userId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
+    // Build message
+    const domain = fromEmail.split("@")[1] ?? "oonrumail.com";
+    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(2, 9)}@${domain}>`;
 
-    // Verify user has permission to send from this address
-    if (!verifySenderAuthorization(userId, from)) {
-      return NextResponse.json(
-        { message: "Not authorized to send from this address" },
-        { status: 403 }
-      );
-    }
-
-    // Check rate limits and quotas
-    const rateLimitCheck = checkRateLimits(userId);
-    if (!rateLimitCheck.allowed) {
-      return NextResponse.json(
-        { error: rateLimitCheck.reason ?? "Rate limit exceeded" },
-        { status: 429 }
-      );
-    }
-
-    // Create email message object
-    const domain = from.split("@")[1] ?? "example.com";
-
-    // Apply domain policies and filters
-    const policyCheck = applyDomainPolicies(domain, body);
-    if (!policyCheck.allowed) {
-      return NextResponse.json(
-        { error: policyCheck.reason ?? "Email blocked by policy" },
-        { status: 403 }
-      );
-    }
-
-    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(7)}@${domain}>`;
-
-    const email = {
+    const mimeData = buildMimeMessage({
       messageId,
-      from,
+      from: fromEmail,
+      fromName,
       to: toArray,
-      cc: toRecipientArray(cc),
-      bcc: toRecipientArray(bcc),
-      subject,
-      body: emailBody || bodyHtml || "",
-      bodyHtml: bodyHtml || emailBody || "",
-      bodyType: bodyHtml ? "html" : bodyType,
-      attachments: attachmentIds.length > 0 ? attachmentIds : attachments,
-      priority,
-      requestDeliveryReceipt,
-      requestReadReceipt,
-      inReplyTo,
-      references,
-      headers,
-      userId,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Queue email for sending via SMTP server
-    queueEmailForSending(email);
-
-    // Save to 'Sent' folder
-    saveToSentFolder(userId, email);
-
-    console.info("Email queued for sending:", {
-      messageId,
-      from,
-      to: email.to,
-      subject,
+      cc: ccArray,
+      bcc: bccArray,
+      subject: body.subject,
+      textBody: body.body || "",
+      htmlBody: body.bodyHtml || body.body || "",
+      priority: body.priority ?? "normal",
+      inReplyTo: body.inReplyTo,
+      references: body.references,
+      headers: body.headers,
     });
+
+    // Send via SMTP
+    console.info("Sending email via SMTP:", {
+      messageId,
+      from: fromEmail,
+      to: toArray,
+      cc: ccArray,
+      subject: body.subject,
+      smtpHost: SMTP_HOST,
+      smtpPort: SMTP_PORT,
+    });
+
+    await sendViaSMTP({
+      from: fromEmail,
+      to: toArray,
+      cc: ccArray,
+      bcc: bccArray,
+      data: mimeData,
+    });
+
+    console.info("Email sent successfully:", { messageId });
 
     return NextResponse.json(
       {
         success: true,
         emailId: messageId,
         messageId,
-        status: "queued",
-        message: "Email has been queued for sending",
+        status: "sent",
+        message: "Email sent successfully",
         sentAt: new Date().toISOString(),
       },
-      { status: 202 } // 202 Accepted
+      { status: 202 }
     );
   } catch (error) {
     console.error("Error sending email:", error);
-    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Failed to send email";
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
