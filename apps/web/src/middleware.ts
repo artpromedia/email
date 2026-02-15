@@ -104,7 +104,12 @@ function buildCSPHeader(config: CSPEnvConfig): string {
   // bootstrapping inline scripts that cannot carry a CSP nonce attribute.
   // NOTE: In CSP Level 2+, presence of a nonce causes 'unsafe-inline' to be
   // ignored, so we intentionally omit the nonce from script-src.
-  const scriptSources = ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"];
+  const scriptSources = [
+    "'self'",
+    "'unsafe-inline'",
+    "https://cdn.jsdelivr.net",
+    "https://static.cloudflareinsights.com",
+  ];
   if (config.scriptDomains.length > 0) {
     scriptSources.push(...config.scriptDomains);
   }

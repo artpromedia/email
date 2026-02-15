@@ -38,34 +38,36 @@ interface MailLayoutInnerProps {
 
 function MailLayoutInner({ children }: MailLayoutInnerProps) {
   const searchParams = useSearchParams();
-  const { setActiveDomain, setDomains } = useMailStore();
+  const { activeDomain, setActiveDomain, setDomains } = useMailStore();
 
   // Fetch domains
-  const { data: domains = [] } = useDomains();
+  const { data: domains } = useDomains();
+  // Use a stable empty array ref when domains haven't loaded yet
+  const domainList = domains ?? [];
 
   // Initialize WebSocket for real-time updates
   useMailWebSocket();
 
   // Sync domains to store
   useEffect(() => {
-    if (domains.length > 0) {
-      setDomains(domains);
+    if (domainList.length > 0) {
+      setDomains(domainList);
     }
-  }, [domains, setDomains]);
+  }, [domainList, setDomains]);
 
   // Handle URL domain filter
   useEffect(() => {
     const domainParam = searchParams.get("domain");
     if (domainParam) {
       // Find domain by name
-      const domain = domains.find((d) => d.domain === domainParam);
-      if (domain) {
+      const domain = domainList.find((d) => d.domain === domainParam);
+      if (domain && activeDomain !== domain.id) {
         setActiveDomain(domain.id);
       }
-    } else {
+    } else if (activeDomain !== "all") {
       setActiveDomain("all"); // Unified view
     }
-  }, [searchParams, domains, setActiveDomain]);
+  }, [searchParams, domainList, activeDomain, setActiveDomain]);
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);

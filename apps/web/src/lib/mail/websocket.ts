@@ -13,7 +13,19 @@ import type { MailSubscription, MailEvent, UnreadCountUpdate } from "./types";
 // WEBSOCKET CONFIG
 // ============================================================
 
-const WS_URL = process.env["NEXT_PUBLIC_WS_URL"] || "ws://localhost:3001";
+function getWsUrl(): string {
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      // In production, derive WS URL from current domain
+      // mail.skillancer.com → wss://api.skillancer.com/chat/ws
+      const orgDomain = hostname.startsWith("mail.") ? hostname.slice(5) : hostname;
+      return `wss://api.${orgDomain}/chat/ws`;
+    }
+  }
+  return process.env["NEXT_PUBLIC_WS_URL"] || "ws://localhost:3001";
+}
+const WS_URL = getWsUrl();
 const RECONNECT_DELAY = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const HEARTBEAT_INTERVAL = 30000;
