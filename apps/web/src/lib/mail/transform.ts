@@ -2,8 +2,13 @@
  * Transform DB models to API response format
  * Maps between the database schema and the client-side TypeScript types
  */
-import { specialUseToFolderType } from "./queries";
-import type { DbMessage, DbFolder, DbMailbox, DbDomain } from "./queries";
+import {
+  specialUseToFolderType,
+  type DbMessage,
+  type DbFolder,
+  type DbMailbox,
+  type DbDomain,
+} from "./queries";
 
 interface EmailAddress {
   address: string;
@@ -58,7 +63,10 @@ export function toEmailResponse(
     htmlBody: msg.htmlBody ?? undefined,
     attachments: [],
     headers: msg.rawHeaders
-      ? Object.entries(msg.rawHeaders).map(([name, value]) => ({ name, value: String(value) }))
+      ? Object.entries(msg.rawHeaders).map(([name, value]) => ({
+          name,
+          value: typeof value === "string" ? value : JSON.stringify(value),
+        }))
       : undefined,
     folder: folderType,
     status: isDraft ? "draft" : isRead ? "delivered" : "sent",
@@ -132,9 +140,10 @@ function ensureAddressArray(value: unknown): EmailAddress[] {
       if (typeof v === "string") return { address: v };
       if (typeof v === "object" && v !== null) {
         const obj = v as Record<string, unknown>;
+        const addr = obj["address"] ?? obj["email"] ?? "";
         return {
-          address: String(obj.address ?? obj.email ?? ""),
-          name: obj.name as string | undefined,
+          address: typeof addr === "string" ? addr : JSON.stringify(addr),
+          name: typeof obj["name"] === "string" ? obj["name"] : undefined,
         };
       }
       return { address: String(v) };
