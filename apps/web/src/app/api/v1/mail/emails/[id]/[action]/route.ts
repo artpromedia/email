@@ -1,11 +1,17 @@
 /**
  * Email Actions API Route
- * Mark as read/unread, star, move, archive
+ * Mark as read/unread, star/unstar, move, archive, spam
  */
 
 import { NextResponse } from "next/server";
-
-const IMAP_API_URL = process.env["IMAP_API_URL"] || "http://imap-server:8084";
+import { getUserIdFromAuth } from "@/lib/mail/auth";
+import {
+  getUserMailboxIds,
+  getMessage,
+  updateMessageFlags,
+  moveMessages,
+  getFolderBySpecialUse,
+} from "@/lib/mail/queries";
 
 export async function POST(
   request: Request,
@@ -13,10 +19,14 @@ export async function POST(
 ) {
   try {
     const { id, action } = await params;
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const authHeader = request.headers.get("Authorization");
+    const userId = getUserIdFromAuth(authHeader);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Validate action
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+
     const validActions = [
       "read",
       "unread",
@@ -32,22 +42,68 @@ export async function POST(
       return NextResponse.json({ error: `Invalid action: ${action}` }, { status: 400 });
     }
 
-    // Perform action via IMAP server
-    const response = await fetch(`${IMAP_API_URL}/api/v1/emails/${id}/${action}`, {
-      method: "POST",
-      headers: {
-        Authorization: authHeader || "",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (response.ok) {
-      const data: unknown = await response.json();
-      return NextResponse.json(data);
+    // Verify ownership
+    const msg = await getMessage(id);
+    if (!msg) {
+      return NextResponse.json({ error: "Email not found" }, { status: 404 });
+    }
+    const mailboxIds = await getUserMailboxIds(userId);
+    if (!mailboxIds.includes(msg.mailboxId)) {
+      return NextResponse.json({ error: "Email not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Failed to perform action" }, { status: response.status });
+    switch (action) {
+      case "read":
+        await updateMessageFlags([id], ["\\Seen"], []);
+        break;
+      case "unread":
+        await updateMessageFlags([id], [], ["\\Seen"]);
+        break;
+      case "star":
+        await updateMessageFlags([id], ["\\Flagged"], []);
+        break;
+      case "unstar":
+        await updateMessageFlags([id], [], ["\\Flagged"]);
+        break;
+      case "archive": {
+        const archiveFolder = await getFolderBySpecialUse(msg.mailboxId, "\\Archive");
+        if (archiveFolder) {
+          await moveMessages([id], archiveFolder.id);
+        }
+        break;
+      }
+      case "unarchive": {
+        const inboxFolder = await getFolderBySpecialUse(msg.mailboxId, "\\Inbox");
+        if (inboxFolder) {
+          await moveMessages([id], inboxFolder.id);
+        }
+        break;
+      }
+      case "move": {
+        const folderId = body.folderId as string;
+        if (!folderId) {
+          return NextResponse.json({ error: "folderId required" }, { status: 400 });
+        }
+        await moveMessages([id], folderId);
+        break;
+      }
+      case "spam": {
+        const spamFolder = await getFolderBySpecialUse(msg.mailboxId, "\\Junk");
+        if (spamFolder) {
+          await moveMessages([id], spamFolder.id);
+        }
+        break;
+      }
+      case "notspam": {
+        const inbox = await getFolderBySpecialUse(msg.mailboxId, "\\Inbox");
+        if (inbox) {
+          await moveMessages([id], inbox.id);
+        }
+        break;
+      }
+    }
+
+    return NextResponse.json({ success: true, action });
   } catch (error) {
     console.error("Error performing email action:", error);
     return NextResponse.json({ error: "Failed to perform action" }, { status: 500 });

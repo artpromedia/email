@@ -1,5 +1,6 @@
 import * as net from "node:net";
 import { type NextRequest, NextResponse } from "next/server";
+import { ensureUserMailbox, getFolderBySpecialUse, insertMessage } from "@/lib/mail/queries";
 
 const SMTP_HOST = process.env["SMTP_HOST"] || "smtp-server";
 const SMTP_PORT = parseInt(process.env["SMTP_PORT"] || "25", 10);
@@ -350,6 +351,39 @@ export async function POST(request: NextRequest) {
     });
 
     console.info("Email sent successfully:", { messageId });
+
+    // Save to Sent folder
+    try {
+      const mailboxIds = await ensureUserMailbox(userId, fromEmail);
+      if (mailboxIds.length > 0) {
+        const sentFolder = await getFolderBySpecialUse(mailboxIds[0]!, "\\Sent");
+        if (sentFolder) {
+          const plainText = body.body || (body.bodyHtml ?? "").replace(/<[^>]*>/g, "");
+          await insertMessage({
+            folderId: sentFolder.id,
+            mailboxId: mailboxIds[0]!,
+            messageId,
+            inReplyTo: body.inReplyTo,
+            referencesHeader: body.references?.join(" "),
+            subject: body.subject,
+            sender: { address: fromEmail, name: fromName },
+            recipientsTo: toArray.map((a) => ({ address: a })),
+            recipientsCc: ccArray.map((a) => ({ address: a })),
+            recipientsBcc: bccArray.map((a) => ({ address: a })),
+            date: new Date(),
+            size: mimeData.length,
+            flags: ["\\Seen"],
+            snippet: plainText.slice(0, 200),
+            textBody: plainText,
+            htmlBody: body.bodyHtml || body.body || "",
+          });
+          console.info("Saved to Sent folder:", { messageId, mailboxId: mailboxIds[0] });
+        }
+      }
+    } catch (saveErr) {
+      // Don't fail the send if Sent folder save fails
+      console.error("Failed to save to Sent folder (email was still sent):", saveErr);
+    }
 
     return NextResponse.json(
       {
