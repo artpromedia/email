@@ -21,11 +21,24 @@ import type {
 
 const API_BASE = "/api/v1";
 
+function getComposeAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...getComposeAuthHeaders(),
       ...(options?.headers as Record<string, string>),
     },
   });
@@ -275,7 +288,7 @@ const pendingEmails = new Map<string, PendingEmail>();
  * Send an email immediately (internal function)
  */
 async function sendEmailImmediately(request: SendEmailRequest): Promise<SendEmailResponse> {
-  return fetchJson<SendEmailResponse>("/mail/send", {
+  return fetchJson<SendEmailResponse>("/mail/compose/send", {
     method: "POST",
     body: JSON.stringify(request),
   });

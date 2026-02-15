@@ -6,11 +6,12 @@
  */
 
 import { useState, useCallback, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Menu, X, Loader2 } from "lucide-react";
 import { cn } from "@email/ui";
 
+import { useCurrentUser } from "@/lib/auth";
 import { MailSidebar, useDomains, useMailStore, useMailWebSocket } from "@/lib/mail";
 
 // ============================================================
@@ -27,6 +28,47 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// ============================================================
+// AUTH GUARD (must be inside QueryClientProvider)
+// ============================================================
+
+function MailAuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { data: user, isLoading, isError } = useCurrentUser();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      const redirectPath = encodeURIComponent(pathname || "/mail/inbox");
+      router.replace(`/login?redirect=${redirectPath}`);
+    }
+  }, [isLoading, user, router, pathname]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || isError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 // ============================================================
 // MAIL LAYOUT INNER (needs to be inside QueryClientProvider)
@@ -154,7 +196,9 @@ export default function MailLayout({ children }: { children: React.ReactNode }) 
   return (
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={<MailLayoutLoading />}>
-        <MailLayoutInner>{children}</MailLayoutInner>
+        <MailAuthGuard>
+          <MailLayoutInner>{children}</MailLayoutInner>
+        </MailAuthGuard>
       </Suspense>
     </QueryClientProvider>
   );

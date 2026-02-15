@@ -425,7 +425,7 @@ export function MailSidebar({ className }: MailSidebarProps) {
       {/* Footer Actions */}
       <div className="border-t border-neutral-200 p-2 dark:border-neutral-700">
         <button
-          onClick={() => router.push("/settings/mail")}
+          onClick={() => router.push("/settings/preferences")}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
         >
           <Settings className="h-4 w-4" />

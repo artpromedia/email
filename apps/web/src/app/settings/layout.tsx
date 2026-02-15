@@ -4,20 +4,13 @@
  * Settings Layout - Wraps settings pages with navigation
  */
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  User,
-  Mail,
-  Shield,
-  Bell,
-  Palette,
-  Building2,
-  Globe,
-  Key,
-} from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { User, Mail, Shield, Bell, Palette, Building2, Globe, Key, Loader2 } from "lucide-react";
 import { DomainBrandingProvider, cn } from "@email/ui";
 import { Header } from "@/components/layout";
+import { useCurrentUser } from "@/lib/auth";
 
 const settingsNav = [
   {
@@ -31,9 +24,7 @@ const settingsNav = [
   },
   {
     title: "Preferences",
-    items: [
-      { href: "/settings/preferences", label: "Appearance", icon: Palette },
-    ],
+    items: [{ href: "/settings/preferences", label: "Appearance", icon: Palette }],
   },
   {
     title: "Organization",
@@ -45,25 +36,52 @@ const settingsNav = [
   },
 ];
 
-export default function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
+  const { data: user, isLoading, isError } = useCurrentUser();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      const redirectPath = encodeURIComponent(pathname || "/settings/account");
+      router.replace(`/login?redirect=${redirectPath}`);
+    }
+  }, [isLoading, user, router, pathname]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || isError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DomainBrandingProvider>
-      <div className="min-h-screen flex flex-col">
+      <div className="flex min-h-screen flex-col">
         <Header />
-        <div className="flex-1 container py-6">
-          <div className="flex flex-col lg:flex-row gap-8">
+        <div className="container flex-1 py-6">
+          <div className="flex flex-col gap-8 lg:flex-row">
             {/* Settings Navigation */}
-            <aside className="lg:w-64 flex-shrink-0">
+            <aside className="flex-shrink-0 lg:w-64">
               <nav className="space-y-6">
                 {settingsNav.map((section) => (
                   <div key={section.title}>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-2 px-3">
+                    <h4 className="mb-2 px-3 text-sm font-medium text-muted-foreground">
                       {section.title}
                     </h4>
                     <ul className="space-y-1">
@@ -75,10 +93,10 @@ export default function SettingsLayout({
                             <Link
                               href={item.href}
                               className={cn(
-                                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                                 isActive
-                                  ? "bg-accent text-accent-foreground font-medium"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                                  ? "bg-accent font-medium text-accent-foreground"
+                                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                               )}
                             >
                               <Icon className="h-4 w-4" />
@@ -94,7 +112,7 @@ export default function SettingsLayout({
             </aside>
 
             {/* Settings Content */}
-            <main className="flex-1 min-w-0">{children}</main>
+            <main className="min-w-0 flex-1">{children}</main>
           </div>
         </div>
       </div>

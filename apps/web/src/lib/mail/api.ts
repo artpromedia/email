@@ -18,10 +18,23 @@ import type {
 
 const API_BASE = "/api/v1";
 
+function getMailAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
     ...options,
-    headers: Object.assign({ "Content-Type": "application/json" }, options?.headers),
+    headers: { ...getMailAuthHeaders(), ...(options?.headers as Record<string, string>) },
   });
 
   if (!response.ok) {
