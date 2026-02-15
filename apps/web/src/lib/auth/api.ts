@@ -160,13 +160,16 @@ function getAuthHeaders(): Record<string, string> {
 export const authApi = {
   /**
    * Detect domain info from email
+   *
+   * Calls the domain-manager branding endpoint via Caddy:
+   *   api.<org>/domains/api/domains/<domain>/branding
    */
   async detectDomain(email: string): Promise<DomainInfo | null> {
     const domain = email.split("@")[1];
     if (!domain) return null;
 
     try {
-      const response = await fetch(`${getAuthUrl()}/api/auth/domain/${domain}`, {
+      const response = await fetch(`${getApiBaseUrl()}/domains/api/domains/${domain}/branding`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
@@ -175,7 +178,24 @@ export const authApi = {
         return null;
       }
 
-      return await handleResponse<DomainInfo>(response);
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = (await response.json()) as Record<string, unknown>;
+
+      // Map domain-manager branding response to DomainInfo
+      return {
+        domain: (data["domain_name"] as string) ?? domain,
+        organizationId: (data["organization_id"] as string) ?? "",
+        organizationName: (data["organization_name"] as string) ?? "",
+        logoUrl: (data["logo_url"] as string) || undefined,
+        primaryColor: (data["primary_color"] as string) || undefined,
+        ssoEnabled: (data["sso_enabled"] as boolean) ?? false,
+        ssoProvider: data["sso_provider"] as DomainInfo["ssoProvider"],
+        passwordLoginEnabled: (data["password_login_enabled"] as boolean) ?? true,
+        registrationEnabled: (data["registration_enabled"] as boolean) ?? false,
+      };
     } catch {
       return null;
     }
