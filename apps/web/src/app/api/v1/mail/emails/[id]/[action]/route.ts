@@ -80,7 +80,7 @@ export async function POST(
         break;
       }
       case "move": {
-        const folderId = body.folderId as string;
+        const folderId = body["folderId"] as string;
         if (!folderId) {
           return NextResponse.json({ error: "folderId required" }, { status: 400 });
         }

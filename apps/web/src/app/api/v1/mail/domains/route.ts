@@ -10,12 +10,18 @@ import {
   getUserDomains,
   getFolders,
   ensureUserMailbox,
+  specialUseToFolderType,
 } from "@/lib/mail/queries";
-import { specialUseToFolderType } from "@/lib/mail/queries";
 
 const DOMAIN_COLORS = [
-  "#3b82f6", "#8b5cf6", "#22c55e", "#f97316", "#ec4899",
-  "#14b8a6", "#6366f1", "#f43f5e",
+  "#3b82f6",
+  "#8b5cf6",
+  "#22c55e",
+  "#f97316",
+  "#ec4899",
+  "#14b8a6",
+  "#6366f1",
+  "#f43f5e",
 ];
 
 export async function GET(request: Request) {
@@ -35,9 +41,7 @@ export async function GET(request: Request) {
     const [mailboxes, domains, allFolders] = await Promise.all([
       getUserMailboxes(userId),
       getUserDomains(userId),
-      getUserMailboxes(userId).then((mbs) =>
-        getFolders(mbs.map((m) => m.id))
-      ),
+      getUserMailboxes(userId).then((mbs) => getFolders(mbs.map((m) => m.id))),
     ]);
 
     // Group mailboxes and folders by domain

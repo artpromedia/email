@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getUserIdFromAuth } from "@/lib/mail/auth";
+import { getUserIdFromAuth, getEmailFromAuth } from "@/lib/mail/auth";
 import {
   getUserMailboxIds,
   getUserMailboxes,
@@ -12,7 +12,6 @@ import {
   getFolders,
   createFolder as createDbFolder,
   ensureUserMailbox,
-  getEmailFromAuth,
 } from "@/lib/mail/queries";
 import { toFolderResponse } from "@/lib/mail/transform";
 
@@ -79,10 +78,7 @@ export async function POST(request: Request) {
     };
 
     if (!body.name || !body.mailboxId) {
-      return NextResponse.json(
-        { error: "name and mailboxId are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "name and mailboxId are required" }, { status: 400 });
     }
 
     // Verify the mailbox belongs to the user

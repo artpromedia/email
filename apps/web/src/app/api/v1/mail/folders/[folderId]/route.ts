@@ -4,12 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { getUserIdFromAuth } from "@/lib/mail/auth";
-import {
-  getUserMailboxIds,
-  getFolderById,
-  renameFolder,
-  deleteFolder,
-} from "@/lib/mail/queries";
+import { getUserMailboxIds, getFolderById, renameFolder, deleteFolder } from "@/lib/mail/queries";
 import { toFolderResponse } from "@/lib/mail/transform";
 
 export async function PATCH(
