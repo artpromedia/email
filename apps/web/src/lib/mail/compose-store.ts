@@ -3,6 +3,7 @@
  * Zustand store for email composition state management
  */
 
+import { enableMapSet } from "immer";
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
@@ -16,6 +17,9 @@ import type {
   EmailSignature,
   EmailBranding,
 } from "./types";
+
+// Immer needs this plugin to handle Map/Set in producers
+enableMapSet();
 
 // ============================================================
 // STATE INTERFACE
