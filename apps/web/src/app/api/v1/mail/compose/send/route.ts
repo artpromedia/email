@@ -1,8 +1,8 @@
 import * as net from "node:net";
 import { type NextRequest, NextResponse } from "next/server";
 
-const SMTP_HOST = process.env.SMTP_HOST || "smtp-server";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "25", 10);
+const SMTP_HOST = process.env["SMTP_HOST"] || "smtp-server";
+const SMTP_PORT = parseInt(process.env["SMTP_PORT"] || "25", 10);
 
 /**
  * Decode JWT claims from authorization header
