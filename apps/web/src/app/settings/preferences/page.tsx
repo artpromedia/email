@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * Preferences Settings Page
@@ -102,7 +102,7 @@ export default function PreferencesSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/preferences`, {
+      const response = await fetch(`${API_URL}/api/auth/preferences`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -239,10 +239,10 @@ export default function PreferencesSettingsPage() {
                 <SelectContent>
                   <SelectItem value="en-US">English (US)</SelectItem>
                   <SelectItem value="en-GB">English (UK)</SelectItem>
-                  <SelectItem value="es-ES">EspaÃ±ol</SelectItem>
-                  <SelectItem value="fr-FR">FranÃ§ais</SelectItem>
+                  <SelectItem value="es-ES">Español</SelectItem>
+                  <SelectItem value="fr-FR">Français</SelectItem>
                   <SelectItem value="de-DE">Deutsch</SelectItem>
-                  <SelectItem value="ja-JP">æ—¥æœ¬èªž</SelectItem>
+                  <SelectItem value="ja-JP">日本語</SelectItem>
                 </SelectContent>
               </Select>
             </div>

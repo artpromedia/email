@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     // Verify user session
     const authUrl = process.env["AUTH_SERVICE_URL"] ?? "http://auth:8081";
-    const authRes = await fetch(`${authUrl}/api/v1/auth/me`, {
+    const authRes = await fetch(`${authUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!authRes.ok) {

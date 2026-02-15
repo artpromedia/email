@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * SSO Settings Page
@@ -118,7 +118,7 @@ export default function SSOSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/sso/providers`, {
+      const response = await fetch(`${API_URL}/api/auth/sso/providers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -166,7 +166,7 @@ export default function SSOSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/sso/providers/${providerId}`, {
+      const response = await fetch(`${API_URL}/api/auth/sso/providers/${providerId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -186,7 +186,7 @@ export default function SSOSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/sso/providers/${providerId}`, {
+      const response = await fetch(`${API_URL}/api/auth/sso/providers/${providerId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

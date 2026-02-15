@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * Organization Settings Page
@@ -85,7 +85,7 @@ export default function OrganizationSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/organization`, {
+      const response = await fetch(`${API_URL}/api/auth/organization`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

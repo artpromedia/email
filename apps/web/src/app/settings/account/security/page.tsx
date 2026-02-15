@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * Account Security Settings Page
@@ -55,7 +55,7 @@ export default function SecuritySettingsPage() {
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const response = await fetch("/api/v1/auth/sessions");
+        const response = await fetch("/api/auth/sessions");
         const data = (await response.json()) as { sessions?: Session[] };
         if (data.sessions) {
           setSessions(data.sessions);
@@ -77,7 +77,7 @@ export default function SecuritySettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/password`, {
+      const response = await fetch(`${API_URL}/api/auth/password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,7 +104,7 @@ export default function SecuritySettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/sessions/${sessionId}`, {
+      const response = await fetch(`${API_URL}/api/auth/sessions/${sessionId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -125,7 +125,7 @@ export default function SecuritySettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/sessions`, {
+      const response = await fetch(`${API_URL}/api/auth/sessions`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -244,7 +244,7 @@ export default function SecuritySettingsPage() {
                 try {
                   const API_URL = getAuthApiUrl();
                   const token = localStorage.getItem("accessToken");
-                  const response = await fetch(`${API_URL}/api/v1/auth/2fa/toggle`, {
+                  const response = await fetch(`${API_URL}/api/auth/2fa/toggle`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
@@ -308,7 +308,7 @@ export default function SecuritySettingsPage() {
                       {session.current && <Badge variant="secondary">Current</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {session.browser} â€¢ {session.location}
+                      {session.browser} • {session.location}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />

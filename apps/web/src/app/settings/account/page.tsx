@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * Account Profile Settings Page
@@ -79,7 +79,7 @@ export default function AccountSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/profile`, {
+      const response = await fetch(`${API_URL}/api/auth/profile`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

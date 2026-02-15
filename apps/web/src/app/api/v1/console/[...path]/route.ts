@@ -52,7 +52,7 @@ async function verifyAuth(
   token: string
 ): Promise<{ id: string; email: string; organization_id: string } | null> {
   try {
-    const res = await fetch(`${AUTH_SERVICE}/api/v1/auth/me`, {
+    const res = await fetch(`${AUTH_SERVICE}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return null;

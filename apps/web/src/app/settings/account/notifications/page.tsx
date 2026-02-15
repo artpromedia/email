@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * Notification Settings Page
@@ -93,7 +93,7 @@ export default function NotificationsSettingsPage() {
     try {
       const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_URL}/api/v1/auth/preferences/notifications`, {
+      const response = await fetch(`${API_URL}/api/auth/preferences/notifications`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
