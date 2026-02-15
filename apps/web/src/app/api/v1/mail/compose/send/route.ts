@@ -1,22 +1,44 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 /**
- * Extract user ID from JWT token in authorization header
+ * Decode JWT claims from authorization header
  */
-function extractUserIdFromToken(authHeader: string): string | null {
+function decodeJwtClaims(authHeader: string): {
+  sub?: string;
+  userId?: string;
+  email?: string;
+  name?: string;
+} | null {
   try {
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return null;
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as {
+    return JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as {
       sub?: string;
       userId?: string;
+      email?: string;
+      name?: string;
     };
-    return payload.sub ?? payload.userId ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Extract user ID from JWT token in authorization header
+ */
+function extractUserIdFromToken(authHeader: string): string | null {
+  const claims = decodeJwtClaims(authHeader);
+  return claims?.sub ?? claims?.userId ?? null;
+}
+
+/**
+ * Extract email from JWT token in authorization header
+ */
+function extractEmailFromToken(authHeader: string): string | null {
+  const claims = decodeJwtClaims(authHeader);
+  return claims?.email ?? null;
 }
 
 /**
@@ -87,7 +109,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as {
-      from: string;
+      // Client sends these fields from SendEmailRequest type
+      fromAddressId?: string;
+      sendMode?: string;
+      bodyHtml?: string;
+      attachmentIds?: string[];
+      // Legacy / direct fields
+      from?: string;
       to: string | string[];
       cc?: string | string[];
       bcc?: string | string[];
@@ -103,14 +131,17 @@ export async function POST(request: NextRequest) {
       headers?: Record<string, string>;
     };
     const {
-      from,
+      fromAddressId: _fromAddressId,
+      from: fromDirect,
       to,
       cc,
       bcc,
       subject,
       body: emailBody,
+      bodyHtml,
       bodyType = "html",
       attachments = [],
+      attachmentIds = [],
       priority = "normal",
       requestDeliveryReceipt = false,
       requestReadReceipt = false,
@@ -119,9 +150,20 @@ export async function POST(request: NextRequest) {
       headers = {},
     } = body;
 
+    // Use 'from' directly if it looks like an email, otherwise resolve from JWT
+    let from = fromDirect ?? "";
+    if (!from?.includes("@")) {
+      // fromAddressId is a UUID — resolve the sender's email from the JWT
+      const jwtEmail = extractEmailFromToken(authHeader);
+      if (jwtEmail) {
+        from = jwtEmail;
+      }
+    }
+    // _fromAddressId reserved for future address lookup
+
     // Validate required fields
     const toArray = toRecipientArray(to);
-    if (!from || !to || toArray.length === 0 || !subject || !emailBody) {
+    if (!from || !to || toArray.length === 0 || !subject || (!emailBody && !bodyHtml)) {
       return NextResponse.json(
         {
           error: "Missing required fields: from, to, subject, and body are required",
@@ -174,9 +216,10 @@ export async function POST(request: NextRequest) {
       cc: toRecipientArray(cc),
       bcc: toRecipientArray(bcc),
       subject,
-      body: emailBody,
-      bodyType,
-      attachments,
+      body: emailBody || bodyHtml || "",
+      bodyHtml: bodyHtml || emailBody || "",
+      bodyType: bodyHtml ? "html" : bodyType,
+      attachments: attachmentIds.length > 0 ? attachmentIds : attachments,
       priority,
       requestDeliveryReceipt,
       requestReadReceipt,
@@ -202,6 +245,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
+        success: true,
+        emailId: messageId,
         messageId,
         status: "queued",
         message: "Email has been queued for sending",
