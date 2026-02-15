@@ -49,18 +49,96 @@ class AuthApiError extends Error {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  const data = (await response.json()) as ApiErrorResponse & { data?: T };
+  const data = (await response.json()) as ApiErrorResponse & Record<string, unknown>;
 
   if (!response.ok) {
+    // Go auth service returns { error: "code", message: "msg" } at root level
+    const errorCode = (data.error as { code?: string } | string) ?? "UNKNOWN_ERROR";
+    const errorMessage =
+      (data.message as string) ??
+      (data.error as { message?: string })?.message ??
+      "An error occurred";
     throw new AuthApiError(
-      data.error?.code ?? "UNKNOWN_ERROR",
-      data.error?.message ?? "An error occurred",
+      typeof errorCode === "string" ? errorCode : (errorCode.code ?? "UNKNOWN_ERROR"),
+      errorMessage,
       response.status,
       data.error?.details
     );
   }
 
-  return data.data as T;
+  // Go auth service returns data at root level (no .data wrapper)
+  return data as T;
+}
+
+/**
+ * Map Go auth service login response to frontend LoginResponse type.
+ * Go returns: { User: {...}, TokenPair: { AccessToken, RefreshToken, ... }, MFARequired, ... }
+ * Frontend expects: { user: {...}, tokens: { accessToken, refreshToken, ... } }
+ */
+interface GoLoginResponse {
+  User: Record<string, unknown>;
+  TokenPair: {
+    AccessToken: string;
+    RefreshToken: string;
+    ExpiresIn: number;
+    SessionID: string;
+  };
+  Organization?: Record<string, unknown>;
+  MFARequired?: boolean;
+  MFAPendingToken?: string;
+}
+
+function mapLoginResponse(raw: GoLoginResponse): LoginResponse {
+  return {
+    user: mapUserResponse(raw.User),
+    tokens: {
+      accessToken: raw.TokenPair.AccessToken,
+      refreshToken: raw.TokenPair.RefreshToken,
+      expiresAt: new Date(Date.now() + raw.TokenPair.ExpiresIn * 1000).toISOString(),
+    },
+    requiresTwoFactor: raw.MFARequired ?? false,
+  };
+}
+
+/**
+ * Map Go auth service user response to frontend AuthUser type.
+ * Go returns: { id, organization_id, display_name, role, status, email_addresses, domains, ... }
+ * Frontend expects: { id, email, organizationId, role, profile: { displayName, ... }, ... }
+ */
+function mapUserResponse(raw: Record<string, unknown>): AuthUser {
+  const emailAddresses = (raw["email_addresses"] ?? []) as { email: string; is_primary: boolean }[];
+  const primaryEmail =
+    emailAddresses.find((e) => e.is_primary)?.email ?? (raw["email"] as string) ?? "";
+  const domains = (raw["domains"] ?? []) as { name: string }[];
+  const primaryDomain = domains[0]?.name ?? primaryEmail.split("@")[1] ?? "";
+
+  return {
+    id: raw["id"] as string,
+    email: primaryEmail,
+    domain: primaryDomain,
+    organizationId: (raw["organization_id"] as string) ?? "",
+    role: mapRole(raw["role"] as string),
+    status: (raw["status"] as AuthUser["status"]) ?? "active",
+    profile: {
+      displayName: (raw["display_name"] as string) ?? "",
+      avatarUrl: (raw["avatar_url"] as { String?: string })?.String ?? undefined,
+      timezone: (raw["timezone"] as string) ?? "UTC",
+    },
+    permissions: [],
+  };
+}
+
+function mapRole(role: string): AuthUser["role"] {
+  const roleMap: Record<string, AuthUser["role"]> = {
+    super_admin: "super_admin",
+    admin: "org_admin",
+    org_admin: "org_admin",
+    domain_admin: "domain_admin",
+    member: "user",
+    user: "user",
+    guest: "guest",
+  };
+  return roleMap[role] ?? "user";
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -113,7 +191,8 @@ export const authApi = {
       body: JSON.stringify(request),
     });
 
-    return handleResponse<LoginResponse>(response);
+    const raw = await handleResponse<GoLoginResponse>(response);
+    return mapLoginResponse(raw);
   },
 
   /**
@@ -123,10 +202,22 @@ export const authApi = {
     const response = await fetch(`${getAuthUrl()}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: JSON.stringify({
+        email: request.email,
+        password: request.password,
+        name: request.firstName
+          ? `${request.firstName} ${request.lastName ?? ""}`.trim()
+          : request.email.split("@")[0],
+      }),
     });
 
-    return handleResponse<RegisterResponse>(response);
+    const raw = await handleResponse<GoLoginResponse>(response);
+    const mapped = mapLoginResponse(raw);
+    return {
+      user: mapped.user,
+      tokens: mapped.tokens,
+      emailVerificationRequired: false,
+    };
   },
 
   /**
@@ -166,7 +257,8 @@ export const authApi = {
       headers: getAuthHeaders(),
     });
 
-    return handleResponse<AuthUser>(response);
+    const raw = await handleResponse<Record<string, unknown>>(response);
+    return mapUserResponse(raw);
   },
 
   // SSO Operations
