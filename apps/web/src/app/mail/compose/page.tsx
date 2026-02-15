@@ -48,7 +48,7 @@ function ComposeContent() {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50 dark:bg-neutral-950">
-      <EmailCompose context={context} onClose={handleClose} className="flex-1" />
+      <EmailCompose context={context} onClose={handleClose} className="flex-1" inline />
     </div>
   );
 }

@@ -61,6 +61,8 @@ interface EmailComposeProps {
   onClose?: () => void;
   /** Class name */
   className?: string;
+  /** Render inline (full page) instead of as a fixed-position modal */
+  inline?: boolean;
 }
 
 // ============================================================
@@ -292,7 +294,7 @@ function SendValidationError({ error, onDismiss }: SendValidationErrorProps) {
 // MAIN COMPONENT
 // ============================================================
 
-export function EmailCompose({ context, onClose, className }: EmailComposeProps) {
+export function EmailCompose({ context, onClose, className, inline = false }: EmailComposeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
@@ -613,18 +615,29 @@ export function EmailCompose({ context, onClose, className }: EmailComposeProps)
   }, [closeCompose, onClose]);
 
   if (!isComposeOpen || !activeDraft) {
+    if (inline) {
+      return (
+        <div className={cn("flex h-full items-center justify-center", className)}>
+          <div className="flex items-center gap-3 text-neutral-500 dark:text-neutral-400">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Preparing compose...</span>
+          </div>
+        </div>
+      );
+    }
     return null;
   }
 
-  return (
-    <div
-      className={cn(
+  const containerClassName = inline
+    ? "flex h-full flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900"
+    : cn(
         "fixed z-50 rounded-t-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900",
         "flex flex-col overflow-hidden",
-        isFullScreen ? "inset-4" : "bottom-0 right-4 max-h-[80vh] w-[600px]",
-        className
-      )}
-    >
+        isFullScreen ? "inset-4" : "bottom-0 right-4 max-h-[80vh] w-[600px]"
+      );
+
+  return (
+    <div className={cn(containerClassName, className)}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-100 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800">
         <h2 className="font-semibold text-neutral-900 dark:text-neutral-100">
