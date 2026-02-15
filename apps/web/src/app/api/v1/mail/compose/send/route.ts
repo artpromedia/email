@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const body = (await request.json()) as {
@@ -175,13 +175,13 @@ export async function POST(request: NextRequest) {
     // Extract user from JWT token and verify sender authorization
     const userId = extractUserIdFromToken(authHeader);
     if (!userId) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
     }
 
     // Verify user has permission to send from this address
     if (!verifySenderAuthorization(userId, from)) {
       return NextResponse.json(
-        { error: "Not authorized to send from this address" },
+        { message: "Not authorized to send from this address" },
         { status: 403 }
       );
     }

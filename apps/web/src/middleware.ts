@@ -552,8 +552,12 @@ export async function middleware(request: NextRequest) {
 
   // CSRF Token validation for state-changing requests
   if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
-    // Skip CSRF check for API routes that use other auth methods
-    if (!pathname.startsWith("/api/webhook")) {
+    // Skip CSRF check for API routes that use Bearer token auth or webhooks
+    const skipCsrf =
+      pathname.startsWith("/api/webhook") ||
+      (pathname.startsWith("/api/v1/") &&
+        request.headers.get("authorization")?.startsWith("Bearer "));
+    if (!skipCsrf) {
       const csrfToken = request.headers.get("x-csrf-token");
       const csrfCookie = request.cookies.get("csrf-token")?.value;
 
