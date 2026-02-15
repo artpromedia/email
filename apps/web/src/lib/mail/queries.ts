@@ -707,14 +707,14 @@ export async function ensureUserMailbox(userId: string, email: string): Promise<
   }
 
   // Find domain
-  const domain = email.split("@")[1];
+  const domain = email.split("@")[1] ?? "";
   const domainRows = await sql`SELECT id FROM domains WHERE name = ${domain} LIMIT 1`;
   const domainId = domainRows.length > 0 ? (domainRows[0] as { id: string }).id : null;
 
   // Create mailbox
   const mbRows = await sql`
     INSERT INTO mailboxes (id, user_id, domain_id, email, display_name)
-    VALUES (gen_random_uuid(), ${userId}, ${domainId}, ${email}, ${email.split("@")[0]})
+    VALUES (gen_random_uuid(), ${userId}, ${domainId}, ${email}, ${email.split("@")[0] ?? email})
     ON CONFLICT (email) DO UPDATE SET is_active = true
     RETURNING id
   `;
