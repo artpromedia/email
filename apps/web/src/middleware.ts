@@ -414,13 +414,29 @@ async function checkRateLimit(identifier: string, pathname: string): Promise<Rat
 }
 
 // ============================================================
-// Domain-based routing configuration
-// oonrumail.com      → Marketing / landing page only
-// mail.oonrumail.com → Full mail application
+// Domain-based routing configuration (multi-tenant)
+// oonrumail.com        → Marketing / landing page only
+// mail.oonrumail.com   → OonruMail mail application
+// mail.skillancer.com  → Skillancer mail application (white-label)
+// mail.<org>.com       → Any org's white-label mail application
 // ============================================================
 
 const MARKETING_DOMAIN = process.env["MARKETING_DOMAIN"] || "oonrumail.com";
 const MAIL_DOMAIN = process.env["MAIL_DOMAIN"] || "mail.oonrumail.com";
+
+/**
+ * Known mail domains for white-label organizations.
+ * Any hostname starting with "mail." that isn't the marketing domain
+ * is treated as an org mail app domain.
+ */
+function isMailAppDomain(hostname: string): boolean {
+  if (hostname === MAIL_DOMAIN) return true;
+  // Any "mail.<domain>" is a white-label org login
+  if (hostname.startsWith("mail.")) return true;
+  // app.oonrumail.com is an alias
+  if (hostname === "app.oonrumail.com") return true;
+  return false;
+}
 
 /** Routes that are exclusively app routes (not available on www) */
 const APP_ROUTE_PREFIXES = ["/mail", "/calendar", "/chat", "/contacts", "/settings", "/admin"];
@@ -456,9 +472,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // On the MAIL domain (mail.oonrumail.com):
+  // On any mail app domain (mail.oonrumail.com, mail.skillancer.com, etc.):
   //   - Redirect root "/" to "/mail/inbox" (users expect the mail app here)
-  if (hostname === MAIL_DOMAIN && pathname === "/") {
+  if (isMailAppDomain(hostname) && pathname === "/") {
     const inboxUrl = request.nextUrl.clone();
     inboxUrl.pathname = "/mail/inbox";
     return NextResponse.redirect(inboxUrl);

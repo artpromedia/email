@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * SSO Settings Page
@@ -41,6 +41,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@email/ui";
+import { getAuthApiUrl } from "@/lib/api-url";
 
 interface SSOProvider {
   id: string;
@@ -115,7 +116,7 @@ export default function SSOSettingsPage() {
 
   const handleAddProvider = async () => {
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/sso/providers`, {
         method: "POST",
@@ -163,7 +164,7 @@ export default function SSOSettingsPage() {
   const handleDeleteProvider = async (providerId: string) => {
     if (!confirm("Are you sure you want to delete this SSO provider?")) return;
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/sso/providers/${providerId}`, {
         method: "DELETE",
@@ -183,7 +184,7 @@ export default function SSOSettingsPage() {
 
   const handleToggleProvider = async (providerId: string, enabled: boolean) => {
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/sso/providers/${providerId}`, {
         method: "PATCH",

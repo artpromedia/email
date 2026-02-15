@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Account Profile Settings Page
@@ -22,6 +22,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@email/ui";
+import { getAuthApiUrl } from "@/lib/api-url";
 import { useCurrentUser } from "@/lib/auth";
 
 // Profile form schema
@@ -76,7 +77,7 @@ export default function AccountSettingsPage() {
     setSaveSuccess(false);
 
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/profile`, {
         method: "PATCH",

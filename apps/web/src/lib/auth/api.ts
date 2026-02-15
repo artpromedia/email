@@ -1,7 +1,8 @@
-/**
+﻿/**
  * Auth API client for authentication operations
  */
 
+import { getAuthApiUrl } from "../api-url";
 import type {
   LoginRequest,
   LoginResponse,
@@ -30,7 +31,10 @@ interface ApiErrorResponse {
   };
 }
 
-const AUTH_API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] ?? "http://localhost:8081";
+/** Resolve auth API URL dynamically based on current domain */
+function getAuthUrl(): string {
+  return getAuthApiUrl();
+}
 
 class AuthApiError extends Error {
   constructor(
@@ -84,7 +88,7 @@ export const authApi = {
     if (!domain) return null;
 
     try {
-      const response = await fetch(`${AUTH_API_URL}/api/v1/auth/domain/${domain}`, {
+      const response = await fetch(`${getAuthUrl()}/api/v1/auth/domain/${domain}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
@@ -103,7 +107,7 @@ export const authApi = {
    * Login with email and password
    */
   async login(request: LoginRequest): Promise<LoginResponse> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/login`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -116,7 +120,7 @@ export const authApi = {
    * Register a new user
    */
   async register(request: RegisterRequest): Promise<RegisterResponse> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/register`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -129,7 +133,7 @@ export const authApi = {
    * Logout current user
    */
   async logout(): Promise<void> {
-    await fetch(`${AUTH_API_URL}/api/v1/auth/logout`, {
+    await fetch(`${getAuthUrl()}/api/v1/auth/logout`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -144,7 +148,7 @@ export const authApi = {
   async refreshToken(): Promise<{ accessToken: string; expiresAt: string }> {
     const refreshToken = localStorage.getItem("refreshToken");
 
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -157,7 +161,7 @@ export const authApi = {
    * Get current user profile
    */
   async getCurrentUser(): Promise<AuthUser> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/me`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/me`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -171,7 +175,7 @@ export const authApi = {
    * Initiate SSO login
    */
   async initiateSSOLogin(domain: string): Promise<SSOInitiateResponse> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/sso/${domain}/login`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/sso/${domain}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -183,7 +187,7 @@ export const authApi = {
    * Complete SSO callback
    */
   async completeSSOCallback(domain: string, request: SSOCallbackRequest): Promise<LoginResponse> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/sso/${domain}/callback`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/sso/${domain}/callback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -198,7 +202,7 @@ export const authApi = {
    * Get user's email addresses
    */
   async getEmails(): Promise<UserEmail[]> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/emails`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/emails`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -210,7 +214,7 @@ export const authApi = {
    * Add a new email address
    */
   async addEmail(request: AddEmailRequest): Promise<UserEmail> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/emails`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/emails`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
@@ -223,7 +227,7 @@ export const authApi = {
    * Remove an email address
    */
   async removeEmail(emailId: string): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/emails/${emailId}`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/emails/${emailId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -242,7 +246,7 @@ export const authApi = {
    * Set an email as primary
    */
   async setPrimaryEmail(emailId: string): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/emails/${emailId}/primary`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/emails/${emailId}/primary`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -262,7 +266,7 @@ export const authApi = {
    */
   async resendVerificationEmail(emailId: string): Promise<void> {
     const response = await fetch(
-      `${AUTH_API_URL}/api/v1/auth/emails/${emailId}/resend-verification`,
+      `${getAuthUrl()}/api/v1/auth/emails/${emailId}/resend-verification`,
       {
         method: "POST",
         headers: getAuthHeaders(),
@@ -283,7 +287,7 @@ export const authApi = {
    * Verify email with token
    */
   async verifyEmail(request: VerifyEmailRequest): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/verify-email`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/verify-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -305,7 +309,7 @@ export const authApi = {
    * Get active sessions
    */
   async getSessions(): Promise<UserSession[]> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/sessions`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/sessions`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -317,7 +321,7 @@ export const authApi = {
    * Revoke a session
    */
   async revokeSession(sessionId: string): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/sessions/${sessionId}`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/sessions/${sessionId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -336,7 +340,7 @@ export const authApi = {
    * Revoke all other sessions
    */
   async revokeAllOtherSessions(): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/sessions/revoke-all`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/sessions/revoke-all`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -357,7 +361,7 @@ export const authApi = {
    * Setup MFA
    */
   async setupMFA(): Promise<MFASetupResponse> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/mfa/setup`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/mfa/setup`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -369,7 +373,7 @@ export const authApi = {
    * Verify and enable MFA
    */
   async verifyMFA(request: MFAVerifyRequest): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/mfa/verify`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/mfa/verify`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
@@ -389,7 +393,7 @@ export const authApi = {
    * Disable MFA
    */
   async disableMFA(request: MFAVerifyRequest): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/mfa/disable`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/mfa/disable`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
@@ -411,7 +415,7 @@ export const authApi = {
    * Change password
    */
   async changePassword(request: PasswordChangeRequest): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/password/change`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/password/change`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(request),
@@ -431,7 +435,7 @@ export const authApi = {
    * Request password reset
    */
   async forgotPassword(request: ForgotPasswordRequest): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/password/forgot`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/password/forgot`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -451,7 +455,7 @@ export const authApi = {
    * Reset password with token
    */
   async resetPassword(request: ResetPasswordRequest): Promise<void> {
-    const response = await fetch(`${AUTH_API_URL}/api/v1/auth/password/reset`, {
+    const response = await fetch(`${getAuthUrl()}/api/v1/auth/password/reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),

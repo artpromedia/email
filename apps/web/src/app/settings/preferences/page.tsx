@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Preferences Settings Page
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@email/ui";
+import { getAuthApiUrl } from "@/lib/api-url";
 
 interface Preferences {
   display: {
@@ -99,7 +100,7 @@ export default function PreferencesSettingsPage() {
 
   const handleSave = async () => {
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/preferences`, {
         method: "PATCH",
@@ -238,10 +239,10 @@ export default function PreferencesSettingsPage() {
                 <SelectContent>
                   <SelectItem value="en-US">English (US)</SelectItem>
                   <SelectItem value="en-GB">English (UK)</SelectItem>
-                  <SelectItem value="es-ES">Español</SelectItem>
-                  <SelectItem value="fr-FR">Français</SelectItem>
+                  <SelectItem value="es-ES">EspaÃ±ol</SelectItem>
+                  <SelectItem value="fr-FR">FranÃ§ais</SelectItem>
                   <SelectItem value="de-DE">Deutsch</SelectItem>
-                  <SelectItem value="ja-JP">日本語</SelectItem>
+                  <SelectItem value="ja-JP">æ—¥æœ¬èªž</SelectItem>
                 </SelectContent>
               </Select>
             </div>

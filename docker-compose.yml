@@ -364,6 +364,8 @@ services:
       BCRYPT_COST: ${BCRYPT_COST:-12}
       RATE_LIMIT_REQUESTS: ${AUTH_RATE_LIMIT:-100}
       RATE_LIMIT_WINDOW: ${AUTH_RATE_WINDOW:-1m}
+      # CORS - allowed origins for multi-tenant white-label domains
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://mail.oonrumail.com,https://oonrumail.com,https://admin.oonrumail.com,https://mail.skillancer.com}
       # Email / SMTP configuration (for verification, password reset, welcome emails)
       SMTP_HOST: smtp-server
       SMTP_PORT: "25"
@@ -821,6 +823,8 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.oonrumail.com}
       NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-https://api.oonrumail.com/auth}
       NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-https://api.oonrumail.com/storage}
+      # CSP connect-src: allow API calls to all white-label org API domains
+      CSP_CONNECT_DOMAINS: "https://api.oonrumail.com,wss://api.oonrumail.com,https://api.skillancer.com,wss://api.skillancer.com"
     expose:
       - "3000"
     depends_on:

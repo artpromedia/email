@@ -40,6 +40,20 @@ app.oonrumail.com, mail.oonrumail.com {
     }
 }
 
+# Skillancer mail application - white-label login for Skillancer org
+mail.skillancer.com {
+    reverse_proxy web:3000
+    encode gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
 # Admin panel
 admin.oonrumail.com {
     reverse_proxy admin:3001
@@ -53,8 +67,8 @@ admin.oonrumail.com {
     }
 }
 
-# API endpoints
-api.oonrumail.com {
+# Shared API route snippet (imported via Caddyfile snippet)
+(api_routes) {
     # Auth service
     handle /auth/* {
         uri strip_prefix /auth
@@ -118,19 +132,42 @@ api.oonrumail.com {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
-        Access-Control-Allow-Origin "https://mail.oonrumail.com"
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         Access-Control-Allow-Headers "Authorization, Content-Type, X-API-Key, X-Request-ID"
         Access-Control-Allow-Credentials "true"
         Access-Control-Max-Age "300"
     }
+}
 
-    # Handle CORS preflight for admin origin
+# API endpoints - OonruMail
+api.oonrumail.com {
+    import api_routes
+
+    # Dynamic CORS: reflect the Origin header for allowed origins
+    @oonrumailOrigin header Origin https://mail.oonrumail.com
+    header @oonrumailOrigin Access-Control-Allow-Origin "https://mail.oonrumail.com"
+
     @adminOrigin header Origin https://admin.oonrumail.com
     header @adminOrigin Access-Control-Allow-Origin "https://admin.oonrumail.com"
 
     @landingOrigin header Origin https://oonrumail.com
     header @landingOrigin Access-Control-Allow-Origin "https://oonrumail.com"
+
+    @skillancerOrigin header Origin https://mail.skillancer.com
+    header @skillancerOrigin Access-Control-Allow-Origin "https://mail.skillancer.com"
+}
+
+# API endpoints - Skillancer (white-label)
+api.skillancer.com {
+    import api_routes
+
+    # CORS for Skillancer mail app
+    @skillancerMailOrigin header Origin https://mail.skillancer.com
+    header @skillancerMailOrigin Access-Control-Allow-Origin "https://mail.skillancer.com"
+
+    # Also allow OonruMail origins (platform admin)
+    @oonrumailAdminOrigin header Origin https://admin.oonrumail.com
+    header @oonrumailAdminOrigin Access-Control-Allow-Origin "https://admin.oonrumail.com"
 }
 
 # NOTE: If using Cloudflare proxy for oonrumail.com and www.oonrumail.com,

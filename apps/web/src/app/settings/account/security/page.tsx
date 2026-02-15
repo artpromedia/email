@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Account Security Settings Page
@@ -29,6 +29,7 @@ import {
   Switch,
   Badge,
 } from "@email/ui";
+import { getAuthApiUrl } from "@/lib/api-url";
 
 interface Session {
   id: string;
@@ -74,7 +75,7 @@ export default function SecuritySettingsPage() {
       return;
     }
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/password`, {
         method: "POST",
@@ -101,7 +102,7 @@ export default function SecuritySettingsPage() {
 
   const handleRevokeSession = async (sessionId: string) => {
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/sessions/${sessionId}`, {
         method: "DELETE",
@@ -122,7 +123,7 @@ export default function SecuritySettingsPage() {
 
   const handleRevokeAllSessions = async () => {
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/sessions`, {
         method: "DELETE",
@@ -241,8 +242,7 @@ export default function SecuritySettingsPage() {
               checked={twoFactorEnabled}
               onCheckedChange={async (checked: boolean) => {
                 try {
-                  const API_URL =
-                    process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+                  const API_URL = getAuthApiUrl();
                   const token = localStorage.getItem("accessToken");
                   const response = await fetch(`${API_URL}/api/v1/auth/2fa/toggle`, {
                     method: "POST",
@@ -308,7 +308,7 @@ export default function SecuritySettingsPage() {
                       {session.current && <Badge variant="secondary">Current</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {session.browser} • {session.location}
+                      {session.browser} â€¢ {session.location}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />

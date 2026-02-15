@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Organization Settings Page
@@ -23,6 +23,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@email/ui";
+import { getAuthApiUrl } from "@/lib/api-url";
 
 interface Organization {
   id: string;
@@ -82,7 +83,7 @@ export default function OrganizationSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const API_URL = process.env["NEXT_PUBLIC_AUTH_API_URL"] || "http://localhost:8081";
+      const API_URL = getAuthApiUrl();
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/api/v1/auth/organization`, {
         method: "PATCH",
