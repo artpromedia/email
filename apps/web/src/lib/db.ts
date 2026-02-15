@@ -10,7 +10,7 @@ export function getDb(): ReturnType<typeof postgres> {
   if (!_sql) {
     const url =
       process.env["DATABASE_URL"] ||
-      "postgres://oonrumail:lBIkhjAXmPfAmgx5ED1rKoHQyMgXUn@pgbouncer:5432/oonrumail";
+      "postgres://oonrumail:lBIkhjAXmPfAmgx5ED1rKoHQyMgXUn@postgres:5432/oonrumail";
     _sql = postgres(url, {
       max: 10,
       idle_timeout: 20,
