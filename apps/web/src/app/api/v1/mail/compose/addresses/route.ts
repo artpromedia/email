@@ -1,26 +1,29 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const AUTH_API_URL = process.env["AUTH_API_URL"] || "http://auth:8080";
+/**
+ * JWT claims produced by the Go auth service.
+ */
+interface JwtClaims {
+  sub: string; // userId (UUID)
+  email: string;
+  name: string; // displayName
+  org_id: string;
+  primary_domain_id: string;
+  domains: string[]; // domain UUIDs
+  role: string;
+}
 
 /**
- * Extract user ID from JWT token in authorization header
+ * Decode JWT payload without signature verification.
+ * In production, verify with the shared secret.
  */
-function extractUserIdFromToken(authHeader: string): string | null {
+function decodeJwt(authHeader: string): JwtClaims | null {
   try {
-    // Remove 'Bearer ' prefix if present
-    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     if (!token) return null;
-
-    // Decode JWT payload (middle part)
-    // In production, use proper JWT verification with secret
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-
-    const payload = JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as {
-      sub?: string;
-      userId?: string;
-    };
-    return payload.sub ?? payload.userId ?? null;
+    return JSON.parse(Buffer.from(parts[1] ?? "", "base64").toString()) as JwtClaims;
   } catch {
     return null;
   }
@@ -28,44 +31,44 @@ function extractUserIdFromToken(authHeader: string): string | null {
 
 /**
  * GET /api/v1/mail/compose/addresses
- * Get available sender addresses for the authenticated user
+ * Build sendable addresses from the JWT claims.
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Extract user from JWT token
-    const userId = extractUserIdFromToken(authHeader);
-    if (!userId) {
+    const claims = decodeJwt(authHeader);
+    if (!claims?.sub || !claims.email) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    // Fetch user's email addresses from auth service
-    const response = await fetch(`${AUTH_API_URL}/api/v1/users/${userId}/addresses`, {
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-      },
-    });
+    const domain = claims.email.split("@")[1] ?? "";
+    const displayName = claims.name || claims.email.split("@")[0] || "";
+    const domainId = claims.primary_domain_id || claims.org_id || domain;
 
-    if (response.ok) {
-      const data = (await response.json()) as {
-        addresses?: unknown[];
-        defaultAddressId?: string | null;
-      };
-      return NextResponse.json({
-        addresses: data.addresses ?? [],
-        defaultAddressId: data.defaultAddressId ?? null,
-      });
-    }
+    // Build the user's primary sendable address from the JWT
+    const primaryAddress = {
+      id: claims.sub,
+      email: claims.email,
+      displayName,
+      formatted: displayName ? `${displayName} <${claims.email}>` : claims.email,
+      domainId,
+      domainName: domain,
+      domainColor: "#3b82f6",
+      type: "personal" as const,
+      isPrimary: true,
+      sendAs: "send-as" as const,
+      isVerified: true,
+      dailyLimit: 500,
+      sentToday: 0,
+    };
 
-    // Return empty addresses if service unavailable
     return NextResponse.json({
-      addresses: [],
-      defaultAddressId: null,
+      addresses: [primaryAddress],
+      primaryAddressId: claims.sub,
     });
   } catch (error) {
     console.error("Error fetching sender addresses:", error);

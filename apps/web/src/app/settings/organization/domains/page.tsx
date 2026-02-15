@@ -61,7 +61,13 @@ export default function DomainsSettingsPage() {
   useEffect(() => {
     const fetchDomains = async () => {
       try {
-        const response = await fetch("/api/v1/organization/domains");
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch("/api/v1/organization/domains", {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
         const data = (await response.json()) as { domains: Domain[] };
         setDomains(data.domains);
       } catch (err) {

@@ -66,7 +66,13 @@ export default function OrganizationSettingsPage() {
   useEffect(() => {
     const fetchOrganization = async () => {
       try {
-        const response = await fetch("/api/v1/organization");
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch("/api/v1/organization", {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
         const data = (await response.json()) as { organization?: Organization };
         if (data.organization) {
           setOrganization(data.organization);
@@ -314,19 +320,19 @@ export default function OrganizationSettingsPage() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold">12</div>
+              <div className="text-3xl font-bold">—</div>
               <div className="text-sm text-muted-foreground">Total Members</div>
             </div>
             <div className="rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold">3</div>
+              <div className="text-3xl font-bold">—</div>
               <div className="text-sm text-muted-foreground">Admins</div>
             </div>
             <div className="rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold">2</div>
+              <div className="text-3xl font-bold">—</div>
               <div className="text-sm text-muted-foreground">Domains</div>
             </div>
             <div className="rounded-lg border p-4 text-center">
-              <div className="text-3xl font-bold">10</div>
+              <div className="text-3xl font-bold">—</div>
               <div className="text-sm text-muted-foreground">Pending Invites</div>
             </div>
           </div>

@@ -494,8 +494,18 @@ export function useUploadAttachment() {
       const formData = new FormData();
       formData.append("file", file);
 
+      // Build auth headers (skip Content-Type — browser sets multipart boundary)
+      const authHeaders: Record<string, string> = {};
+      if (typeof globalThis.window !== "undefined") {
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+          authHeaders["Authorization"] = `Bearer ${token}`;
+        }
+      }
+
       const response = await fetch(`${API_BASE}/mail/attachments`, {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
 

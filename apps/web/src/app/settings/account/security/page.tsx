@@ -55,7 +55,14 @@ export default function SecuritySettingsPage() {
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const response = await fetch("/api/auth/sessions");
+        const API_URL = getAuthApiUrl();
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch(`${API_URL}/api/auth/sessions`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
         const data = (await response.json()) as { sessions?: Session[] };
         if (data.sessions) {
           setSessions(data.sessions);
