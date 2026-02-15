@@ -49,21 +49,21 @@ class AuthApiError extends Error {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  const data = (await response.json()) as ApiErrorResponse & Record<string, unknown>;
+  const data = (await response.json()) as Record<string, unknown>;
 
   if (!response.ok) {
     // Go auth service returns { error: "code", message: "msg" } at root level
-    const errorCode = (data.error as { code?: string } | string) ?? "UNKNOWN_ERROR";
+    const rawError = data["error"];
+    const rawMessage = data["message"];
+    const errorCode =
+      typeof rawError === "string"
+        ? rawError
+        : ((rawError as { code?: string } | undefined)?.code ?? "UNKNOWN_ERROR");
     const errorMessage =
-      (data.message as string) ??
-      (data.error as { message?: string })?.message ??
-      "An error occurred";
-    throw new AuthApiError(
-      typeof errorCode === "string" ? errorCode : (errorCode.code ?? "UNKNOWN_ERROR"),
-      errorMessage,
-      response.status,
-      data.error?.details
-    );
+      typeof rawMessage === "string"
+        ? rawMessage
+        : ((rawError as { message?: string } | undefined)?.message ?? "An error occurred");
+    throw new AuthApiError(errorCode, errorMessage, response.status);
   }
 
   // Go auth service returns data at root level (no .data wrapper)
