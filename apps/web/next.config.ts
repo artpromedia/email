@@ -4,12 +4,25 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   transpilePackages: ["@email/ui", "@email/config", "@email/types", "@email/utils"],
+  // Prevent Next.js from bundling ioredis into server/edge bundles
+  serverExternalPackages: ["ioredis"],
   // Enable webpack to resolve .js imports to .ts files (for ESM compatibility)
-  webpack: (config: { resolve: { extensionAlias?: Record<string, string[]> } }) => {
+  webpack: (config: {
+    resolve: {
+      extensionAlias?: Record<string, string[]>;
+      fallback?: Record<string, boolean | string>;
+    };
+  }) => {
     config.resolve.extensionAlias = {
       ".js": [".ts", ".tsx", ".js", ".jsx"],
       ".mjs": [".mts", ".mjs"],
       ".cjs": [".cts", ".cjs"],
+    };
+    // redis.ts imports node:module (Node.js built-in) which is unavailable
+    // in client/edge bundles. Provide a false fallback so webpack skips it.
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      "node:module": false,
     };
     return config;
   },
