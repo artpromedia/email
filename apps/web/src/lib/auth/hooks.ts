@@ -93,6 +93,28 @@ export function useRegister() {
 }
 
 /**
+ * Hook for self-service signup (org + domain + admin user)
+ */
+export function useSignup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: {
+      email: string;
+      password: string;
+      displayName: string;
+      organizationName: string;
+      domainName: string;
+    }) => authApi.signup(request),
+    onSuccess: (data) => {
+      localStorage.setItem("accessToken", data.tokens.accessToken);
+      localStorage.setItem("refreshToken", data.tokens.refreshToken);
+      queryClient.setQueryData(authKeys.user(), data.user);
+    },
+  });
+}
+
+/**
  * Hook to logout
  */
 export function useLogout() {

@@ -35,6 +35,7 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 func (h *AuthHandler) RegisterRoutes(r chi.Router, authMiddleware *middleware.AuthMiddleware) {
 	// Public routes
 	r.Post("/register", h.Register)
+	r.Post("/signup", h.Signup)
 	r.Post("/login", h.Login)
 	r.Post("/refresh", h.RefreshToken)
 	r.Post("/mfa/verify", h.VerifyMFA)
@@ -103,6 +104,46 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		handleServiceError(w, err)
 		return
+	}
+
+	respondJSON(w, http.StatusCreated, response)
+}
+
+// Signup handles self-service domain admin signup (creates org + domain + admin user).
+// POST /api/auth/signup
+func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	var req models.SignupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		respondValidationError(w, err)
+		return
+	}
+
+	clientIP := getClientIP(r)
+	userAgent := r.UserAgent()
+
+	params := service.SignupParams{
+		Email:            req.Email,
+		Password:         req.Password,
+		DisplayName:      req.DisplayName,
+		OrganizationName: req.OrganizationName,
+		DomainName:       req.DomainName,
+		IPAddress:        clientIP,
+		UserAgent:        userAgent,
+	}
+
+	response, err := h.authService.Signup(r.Context(), params)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	if response.TokenPair != nil {
+		setTokenCookies(w, response.TokenPair)
 	}
 
 	respondJSON(w, http.StatusCreated, response)

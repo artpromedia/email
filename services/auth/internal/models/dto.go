@@ -429,3 +429,20 @@ type OrganizationMember struct {
 	Role           string    `json:"role"`
 	JoinedAt       time.Time `json:"joined_at"`
 }
+
+// CreateDomainUserRequest is the request to create a new user for a domain.
+type CreateDomainUserRequest struct {
+	Email       string `json:"email" validate:"required,email"`
+	Password    string `json:"password" validate:"required,min=12"`
+	DisplayName string `json:"display_name" validate:"required,min=1,max=255"`
+	Role        string `json:"role" validate:"omitempty,oneof=admin member"`
+}
+
+// SignupRequest is the self-service signup request for new domain administrators.
+type SignupRequest struct {
+	Email            string `json:"email" validate:"required,email"`
+	Password         string `json:"password" validate:"required,min=12"`
+	DisplayName      string `json:"display_name" validate:"required,min=1,max=255"`
+	OrganizationName string `json:"organization_name" validate:"required,min=1,max=255"`
+	DomainName       string `json:"domain_name" validate:"required,min=3,max=255"`
+}

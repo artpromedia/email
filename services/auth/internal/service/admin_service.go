@@ -606,6 +606,131 @@ func (s *AdminService) AddDomainUser(ctx context.Context, domainID uuid.UUID, re
 	}, nil
 }
 
+// CreateDomainUser creates a brand new user account for a domain.
+// This is used by domain admins to create user accounts.
+func (s *AdminService) CreateDomainUser(ctx context.Context, domainID uuid.UUID, req *models.CreateDomainUserRequest) (*models.DomainUserResponse, error) {
+	// Get domain
+	domain, err := s.repo.GetDomainByID(ctx, domainID)
+	if err != nil {
+		return nil, fmt.Errorf("domain not found: %w", err)
+	}
+
+	// Get organization
+	org, err := s.repo.GetOrganizationByID(ctx, domain.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("organization not found: %w", err)
+	}
+
+	// Extract local part and validate email matches domain
+	parts := strings.Split(req.Email, "@")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid email format")
+	}
+	localPart := parts[0]
+	emailDomain := parts[1]
+
+	if !strings.EqualFold(emailDomain, domain.DomainName) {
+		return nil, fmt.Errorf("email domain %s does not match domain %s", emailDomain, domain.DomainName)
+	}
+
+	// Check if email already exists
+	exists, err := s.repo.CheckEmailExists(ctx, req.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check email: %w", err)
+	}
+	if exists {
+		return nil, ErrEmailExists
+	}
+
+	// Validate password
+	if err := ValidatePassword(req.Password, org.Settings.PasswordPolicy); err != nil {
+		return nil, err
+	}
+
+	// Hash password
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), s.config.Security.BcryptCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	now := time.Now()
+	userID := uuid.New()
+	emailAddressID := uuid.New()
+	mailboxID := uuid.New()
+
+	role := "member"
+	if req.Role == "admin" {
+		role = "admin"
+	}
+
+	user := &models.User{
+		ID:             userID,
+		OrganizationID: org.ID,
+		DisplayName:    req.DisplayName,
+		PasswordHash:   sql.NullString{String: string(passwordHash), Valid: true},
+		Role:           role,
+		Status:         "active",
+		Timezone:       "UTC",
+		Locale:         "en-US",
+		EmailVerified:  true, // admin-created users are pre-verified
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	emailAddress := &models.UserEmailAddress{
+		ID:           emailAddressID,
+		UserID:       userID,
+		DomainID:     domain.ID,
+		EmailAddress: strings.ToLower(req.Email),
+		LocalPart:    localPart,
+		IsPrimary:    true,
+		IsVerified:   true,
+		CreatedAt:    now,
+	}
+
+	mailbox := &models.Mailbox{
+		ID:             mailboxID,
+		UserID:         userID,
+		EmailAddressID: emailAddressID,
+		DomainEmail:    strings.ToLower(req.Email),
+		DisplayName:    sql.NullString{String: req.DisplayName, Valid: true},
+		QuotaBytes:     org.Settings.DefaultUserQuotaBytes,
+		UsedBytes:      0,
+		IsActive:       true,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	if err := s.repo.CreateUser(ctx, user, emailAddress, mailbox); err != nil {
+		if errors.Is(err, repository.ErrDuplicateEmail) {
+			return nil, ErrEmailExists
+		}
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// If role is admin, update domain permissions
+	if role == "admin" {
+		perm, _ := s.repo.GetUserDomainPermission(ctx, userID, domainID)
+		if perm != nil {
+			perm.CanManage = true
+			perm.CanViewAnalytics = true
+			perm.CanManageUsers = true
+			_ = s.repo.UpdateUserDomainPermission(ctx, perm)
+		}
+	}
+
+	return &models.DomainUserResponse{
+		UserID:           userID,
+		Email:            strings.ToLower(req.Email),
+		Name:             req.DisplayName,
+		CanSendAs:        true,
+		CanManage:        role == "admin",
+		CanViewAnalytics: role == "admin",
+		CanManageUsers:   role == "admin",
+		GrantedAt:        now,
+	}, nil
+}
+
 // RemoveDomainUser removes a user from a domain.
 func (s *AdminService) RemoveDomainUser(ctx context.Context, domainID uuid.UUID, userID uuid.UUID) error {
 	return s.repo.DeleteUserDomainPermission(ctx, userID, domainID)

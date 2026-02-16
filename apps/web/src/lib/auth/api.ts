@@ -241,6 +241,37 @@ export const authApi = {
   },
 
   /**
+   * Self-service signup: creates org + domain + admin user in one step
+   */
+  async signup(request: {
+    email: string;
+    password: string;
+    displayName: string;
+    organizationName: string;
+    domainName: string;
+  }): Promise<RegisterResponse> {
+    const response = await fetch(`${getAuthUrl()}/api/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: request.email,
+        password: request.password,
+        display_name: request.displayName,
+        organization_name: request.organizationName,
+        domain_name: request.domainName,
+      }),
+    });
+
+    const raw = await handleResponse<GoLoginResponse>(response);
+    const mapped = mapLoginResponse(raw);
+    return {
+      user: mapped.user,
+      tokens: mapped.tokens,
+      emailVerificationRequired: false,
+    };
+  },
+
+  /**
    * Logout current user
    */
   async logout(): Promise<void> {

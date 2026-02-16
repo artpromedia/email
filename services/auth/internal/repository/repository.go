@@ -310,20 +310,48 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User, email *m
 		return fmt.Errorf("failed to create email address: %w", err)
 	}
 
-	// Create mailbox
+	// Create mailbox (set both email and domain_email so web app can find it)
 	mailboxQuery := `
-		INSERT INTO mailboxes (id, user_id, email_address_id, domain_email, display_name,
+		INSERT INTO mailboxes (id, user_id, email_address_id, email, domain_email, display_name,
 		                       quota_bytes, used_bytes, settings, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`
 	settingsJSON, _ := json.Marshal(mailbox.Settings)
 	_, err = tx.Exec(ctx, mailboxQuery,
-		mailbox.ID, mailbox.UserID, mailbox.EmailAddressID, mailbox.DomainEmail,
+		mailbox.ID, mailbox.UserID, mailbox.EmailAddressID,
+		mailbox.DomainEmail, // email column = same as domain_email
+		mailbox.DomainEmail,
 		mailbox.DisplayName, mailbox.QuotaBytes, mailbox.UsedBytes, settingsJSON,
 		mailbox.IsActive, mailbox.CreatedAt, mailbox.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create mailbox: %w", err)
+	}
+
+	// Create default mail folders (Inbox, Sent, Drafts, Trash, Spam, Archive)
+	defaultFolders := []struct {
+		name       string
+		fullPath   string
+		specialUse string
+		sortOrder  int
+	}{
+		{"Inbox", "INBOX", "\\Inbox", 0},
+		{"Sent", "Sent", "\\Sent", 1},
+		{"Drafts", "Drafts", "\\Drafts", 2},
+		{"Trash", "Trash", "\\Trash", 3},
+		{"Spam", "Spam", "\\Junk", 4},
+		{"Archive", "Archive", "\\Archive", 5},
+	}
+	folderQuery := `
+		INSERT INTO mail_folders (mailbox_id, name, full_path, special_use, sort_order)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (mailbox_id, full_path) DO NOTHING
+	`
+	for _, f := range defaultFolders {
+		_, err = tx.Exec(ctx, folderQuery, mailbox.ID, f.name, f.fullPath, f.specialUse, f.sortOrder)
+		if err != nil {
+			return fmt.Errorf("failed to create mail folder %s: %w", f.name, err)
+		}
 	}
 
 	// Grant domain permission

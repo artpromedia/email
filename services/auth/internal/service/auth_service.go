@@ -252,6 +252,217 @@ func (s *AuthService) Register(ctx context.Context, params RegisterParams) (*Reg
 	}, nil
 }
 
+// SignupParams holds parameters for self-service signup (new org + domain + admin user).
+type SignupParams struct {
+	Email            string
+	Password         string
+	DisplayName      string
+	OrganizationName string
+	DomainName       string
+	IPAddress        string
+	UserAgent        string
+}
+
+// Signup creates a new organization, domain, and admin user in one self-service flow.
+// This is for new customers who want to set up their own email domain.
+func (s *AuthService) Signup(ctx context.Context, params SignupParams) (*RegisterResult, error) {
+	// Validate email domain matches requested domain
+	parts := strings.Split(params.Email, "@")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid email format")
+	}
+	localPart := parts[0]
+	emailDomain := parts[1]
+
+	if !strings.EqualFold(emailDomain, params.DomainName) {
+		return nil, fmt.Errorf("email domain must match the domain you're registering")
+	}
+
+	// Check if domain already exists
+	existing, _ := s.repo.GetDomainByName(ctx, params.DomainName)
+	if existing != nil {
+		return nil, fmt.Errorf("%w: domain %s is already registered", ErrDomainNotFound, params.DomainName)
+	}
+
+	// Check if email already exists
+	exists, err := s.repo.CheckEmailExists(ctx, params.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check email: %w", err)
+	}
+	if exists {
+		return nil, ErrEmailExists
+	}
+
+	// Validate password with default policy
+	defaultPolicy := models.DefaultPasswordPolicy()
+	if err := ValidatePassword(params.Password, defaultPolicy); err != nil {
+		return nil, err
+	}
+
+	// Hash password
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(params.Password), s.config.Security.BcryptCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	now := time.Now()
+	userID := uuid.New()
+	orgID := uuid.New()
+	domainID := uuid.New()
+	emailAddressID := uuid.New()
+	mailboxID := uuid.New()
+
+	// Generate slug from org name
+	orgSlug := strings.ToLower(strings.ReplaceAll(params.OrganizationName, " ", "-"))
+
+	// Create organization
+	org := &models.Organization{
+		ID:       orgID,
+		Name:     params.OrganizationName,
+		Slug:     orgSlug,
+		OwnerID:  userID,
+		Plan:     "free",
+		Status:   "active",
+		IsActive: true,
+		Settings: models.OrganizationSettings{
+			PasswordPolicy:         defaultPolicy,
+			DefaultUserQuotaBytes:  1073741824, // 1GB
+			MaxAttachmentSizeBytes: 26214400,   // 25MB
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	orgSettings := &models.OrganizationSettings{
+		ID:               uuid.New(),
+		OrganizationID:   orgID,
+		RequireMFA:       false,
+		SessionDuration:  1440, // 24 hours in minutes
+		MaxLoginAttempts: 5,
+		PasswordPolicy:   defaultPolicy,
+		DefaultUserQuotaBytes: 1073741824,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+
+	// Create organization
+	if err := s.repo.CreateOrganization(ctx, org, orgSettings); err != nil {
+		return nil, fmt.Errorf("failed to create organization: %w", err)
+	}
+
+	// Create domain (unverified - user will need to verify DNS records)
+	verificationToken := generateSecureToken()
+	domain := &models.Domain{
+		ID:                 domainID,
+		OrganizationID:     orgID,
+		DomainName:         strings.ToLower(params.DomainName),
+		IsPrimary:          true,
+		IsDefault:          true,
+		Status:             "pending",
+		IsVerified:         false,
+		VerificationStatus: "pending",
+		VerificationToken:  verificationToken,
+		VerificationMethod: "dns_txt",
+		IsActive:           true,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}
+
+	domainSettings := &models.DomainSettings{
+		ID:              uuid.New(),
+		DomainID:        domainID,
+		CatchAllEnabled: false,
+		AutoCreateMailbox: true,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+
+	if err := s.repo.CreateDomain(ctx, domain, domainSettings); err != nil {
+		return nil, fmt.Errorf("failed to create domain: %w", err)
+	}
+
+	// Create user as admin
+	user := &models.User{
+		ID:             userID,
+		OrganizationID: orgID,
+		DisplayName:    params.DisplayName,
+		PasswordHash:   sql.NullString{String: string(passwordHash), Valid: true},
+		Role:           "admin",
+		Status:         "active",
+		Timezone:       "UTC",
+		Locale:         "en-US",
+		EmailVerified:  true, // Owner is pre-verified
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	emailAddress := &models.UserEmailAddress{
+		ID:           emailAddressID,
+		UserID:       userID,
+		DomainID:     domainID,
+		EmailAddress: strings.ToLower(params.Email),
+		LocalPart:    localPart,
+		IsPrimary:    true,
+		IsVerified:   true,
+		CreatedAt:    now,
+	}
+
+	mailbox := &models.Mailbox{
+		ID:             mailboxID,
+		UserID:         userID,
+		EmailAddressID: emailAddressID,
+		DomainEmail:    strings.ToLower(params.Email),
+		DisplayName:    sql.NullString{String: params.DisplayName, Valid: true},
+		QuotaBytes:     1073741824, // 1GB
+		UsedBytes:      0,
+		IsActive:       true,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	if err := s.repo.CreateUser(ctx, user, emailAddress, mailbox); err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Add user as org member with admin role
+	orgMember := &models.OrganizationMember{
+		OrganizationID: orgID,
+		UserID:         userID,
+		Role:           "owner",
+		JoinedAt:       now,
+	}
+	if err := s.repo.CreateOrganizationMember(ctx, orgMember); err != nil {
+		return nil, fmt.Errorf("failed to create org membership: %w", err)
+	}
+
+	// Upgrade domain permissions to admin
+	perm, _ := s.repo.GetUserDomainPermission(ctx, userID, domainID)
+	if perm != nil {
+		perm.CanManage = true
+		perm.CanViewAnalytics = true
+		perm.CanManageUsers = true
+		_ = s.repo.UpdateUserDomainPermission(ctx, perm)
+	}
+
+	// Generate tokens
+	tokenPair, err := s.generateTokensForUser(ctx, user, domainID, params.IPAddress, params.UserAgent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+
+	// Record audit log
+	s.recordAuditLog(ctx, orgID, &userID, "organization.created", "organization", &orgID, params.IPAddress, params.UserAgent, nil)
+	s.recordAuditLog(ctx, orgID, &userID, "domain.created", "domain", &domainID, params.IPAddress, params.UserAgent, nil)
+	s.recordLoginAttempt(ctx, &userID, params.Email, params.IPAddress, params.UserAgent, true, "", "signup")
+
+	return &RegisterResult{
+		User:         user,
+		TokenPair:    tokenPair,
+		Organization: org,
+		Domain:       domain,
+	}, nil
+}
+
 // LoginParams holds parameters for user login.
 type LoginParams struct {
 	Email     string
@@ -1443,6 +1654,11 @@ func (s *AuthService) generateTokensForUser(ctx context.Context, user *models.Us
 }
 
 func (s *AuthService) validatePassword(password string, policy models.PasswordPolicy) error {
+	return ValidatePassword(password, policy)
+}
+
+// ValidatePassword validates a password against the organization's policy.
+func ValidatePassword(password string, policy models.PasswordPolicy) error {
 	if len(password) < policy.MinLength {
 		return fmt.Errorf("%w: password must be at least %d characters", ErrInvalidPassword, policy.MinLength)
 	}

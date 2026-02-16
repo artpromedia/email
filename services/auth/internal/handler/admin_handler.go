@@ -65,6 +65,7 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router, authMiddleware *middleware.A
 			// Domain user management
 			r.Get("/{domainId}/users", h.ListDomainUsers)
 			r.Post("/{domainId}/users", h.AddDomainUser)
+			r.Post("/{domainId}/users/create", h.CreateDomainUser)
 			r.Delete("/{domainId}/users/{userId}", h.RemoveDomainUser)
 			r.Put("/{domainId}/users/{userId}/permissions", h.UpdateDomainUserPermissions)
 		})
@@ -501,6 +502,36 @@ func (h *AdminHandler) AddDomainUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.adminService.AddDomainUser(r.Context(), domainID, &req)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, user)
+}
+
+// CreateDomainUser creates a brand new user for a domain.
+// POST /api/admin/domains/{domainId}/users/create
+func (h *AdminHandler) CreateDomainUser(w http.ResponseWriter, r *http.Request) {
+	domainIDStr := chi.URLParam(r, "domainId")
+	domainID, err := uuid.Parse(domainIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid_request", "Invalid domain ID")
+		return
+	}
+
+	var req models.CreateDomainUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		respondValidationError(w, err)
+		return
+	}
+
+	user, err := h.adminService.CreateDomainUser(r.Context(), domainID, &req)
 	if err != nil {
 		handleServiceError(w, err)
 		return

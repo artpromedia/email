@@ -790,7 +790,7 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/register"
+              href="/signup"
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3.5 text-sm font-semibold transition hover:bg-blue-500"
             >
               Create Free Account
