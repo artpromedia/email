@@ -315,12 +315,12 @@ func (s *AuthService) Signup(ctx context.Context, params SignupParams) (*Registe
 	// Generate slug from org name
 	orgSlug := strings.ToLower(strings.ReplaceAll(params.OrganizationName, " ", "-"))
 
-	// Create organization
+	// Create organization (with zero owner_id initially - updated after user creation)
 	org := &models.Organization{
 		ID:       orgID,
 		Name:     params.OrganizationName,
 		Slug:     orgSlug,
-		OwnerID:  userID,
+		OwnerID:  uuid.UUID{}, // zero UUID → NULL in DB, updated after user creation
 		Plan:     "free",
 		Status:   "active",
 		IsActive: true,
@@ -422,6 +422,11 @@ func (s *AuthService) Signup(ctx context.Context, params SignupParams) (*Registe
 
 	if err := s.repo.CreateUser(ctx, user, emailAddress, mailbox); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Now set the organization owner to the newly created user
+	if err := s.repo.UpdateOrganizationOwner(ctx, orgID, userID); err != nil {
+		return nil, fmt.Errorf("failed to set organization owner: %w", err)
 	}
 
 	// Add user as org member with admin role

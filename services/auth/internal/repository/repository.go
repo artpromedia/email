@@ -1213,10 +1213,10 @@ return fmt.Errorf("failed to begin transaction: %w", err)
 }
 defer tx.Rollback(ctx)
 
-// Insert organization
+// Insert organization (use NULLIF to handle zero UUID for owner_id during signup)
 orgQuery := `
 INSERT INTO organizations (id, name, slug, owner_id, plan, status, is_active, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, NULLIF($4, '00000000-0000-0000-0000-000000000000'::uuid), $5, $6, $7, $8, $9)
 `
 _, err = tx.Exec(ctx, orgQuery,
 org.ID, org.Name, org.Slug, org.OwnerID, org.Plan, org.Status, org.IsActive,
@@ -1251,6 +1251,13 @@ SET name = $2, slug = $3, plan = $4, status = $5, updated_at = $6
 WHERE id = $1
 `
 _, err := r.pool.Exec(ctx, query, org.ID, org.Name, org.Slug, org.Plan, org.Status, org.UpdatedAt)
+return err
+}
+
+// UpdateOrganizationOwner sets the owner_id for an organization.
+func (r *Repository) UpdateOrganizationOwner(ctx context.Context, orgID, ownerID uuid.UUID) error {
+query := `UPDATE organizations SET owner_id = $2, updated_at = NOW() WHERE id = $1`
+_, err := r.pool.Exec(ctx, query, orgID, ownerID)
 return err
 }
 
