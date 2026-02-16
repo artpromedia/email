@@ -1383,13 +1383,13 @@ return fmt.Errorf("failed to begin transaction: %w", err)
 defer tx.Rollback(ctx)
 
 domainQuery := `
-INSERT INTO domains (id, organization_id, domain_name, is_primary, is_default,
+INSERT INTO domains (id, organization_id, domain_name, display_name, is_primary, is_default,
                      status, is_verified, verification_status, verification_token,
                      verification_method, is_active, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 _, err = tx.Exec(ctx, domainQuery,
-domain.ID, domain.OrganizationID, domain.DomainName, domain.IsPrimary,
+domain.ID, domain.OrganizationID, domain.DomainName, domain.DisplayName, domain.IsPrimary,
 domain.IsDefault, domain.Status, domain.IsVerified, domain.VerificationStatus,
 domain.VerificationToken, domain.VerificationMethod, domain.IsActive,
 domain.CreatedAt, domain.UpdatedAt,

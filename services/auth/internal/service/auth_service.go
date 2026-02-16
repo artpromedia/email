@@ -356,6 +356,7 @@ func (s *AuthService) Signup(ctx context.Context, params SignupParams) (*Registe
 		ID:                 domainID,
 		OrganizationID:     orgID,
 		DomainName:         strings.ToLower(params.DomainName),
+		DisplayName:        params.DomainName,
 		IsPrimary:          true,
 		IsDefault:          true,
 		Status:             "pending",

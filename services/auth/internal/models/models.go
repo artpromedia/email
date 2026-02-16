@@ -81,6 +81,7 @@ type Domain struct {
 	ID                  uuid.UUID       `json:"id" db:"id"`
 	OrganizationID      uuid.UUID       `json:"organization_id" db:"organization_id"`
 	DomainName          string          `json:"domain_name" db:"domain_name"`
+	DisplayName         string          `json:"display_name" db:"display_name"`
 	IsPrimary           bool            `json:"is_primary" db:"is_primary"`
 	IsDefault           bool            `json:"is_default" db:"is_default"`
 	Status              string          `json:"status" db:"status"`

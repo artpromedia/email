@@ -360,6 +360,7 @@ func (s *AdminService) CreateDomain(ctx context.Context, req *models.CreateDomai
 		ID:                   uuid.New(),
 		OrganizationID:       req.OrganizationID,
 		DomainName:           strings.ToLower(req.DomainName),
+		DisplayName:          req.DomainName,
 		Status:               "pending",
 		VerificationStatus:   "unverified",
 		VerificationToken:    verificationToken,
